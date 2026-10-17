@@ -18,6 +18,29 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   cacuracaptors' ports; use Producdevity/MiyooMini-Ports as a source.
 - Before changing the card: a **backup on the PC**.
 
+## The program (first version, 2026-10-17)
+
+- `onion/` mirrors the card: `Roms/PORTS/Games/PortManager/` (`pm.sh`, `menu.sh`, plus
+  `catalog.json` copied from the repo root) and `Roms/PORTS/Shortcuts/~Port manager.miyoocmd`
+  (the entry at the top of the Ports list; Onion runs `.miyoocmd` files as scripts). Deployed
+  by copying these over SMB.
+- `pm.sh check` / `pm.sh update [id...]` (`PM_DRY=1` = plan only); refreshes `catalog.json`
+  from raw.githubusercontent.com on each run (so push catalog changes before testing);
+  working files in `/mnt/SDCARD/.pm_work`, backups in `Backups/PortManager/`, log in
+  `PortManager/log.txt`; version in `<game>/.pm_version` (also `.miyoo64_version` when there),
+  installed files' md5 in `<game>/.pm_manifest`.
+- `menu.sh`: infoPanel "Checking...", then prompt "Update"/"Cancel" (prompt returns the
+  option's index, 255 for B), infoPanel with the result.
+- Tested over SSH: `check` right for all installed entries (98 s — mostly the many `jq` starts;
+  to speed up); dry run of 1.1.3 for Perfect Dark and Super Mario 64: 3 files each
+  (`launch.sh`, the new `full_resolution`, our shortcut regenerated with the release's
+  `FullResolution=1`), the user's pictures kept. Fixed: release info was cached across runs.
+- PC backup before the first real update: `G:\Emulacja\redriver2-miyoo\backup\20261017-before-pm-1.1.3\miyoo-sdcard.tar`
+  (md5 20bc3e88431424f1b50aad1b0746dbeb: Shortcuts, the 9 miyoo64 games' `data/`,
+  `launch.sh`, `.miyoo64_version`).
+- Next: the owner runs "~Port manager" from the Ports list (1.1.2 -> 1.1.3); then speed
+  (one jq call per entry), install of new ports, curl + CA bundle.
+
 ## The owner's card (2026-10-17)
 
 - Ports list (`Roms/PORTS/Shortcuts/`), ours and the authors' ports:
