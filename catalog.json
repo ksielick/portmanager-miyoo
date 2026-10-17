@@ -133,7 +133,11 @@
           "dest": "rom.z64",
           "sha1": "579c48e211ae952530ffc8738709f078d5dd215e",
           "size": 12582912
-        }
+        },
+        "built": [
+          "dc_data/setup.ok",
+          "dc_data/romdata.bin"
+        ]
       },
       "get": "Mario Kart 64 (USA) cartridge dump as rom.z64 (SHA-1: 579c48e211ae952530ffc8738709f078d5dd215e, 12 MB). Save in Roms/PORTS/Games/MarioKart64/rom.z64. Any .z64, .n64, .v64 or .zip dump works (game data built on first start)."
     },

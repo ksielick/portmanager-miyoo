@@ -149,6 +149,10 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 - Inline download progress bar: during asset downloads, an ASCII progress bar (`[====>  ]  54%  1.0/1.8 MB`)
   appears as an inline line directly under the download announcement in the log, updates in place,
   and stays permanently at 100% in the scrollable log history after download completes.
+- Built game data detection: added `built` array in `catalog.json` under `data` (e.g. Mario Kart 64:
+  `dc_data/setup.ok`, `dc_data/romdata.bin`). If the original ROM (`rom.z64`) was unpacked and deleted
+  by the port on first launch, `pm_scan()` verifies the built files and marks game files as `OK`
+  rather than `missing`. `dc_data/` is also protected from removal during clean/updates.
 - Inline color escapes in `gfx.h` / `gfx.c` (`CLR_TEXT`, `CLR_DIM`, `CLR_ACCENT`, `CLR_GOOD`,
   `CLR_WARN`, `CLR_BAD` as `\x01`..`\x06`), handled transparently by `gfx_text()` without
   advancing visible column counters; `lines_add()` tracks active color across word-wrapped lines.

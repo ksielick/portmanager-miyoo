@@ -8,8 +8,8 @@
 typedef struct {
 	char *id, *name, *dir, *layout, *repo, *asset, *category, *get;
 	char *rom, *rom_name, *sc_gdf, *sc_run;
-	char **skip, **backup, **required, **required_any;
-	int nskip, nbackup, nrequired, nrequired_any;
+	char **skip, **backup, **required, **required_any, **built;
+	int nskip, nbackup, nrequired, nrequired_any, nbuilt;
 
 	/* on the card (pm_scan) */
 	int installed;

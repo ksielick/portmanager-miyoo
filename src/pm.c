@@ -41,8 +41,15 @@ static char *str(const cJSON *o, const char *key)
 static char **strs(const cJSON *o, const char *key, int *n)
 {
 	const cJSON *a = cJSON_GetObjectItemCaseSensitive(o, key), *v;
-	char **r = calloc(cJSON_GetArraySize(a) + 1, sizeof *r);
 	*n = 0;
+	if (!a)
+		return calloc(1, sizeof(char *));
+	if (cJSON_IsString(a)) {
+		char **r = calloc(2, sizeof *r);
+		r[(*n)++] = strdup(a->valuestring);
+		return r;
+	}
+	char **r = calloc(cJSON_GetArraySize(a) + 1, sizeof *r);
 	cJSON_ArrayForEach(v, a)
 		if (cJSON_IsString(v))
 			r[(*n)++] = strdup(v->valuestring);
@@ -82,6 +89,7 @@ static int load_catalog(const char *path)
 		p->backup = strs(e, "backup", &p->nbackup);
 		p->required = strs(data, "required", &p->nrequired);
 		p->required_any = strs(data, "required_any", &p->nrequired_any);
+		p->built = strs(data, "built", &p->nbuilt);
 	}
 	cJSON_Delete(root);
 	return 0;
@@ -272,8 +280,19 @@ static int is_data_file(const Port *p, const char *rel)
 			return 1;
 	}
 
-	/* 6. Standard save / data folder names */
+	/* 6. Catalog built files / folders */
+	for (int i = 0; i < p->nbuilt; i++) {
+		const char *bk = p->built[i];
+		size_t bklen = strlen(bk);
+		if (bk[bklen - 1] == '/' && !strncasecmp(rel, bk, bklen))
+			return 1;
+		if (!fnmatch(bk, rel, FNM_CASEFOLD) || !fnmatch(bk, base_name(rel), FNM_CASEFOLD))
+			return 1;
+	}
+
+	/* 7. Standard save / data folder names */
 	if (!strncasecmp(rel, "data/", 5) || !strncasecmp(rel, "data1/", 6) ||
+	    !strncasecmp(rel, "dc_data/", 8) ||
 	    !strncasecmp(rel, "save/", 5) || !strncasecmp(rel, "saves/", 6) ||
 	    !strncasecmp(rel, "music/", 6) || !strncasecmp(rel, "sound/", 6) ||
 	    !strncasecmp(rel, "sounds/", 7) || !strncasecmp(rel, "movies/", 7) ||
@@ -366,8 +385,17 @@ static void check_data(Port *p)
 	if (*p->rom) {
 		char r[800];
 		snprintf(r, sizeof r, "%s/%s", g, p->rom);
-		if (!file_exists(r))
-			add_missing(p, p->rom);
+		if (!file_exists(r)) {
+			int built_ok = 0;
+			for (int i = 0; i < p->nbuilt; i++) {
+				if (has(g, p->built[i])) {
+					built_ok = 1;
+					break;
+				}
+			}
+			if (!built_ok)
+				add_missing(p, p->rom);
+		}
 	}
 }
 
