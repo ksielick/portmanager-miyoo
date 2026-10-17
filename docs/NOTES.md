@@ -60,6 +60,10 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   - Added to catalog under `Strategy` category. Release `v1.0.1` (`PvZ_MiyooMiniPlus_v1.0.1.zip`).
   - Layout: `sdcard-root` (`Roms/PORTS/Games/Plants vs. Zombies`, `Roms/PORTS/Shortcuts/Strategy/Plants vs. Zombies.port`, `Roms/PORTS/Imgs/Plants vs. Zombies.png`).
   - Required data: `main.pak` (or converted `main_mmp.pak`). Saves backed up in `userdata/`.
+- **Zuma Deluxe (Fnava1/zuma-deluxe-miyoo)**:
+  - Added to catalog under `Puzzle games` category (`asset: null` pending author's tagged release).
+  - Layout: `sdcard-root` (`Roms/PORTS/Games/Zuma Deluxe`, `Roms/PORTS/Shortcuts/Puzzle games/Zuma Deluxe.port`, `Roms/PORTS/Imgs/Zuma Deluxe.png`).
+  - Required data: `main.pak` or loose folders (`levels/`, `images/`, `sounds/`, `fonts/`), optional `music/zuma.it`. Saves backed up in `userdata/`.
 
 ## The C program (2026-10-17, on the owner's card, works)
 

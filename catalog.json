@@ -539,6 +539,28 @@
         "userdata/"
       ],
       "get": "Plants vs. Zombies: GOTY Edition, Steam or EA App version. Copy main.pak from your PC game installation directly into Roms/PORTS/Games/Plants vs. Zombies/. On first launch, the game will automatically optimize assets into main_mmp.pak."
+    },
+    {
+      "id": "zuma",
+      "name": "Zuma Deluxe",
+      "category": "Puzzle games",
+      "repo": "Fnava1/zuma-deluxe-miyoo",
+      "asset": null,
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Zuma Deluxe",
+      "data": {
+        "required_any": [
+          "main.pak",
+          "levels/"
+        ],
+        "optional": [
+          "music/zuma.it"
+        ]
+      },
+      "backup": [
+        "userdata/"
+      ],
+      "get": "Zuma Deluxe PC version (Steam, EA App, or PopCap CD). Use Launcher.py from the port repo (github.com/Fnava1/zuma-deluxe-miyoo) on your PC to convert music and pack assets into dist/Zuma_Deluxe_MiyooMini.zip, then extract it to your SD card. Alternatively, copy main.pak or loose asset folders into Roms/PORTS/Games/Zuma Deluxe/."
     }
   ]
 }

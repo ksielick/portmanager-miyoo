@@ -68,6 +68,7 @@ Categories (Onion's names, plus RPG; confirmed by the owner 2026-10-17):
 | RPG | Fallout, Fallout 2, Paper Mario |
 | Arcade | 3D Pinball Space Cadet, SkiFree |
 | Strategy | Plants vs. Zombies |
+| Puzzle games | Zuma Deluxe |
 
 ## miyoo64 outside App/ (checked in its sources, 2026-10-17)
 
