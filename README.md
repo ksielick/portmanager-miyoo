@@ -57,7 +57,7 @@ asset by a regex.
   Puzzle games, Racing, Reflex, and series folders like `FPS - Doom Collection (PrBoom)`.
   MiyooMini-Ports also has rpg, shooter, simulation, engine, app.
 
-Proposed categories (Onion's names, plus RPG):
+Categories (Onion's names, plus RPG; confirmed by the owner 2026-10-17):
 
 | Category | Games |
 |---|---|
@@ -75,6 +75,6 @@ their executable (`/proc/self/exe`; `App/<Game>/data` is only the fallback when 
 so a game folder can move to `Roms/PORTS/Games/<dir>/` as it is, saves included. Its own
 shortcuts (`forward.sh`) hard-code `/mnt/SDCARD/App/<dir>`, so we write ours:
 `GameDir="<dir>"`, `GameDataFile="rom.z64"`, then `exec sh .../launch.sh`. Its
-`app_config.json` is harmless outside `App/`. Not tested on the device yet.
+`app_config.json` is harmless outside `App/`. Done on the owner's Miyoo on 2026-10-17 (redriver2-miyoo's `update_miyoo64.sh`); categories applied there too.
 
 [mmp]: https://github.com/Producdevity/MiyooMini-Ports
