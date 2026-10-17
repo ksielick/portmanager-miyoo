@@ -63,12 +63,18 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   as they come), Start update all (asks first), B back/exit. Held buttons repeat only for
   Up/Down/Left/Right/L1/R1.
 - Manifest: sha256 now (the shell version's md5 manifests were never written: only dry runs).
-- Not tested yet (owner, 2026-10-17: "na razie nie korzystaj z miyoo"). No host compiler or WSL
-  on the PC; redriver2-miyoo's emulator tests (`miyoo/emu/`, CI) could run it without the
-  device. To deploy: copy `onion/App/PortManager` (+ catalog.json) and the .miyoocmd, then
-  remove the shell version (`Roms/PORTS/Games/PortManager`, `Shortcuts/~Port manager/`).
+- Deployed (above) but never run yet. No host compiler or WSL on the PC. To deploy again:
+  copy `onion/App/PortManager` (+ the root `catalog.json`) and the .miyoocmd over SSH
+  (`mscp`, one file per call; App/ isn't on the SMB share), then clear
+  `Shortcuts_cache*.db`.
+- Emulator tests (idea, not done): dethrace-miyoo's `miyoo/emu/` (qemu-arm Cortex-A7 +
+  `emu_shim.c` faking `/dev/fb0` 640x480x2 pages and `/dev/input/event0`, GitHub Actions)
+  could run the program without the device. Needed: `gfx_flip` must call `FBIOPAN_DISPLAY`
+  (the shim counts a frame per pan: button schedule, screenshots, hang watchdog); the wget
+  path (`util.c` WGET, `pm.c` fetch_releases) must follow `PM_SD` so a host wget can be used
+  (qemu-user runs host binaries on exec); a fake card with miyoo64 1.1.2 installed.
 
-## The shell version (first, 2026-10-17; replaced by the C program, still on the card)
+## The shell version (first, 2026-10-17; replaced by the C program, removed from the card)
 
 - `onion/` mirrors the card: `Roms/PORTS/Games/PortManager/` (`pm.sh`, `menu.sh`, plus
   `catalog.json` copied from the repo root) and `Roms/PORTS/Shortcuts/~Port manager/~Refresh
