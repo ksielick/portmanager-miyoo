@@ -41,10 +41,21 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 - **Workflow** (`.github/workflows/emu-test.yml`):
   - Automatically runs scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries).
 
-## The C program (2026-10-17, built, on the card, not run yet)
+## The C program (2026-10-17, on the owner's card, works)
 
-- On the owner's card since 2026-10-17 (the binary of commit 52f3063, with the emulator
-  changes; the details' Y/A below not yet): `App/PortManager/` (portmaster,
+- Tested by the owner on the device, 2026-10-17 (binary of commit 8516430):
+  - Paper Mario and Diddy Kong Racing 1.1.2 -> 1.1.3 through the manager: files equal to the
+    release (md5 checked), only launch.sh, full_resolution and the shortcut replaced (`dkr` is
+    the same in both releases), the owner's box art kept, `data/` in the backup, the game
+    starts.
+  - Fallout (installed before the manager, no `.pm_version`): the check used to say "up to
+    date" (bug: an empty version compared as no update). Now the details say "yours unknown",
+    A installs the release over it; files equal to the release stay, only the version
+    (`v1.2.0`, the repo's tag) is written.
+  - The result page of a check had only B, while its text said A: A/Start now work there.
+- Still unknown version (installed without the manager): Carmageddon, Hexen II, Tomb Raider,
+  REDRIVER2, Mario Kart 64 (Y then A on their pages; REDRIVER2 and dethrace have no releases).
+- On the card: `App/PortManager/` (portmaster,
   launch.sh, config.json, catalog.json) and `Roms/PORTS/Shortcuts/~Port manager.miyoocmd`.
   The shell version is removed from the card (`Games/PortManager`, the `~Port manager/`
   folder); its log is kept as `App/PortManager/log-shell-version.txt`. Ports cache cleared.
