@@ -4,9 +4,9 @@ Test repo for a port manager on the Miyoo Mini (OnionOS), PortMaster-like: it li
 and updates native Miyoo ports, downloading each one from its author's GitHub releases. No
 port zips are hosted here, only a catalog of where they are released (`catalog.json`).
 
-Nothing runs yet. The plan (PortMaster-New analysis, steps) is in `miyoo/PORT_MANAGER.md` of
-github.com/ksielick/redriver2-miyoo; the first step is the PC script that grows out of its
-`miyoo/tools/update_miyoo64.sh`.
+Nothing runs yet. The plan (PortMaster-New analysis, design, steps): `docs/PLAN.md`;
+decisions, findings and the state of the owner's card: `docs/NOTES.md`. The first step is the
+PC script that grows out of redriver2-miyoo's `miyoo/tools/update_miyoo64.sh`.
 
 ## Rules
 
@@ -75,6 +75,7 @@ their executable (`/proc/self/exe`; `App/<Game>/data` is only the fallback when 
 so a game folder can move to `Roms/PORTS/Games/<dir>/` as it is, saves included. Its own
 shortcuts (`forward.sh`) hard-code `/mnt/SDCARD/App/<dir>`, so we write ours:
 `GameDir="<dir>"`, `GameDataFile="rom.z64"`, then `exec sh .../launch.sh`. Its
-`app_config.json` is harmless outside `App/`. Done on the owner's Miyoo on 2026-10-17 (redriver2-miyoo's `update_miyoo64.sh`); categories applied there too.
+`app_config.json` is harmless outside `App/`. Done on the owner's Miyoo on 2026-10-17
+(redriver2-miyoo's `update_miyoo64.sh`); categories applied there too (`docs/NOTES.md`).
 
 [mmp]: https://github.com/Producdevity/MiyooMini-Ports
