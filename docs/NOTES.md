@@ -79,6 +79,19 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 - Tools on the device (`/mnt/SDCARD/.tmp_update/bin/`): `wget` (HTTPS to api.github.com
   works), `jq`, `unzip`, `7z`, `sqlite3`, `openssl`, `infoPanel`, `prompt`; `curl` fails on
   HTTPS (no CA bundle, error 60). No Python.
+- Private repos from the device (checked 2026-10-17, no token tried yet): Onion's `wget` is a
+  17 KB uclient-fetch-like tool — options `-q -O -P -T`, `--user/--password` (HTTP Basic),
+  `--ca-certificate`, `--no-check-certificate`; **no custom headers**. There is no CA store
+  (`/etc/ssl/certs` missing), yet it fetched api.github.com: it probably doesn't verify the
+  server (to check before sending a token through it). A private repo answers 404 without
+  auth. GitHub's API takes Basic auth with the token as password, so wget could list private
+  releases, but downloading a private release asset needs `Accept: application/octet-stream`
+  on `/repos/{o}/{r}/releases/assets/{id}` (then a redirect to a signed URL), which wget can't
+  send. **Plan: curl with a CA bundle shipped in the app** (`--cacert cacert.pem`, ~220 KB):
+  `-H "Authorization: Bearer <token>"`, `-H "Accept: application/octet-stream"`, `-L` (curl
+  doesn't forward the token to the redirect's other host). Token on the card: readable by
+  anyone on the LAN (SSH root without password, open SMB share), so a fine-grained token,
+  only the needed repos, Contents read-only, with an expiry — or public release repos.
 
 ## miyoo64 (mr-finster/miyoo64, checked in its sources, 2026-10-17)
 
