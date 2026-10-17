@@ -1,9 +1,8 @@
-# Update Diddy Kong Racing 1.1.2 -> 1.1.3 and check backup
+# Update all from check results screen with Start
 press 1 Y
-press 2 B
-press 3 START
-press 4 A
-shots 1 2 4 6
+press 2 START
+press 3 A
+shots 1 2 4
 min_frames 4
 nonblank 1 2
 assert_exists Backups/PortManager

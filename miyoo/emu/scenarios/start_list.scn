@@ -5,3 +5,5 @@ nonblank 1
 assert_exists Roms/PORTS/Games/DiddyKongRacing/.miyoo64_version
 assert_exists Roms/PORTS/Games/SkiFree/.pm_version
 assert_exists Roms/PORTS/Games/OpenLara/.pm_version
+assert_exists Roms/PORTS/Games/Fallout/fallout-ce
+assert_not_exists Roms/PORTS/Games/Fallout/.pm_version

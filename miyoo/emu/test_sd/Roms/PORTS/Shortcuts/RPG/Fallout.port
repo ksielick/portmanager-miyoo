@@ -1,0 +1,24 @@
+#!/bin/sh
+# Standalone Ports Script Template
+
+# main configuration :
+GameName="Fallout"
+GameDir="Fallout"
+GameExecutable="fallout-ce"
+GameDataFile="master.dat"
+
+# additional configuration :
+KillAudioserver=1
+PerformanceMode=0
+
+# specific to this port :
+FullGamePath="/mnt/SDCARD/Roms/PORTS/Games/$GameDir"
+
+export SDL_HIDE_BATTERY=1
+export SDL_VIDEODRIVER=mmiyoo
+export LD_LIBRARY_PATH="$FullGamePath:$LD_LIBRARY_PATH"
+
+Arguments=""
+
+# running command line :
+/mnt/SDCARD/Emu/PORTS/launch_standalone.sh "$GameName" "$GameDir" "$GameExecutable" "$Arguments" "$GameDataFile" "$KillAudioserver" "$PerformanceMode"

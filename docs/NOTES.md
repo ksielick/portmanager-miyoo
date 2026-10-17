@@ -31,13 +31,14 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   - `emu_shim.c`: intercepts `read` on `/dev/input/event0` so when all scripted events are processed and the UI is idle waiting for input, it terminates cleanly (`_exit(0)`).
 - **Mock SD card template** (`miyoo/emu/test_sd/`):
   - `.tmp_update/bin/`: host-forwarding wrappers for `wget`, `timeout` (translating `-t` flag for GNU coreutils), `nslookup`, `7z`.
-  - Pre-installed test ports: Diddy Kong Racing (miyoo64 at 1.1.2, save data in `data/save.bin`), SkiFree (1.0.1, up to date), OpenLara (1.0.6, missing data).
+  - Pre-installed test ports: Diddy Kong Racing (miyoo64 at 1.1.2, save data in `data/save.bin`), SkiFree (1.0.1, up to date), OpenLara (1.0.6, missing data), Fallout (unknown version, no `.pm_version`).
 - **Scenarios** (`miyoo/emu/scenarios/`):
   - `start_list.scn`: verifies initial UI and installed port list.
   - `scroll_details.scn`: opens details and scrolls down.
   - `catalog.scn`: displays full catalog by category.
   - `check_updates.scn`: queries GitHub API for updates.
-  - `update_port.scn`: checks updates, confirms update of DKR 1.1.2 -> 1.1.3, verifies backup creation in `Backups/PortManager/` and updated `.pm_version`.
+  - `update_port.scn`: checks updates, confirms update with direct `Start` on check results screen (DKR 1.1.2 -> 1.1.3), verifies backup and `.pm_version`.
+  - `fallout_install.scn`: tests Fallout unknown version flow (details, Y, `A: install` directly from check results screen, confirm, writes `.pm_version` `v1.2.0`).
 - **Workflow** (`.github/workflows/emu-test.yml`):
   - Automatically runs scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries).
 
