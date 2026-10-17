@@ -1,6 +1,15 @@
 #!/bin/sh
+REAL_WGET=""
+for p in /usr/bin/wget /bin/wget; do
+	if [ -x "$p" ]; then
+		REAL_WGET="$p"
+		break
+	fi
+done
+[ -z "$REAL_WGET" ] && REAL_WGET="wget"
+
 if [ -n "$GITHUB_TOKEN" ] && echo "$*" | grep -q "api.github.com"; then
-	exec wget --header="Authorization: Bearer $GITHUB_TOKEN" "$@"
+	exec "$REAL_WGET" --header="Authorization: Bearer $GITHUB_TOKEN" "$@"
 else
-	exec wget "$@"
+	exec "$REAL_WGET" "$@"
 fi

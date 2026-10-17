@@ -1,2 +1,11 @@
 #!/bin/sh
-exec 7z "$@"
+REAL_7Z=""
+for p in /usr/bin/7z /bin/7z; do
+	if [ -x "$p" ]; then
+		REAL_7Z="$p"
+		break
+	fi
+done
+[ -z "$REAL_7Z" ] && REAL_7Z="7z"
+
+exec "$REAL_7Z" "$@"

@@ -1,5 +1,14 @@
 #!/bin/sh
+REAL_TIMEOUT=""
+for p in /usr/bin/timeout /bin/timeout; do
+	if [ -x "$p" ]; then
+		REAL_TIMEOUT="$p"
+		break
+	fi
+done
+[ -z "$REAL_TIMEOUT" ] && REAL_TIMEOUT="timeout"
+
 if [ "$1" = "-t" ]; then
 	shift
 fi
-exec timeout "$@"
+exec "$REAL_TIMEOUT" "$@"

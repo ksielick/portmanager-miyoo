@@ -1,7 +1,7 @@
 /* The Miyoo Mini (Plus) hardware the port manager touches, emulated for tests under qemu-arm.
  *
  * Linked into the emulator build (src/build.sh with EMU=1) together with
- * -Wl,--wrap=open,--wrap=open64,--wrap=ioctl,--wrap=read -lpthread, so the port manager runs unchanged:
+ * -Wl,--wrap=open,--wrap=open64,--wrap=ioctl,--wrap=read -lm -lpthread, so the port manager runs unchanged:
  *   - /dev/fb0: a 640x480x32 panel with two pages in fb0.raw; each FBIOPAN_DISPLAY is one frame,
  *   - /dev/input/event0: a pipe; button events from a script are written into it at their scheduled frame,
  *   - screenshots of the page shown at chosen frames (PPM, turned back upright),
@@ -567,10 +567,25 @@ ssize_t __wrap_read(int fd, void* buf, size_t count)
 	if (fd >= 0 && fd == s_inRead)
 	{
 		struct pollfd pfd = { .fd = s_inRead, .events = POLLIN };
-		if (poll(&pfd, 1, 0) == 0 && s_scriptPos >= s_scriptCount)
+		if (poll(&pfd, 1, 0) == 0)
 		{
-			fprintf(stderr, "emu: all scripted events consumed (frame %u): exiting cleanly\n", s_frame);
-			_exit(0);
+			if (s_scriptPos >= s_scriptCount)
+			{
+				fprintf(stderr, "emu: all scripted events consumed (frame %u): exiting cleanly\n", s_frame);
+				_exit(0);
+			}
+			/* Dispatch pending events scheduled for this or next step */
+			while (s_scriptPos < s_scriptCount)
+			{
+				unsigned target_frame = s_script[s_scriptPos].frame;
+				fprintf(stderr, "emu: frame %u (input wait): key %d %s\n", s_frame, s_script[s_scriptPos].code, s_script[s_scriptPos].down ? "down" : "up");
+				SendKey(s_script[s_scriptPos].code, s_script[s_scriptPos].down);
+				s_scriptPos++;
+				/* If next event is for the same frame, dispatch it too (e.g. key up) */
+				if (s_scriptPos < s_scriptCount && s_script[s_scriptPos].frame == target_frame)
+					continue;
+				break;
+			}
 		}
 	}
 	return __real_read(fd, buf, count);

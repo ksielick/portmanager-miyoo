@@ -1,2 +1,11 @@
 #!/bin/sh
-exec nslookup "$@"
+REAL_NSLOOKUP=""
+for p in /usr/bin/nslookup /bin/nslookup; do
+	if [ -x "$p" ]; then
+		REAL_NSLOOKUP="$p"
+		break
+	fi
+done
+[ -z "$REAL_NSLOOKUP" ] && REAL_NSLOOKUP="nslookup"
+
+exec "$REAL_NSLOOKUP" "$@"

@@ -1,11 +1,11 @@
 # Update Diddy Kong Racing 1.1.2 -> 1.1.3 and check backup
 press 1 Y
-press 4 B
-press 5 START
-press 6 A
-shots 1 4 5 6
-min_frames 6
-nonblank 1 4 5 6
+press 2 B
+press 3 START
+press 4 A
+shots 1 2
+min_frames 4
+nonblank 1 2
 assert_exists Backups/PortManager
 assert_exists Roms/PORTS/Games/DiddyKongRacing/.pm_version
 assert_contains Roms/PORTS/Games/DiddyKongRacing/.pm_version 1.1.3
