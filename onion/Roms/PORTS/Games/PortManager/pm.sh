@@ -226,6 +226,7 @@ cmd_info() {
 		echo "Not installed (would go to $dir)"
 	fi
 	if [ -n "$asset" ]; then echo "From: github.com/$repo"; else echo "From: github.com/$repo (no releases yet)"; fi
+	echo
 	jq -r --arg id "$1" '.ports[] | select(.id == $id) | .get // empty' "$CAT"
 }
 

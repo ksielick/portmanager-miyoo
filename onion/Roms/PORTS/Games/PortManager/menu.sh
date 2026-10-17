@@ -25,10 +25,11 @@ unbusy() {
 	sleep 1
 }
 
-# show <title> <file>: the text wrapped at 42 characters (infoPanel doesn't wrap: a longer
-# line runs off the screen), 5 lines a panel (B on a panel: stop): infoPanel keeps only 255
-# characters of a message.
+# show <title> <file>: the text on one scrollable page (pmview, ours: Up/Down, B to close).
+# Without pmview: infoPanel panels, the text wrapped at 42 characters (infoPanel doesn't wrap:
+# a longer line runs off the screen) and 5 lines a panel (it keeps only 255 characters).
 show() {
+	[ -x "$D/pmview" ] && "$D/pmview" "$1" "$2" < /dev/null && return
 	awk -v w=42 -v h=5 '
 		function flush() { if (n) print page; page = ""; n = 0 }
 		function emit(l) { page = n ? page "\\n" l : l; if (++n == h) flush() }
