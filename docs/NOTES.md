@@ -39,8 +39,23 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   - `check_updates.scn`: queries GitHub API for updates.
   - `update_port.scn`: checks updates, confirms update with direct `Start` on check results screen (DKR 1.1.2 -> 1.1.3), verifies backup and `.pm_version`.
   - `fallout_install.scn`: tests Fallout unknown version flow (details, Y, `A: install` directly from check results screen, confirm, writes `.pm_version` `v1.2.0`).
+  - `remove_delete_all.scn`: tests uninstalling a port and deleting all files/folder (SkiFree).
+  - `remove_keep_data.scn`: tests uninstalling a port while keeping game data, ROMs, and saves (Fallout: removes shortcut and program files, retains `MASTER.DAT`, `CRITTER.DAT`, `data/`).
 - **Workflow** (`.github/workflows/emu-test.yml`):
-  - Automatically runs scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries).
+  - Automatically runs all 8 scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries). All 8 scenarios passed 100% in CI.
+
+## Port Uninstallation & OnionOS Icon (2026-10-17)
+
+- **Uninstallation (`X` in port details)**:
+  - First prompt: `Remove <Name>? / This will remove the port and its shortcut.` (`A: yes   B: no`).
+  - Second prompt: `Keep game data in the folder? / (<dir>) / e.g. ROMs, saves, game data files.` (`A: keep   B: delete all`).
+  - `keep_data = 0`: completely removes the game directory and shortcuts.
+  - `keep_data = 1`: deletes executables (ELF binaries and scripts starting with `#!`), shared libraries (`.so`), metadata (`.pm_version`, `.miyoo64_version`, `.pm_manifest`), documentation, and shortcuts; preserves ROMs, save files, configurations, catalog-required data files, and `data/` subdirectories.
+  - Cleans up empty parent shortcut directories and OnionOS cache DBs so the Ports list updates instantly.
+- **OnionOS Icon**:
+  - Pixel-perfect OnionOS squircle icon created with "PM" letters, cyan accent outline, and "PORT MANAGER" pill in `onion/App/PortManager/icon.png` (referenced in `config.json`) and `onion/Roms/PORTS/Imgs/~Port manager.png`.
+- **Miyoo64 Exact ROM Requirements**:
+  - Catalog updated with exact names, USA release versions, and SHA-1 checksums for all 10 supported N64 ports (Diddy Kong Racing, F-Zero X, GoldenEye 007, Ocarina of Time, Paper Mario, Perfect Dark, Star Fox 64, Super Mario 64, Super Smash Bros, Mario Kart 64).
 
 ## The C program (2026-10-17, on the owner's card, works)
 
