@@ -385,7 +385,7 @@ void pm_scan(void)
 			p->missing[0] = 0;
 		p->update = p->installed && p->checked && *p->version && strcmp(p->version, p->latest);
 	}
-	say("scan: %d/%d ports installed", ninst, nports);
+	say("--- scan: %d/%d ports installed", ninst, nports);
 }
 
 int pm_init(void)

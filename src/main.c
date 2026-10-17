@@ -205,6 +205,10 @@ static int do_check(const Port *only)
 	const int *keys = NULL;
 	progress_begin("Checking for updates");
 	say(only ? "--- check %s" : "--- check", only ? only->id : "");
+	if (only)
+		say("Checking %s...", only->name);
+	else
+		say("Checking installed ports...");
 	if (pm_check(only)) {
 		lines_add(&progress, "");
 		lines_add(&progress, "Can't check for updates:");

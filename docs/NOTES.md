@@ -44,6 +44,12 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 - **Workflow** (`.github/workflows/emu-test.yml`):
   - Automatically runs all 8 scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries). All 8 scenarios passed 100% in CI.
 
+## Check Progress Clarity & Tools (2026-10-17 21:50)
+
+- **Muted `scan: %d/%d` from UI**: `pm_scan()` now logs `--- scan: %d/%d ports installed` so it only writes to `log.txt` and is filtered out by `progress_sink()`.
+- **Descriptive check progress**: `do_check()` now displays `Checking <Name>...` when checking a single port (e.g. `Checking Fallout 2...`), or `Checking installed ports...` when checking all ports.
+- **Automated scripts**: `tools/deploy_to_miyoo.ps1` and `tools/screenshot_miyoo.ps1` added and documented in `AGENTS.md` and `CLAUDE.md`. Deployed to Miyoo.
+
 ## Deployment to Miyoo (2026-10-17 21:25)
 
 - **Backup**: `backup/20261017-before-deploy/portmanager-backup.tar` (618 KB tar of `/mnt/SDCARD/App/PortManager`) and `~Port manager.miyoocmd` backed up on PC before updating.
