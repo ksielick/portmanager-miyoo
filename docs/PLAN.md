@@ -113,7 +113,8 @@ Python.
    for the few armhf ports that work without a GPU.
 
 Open questions:
-- where the catalog lives: this repo is private (tests); a public repo for it later, or
+- where the catalog lives: this repo (public since 2026-10-17; the device fetches
+  `catalog.json` from raw.githubusercontent.com), or
   contributing install data to MiyooMini-Ports instead;
 - our own ports' repos are private (redriver2-miyoo, dethrace-miyoo): their releases need a
   token in the client's config until they go public;

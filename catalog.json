@@ -153,6 +153,9 @@
         "Roms/*(*)/"
       ],
       "dir": "Roms/PORTS/Games/DiddyKongRacing",
+      "backup": [
+        "data/"
+      ],
       "data": {
         "rom": {
           "system": "n64",
@@ -182,6 +185,9 @@
         "Roms/*(*)/"
       ],
       "dir": "Roms/PORTS/Games/FZeroX",
+      "backup": [
+        "data/"
+      ],
       "data": {
         "rom": {
           "system": "n64",
@@ -211,6 +217,9 @@
         "Roms/*(*)/"
       ],
       "dir": "Roms/PORTS/Games/GoldenEye",
+      "backup": [
+        "data/"
+      ],
       "data": {
         "rom": {
           "system": "n64",
@@ -240,6 +249,9 @@
         "Roms/*(*)/"
       ],
       "dir": "Roms/PORTS/Games/OcarinaOfTime",
+      "backup": [
+        "data/"
+      ],
       "data": {
         "rom": {
           "system": "n64",
@@ -269,6 +281,9 @@
         "Roms/*(*)/"
       ],
       "dir": "Roms/PORTS/Games/PaperMario",
+      "backup": [
+        "data/"
+      ],
       "data": {
         "rom": {
           "system": "n64",
@@ -298,6 +313,9 @@
         "Roms/*(*)/"
       ],
       "dir": "Roms/PORTS/Games/PerfectDark",
+      "backup": [
+        "data/"
+      ],
       "data": {
         "rom": {
           "system": "n64",
@@ -328,6 +346,9 @@
         "Roms/*(*)/"
       ],
       "dir": "Roms/PORTS/Games/StarFox64",
+      "backup": [
+        "data/"
+      ],
       "data": {
         "rom": {
           "system": "n64",
@@ -357,6 +378,9 @@
         "Roms/*(*)/"
       ],
       "dir": "Roms/PORTS/Games/SuperMario64",
+      "backup": [
+        "data/"
+      ],
       "data": {
         "rom": {
           "system": "n64",
@@ -386,6 +410,9 @@
         "Roms/*(*)/"
       ],
       "dir": "Roms/PORTS/Games/SuperSmashBros",
+      "backup": [
+        "data/"
+      ],
       "data": {
         "rom": {
           "system": "n64",

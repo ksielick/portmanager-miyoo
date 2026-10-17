@@ -5,7 +5,7 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 ## Owner's decisions (2026-10-17)
 
 - A port manager like PortMaster, but downloading every port from its **author's GitHub
-  releases**, not from one repo of zips. This repo (private) is for tests.
+  releases**, not from one repo of zips. This repo is for tests; public since 2026-10-17 (history rewritten to the noreply e-mail first).
 - **Ports list only**: every port in `Roms/PORTS/Games` + `Roms/PORTS/Shortcuts`; nothing in
   Onion's Apps (`App/`). Port entries already in Apps were to be removed (done, see below).
 - **Thematic category folders** in `Roms/PORTS/Shortcuts`: Onion's names plus RPG (mapping

@@ -1,0 +1,4 @@
+# the Miyoo's shell can't run CRLF scripts
+*.sh text eol=lf
+*.miyoocmd text eol=lf
+*.json text eol=lf
