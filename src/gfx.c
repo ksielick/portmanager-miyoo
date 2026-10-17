@@ -75,6 +75,8 @@ void gfx_flip(void)
 		for (int x = 0; x < SCR_W; x++)
 			*dst-- = 0xFF000000 | src[x];
 	}
+	if (fb >= 0)
+		ioctl(fb, FBIOPAN_DISPLAY, &var);
 }
 
 int input_key(int *repeat)

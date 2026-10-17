@@ -1,0 +1,7 @@
+# Scroll port description
+press 1 A
+press 2 DOWN
+press 3 DOWN
+frames 4
+shots 1 2 3 4
+nonblank 1 2 3 4

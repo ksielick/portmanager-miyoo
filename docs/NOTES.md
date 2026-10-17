@@ -22,6 +22,25 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   and as `~Port manager` in the Ports list (owner) — the "never App/" rule is for the ports.
 - Text pages scroll up/down instead of separate panels (owner).
 
+## Emulator tests (2026-10-17, CI via GitHub Actions)
+
+- **qemu-arm + emu_shim.c** ported from `dethrace-miyoo` into `miyoo/emu/`:
+  - `src/gfx.c`: `gfx_flip()` now issues `ioctl(fb, FBIOPAN_DISPLAY, &var)` so `emu_shim.c` counts frames and can capture screenshots / dispatch input.
+  - `src/util.c` and `src/pm.c`: `wget_bin()` dynamically resolves `wget` from `$PM_SD/.tmp_update/bin/wget`, `/mnt/SDCARD/.tmp_update/bin/wget`, or system `PATH`; `net_check` accepts `eth0` or `$PM_SD` when `wlan0` is not present (CI / emulator).
+  - `src/build.sh`: supports `EMU=1` to compile `build/miyoo_emu/portmaster_emu` with `emu_shim.c`, `-Wl,--wrap=open,--wrap=open64,--wrap=ioctl,--wrap=read`, `-lm -lpthread`.
+  - `emu_shim.c`: intercepts `read` on `/dev/input/event0` so when all scripted events are processed and the UI is idle waiting for input, it terminates cleanly (`_exit(0)`).
+- **Mock SD card template** (`miyoo/emu/test_sd/`):
+  - `.tmp_update/bin/`: host-forwarding wrappers for `wget`, `timeout` (translating `-t` flag for GNU coreutils), `nslookup`, `7z`.
+  - Pre-installed test ports: Diddy Kong Racing (miyoo64 at 1.1.2, save data in `data/save.bin`), SkiFree (1.0.1, up to date), OpenLara (1.0.6, missing data).
+- **Scenarios** (`miyoo/emu/scenarios/`):
+  - `start_list.scn`: verifies initial UI and installed port list.
+  - `scroll_details.scn`: opens details and scrolls down.
+  - `catalog.scn`: displays full catalog by category.
+  - `check_updates.scn`: queries GitHub API for updates.
+  - `update_port.scn`: checks updates, confirms update of DKR 1.1.2 -> 1.1.3, verifies backup creation in `Backups/PortManager/` and updated `.pm_version`.
+- **Workflow** (`.github/workflows/emu-test.yml`):
+  - Automatically runs scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries).
+
 ## The C program (2026-10-17, built, not run on the device yet)
 
 - `src/`: `main.c` (screens), `gfx.c` (fb0 + evdev + font8x8 x2: 38 columns), `pm.c` (the

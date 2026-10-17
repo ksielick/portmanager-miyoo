@@ -1,0 +1,5 @@
+# Check for updates against GitHub
+press 1 Y
+shots 1 2 4
+min_frames 3
+nonblank 1 2 4

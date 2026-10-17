@@ -28,6 +28,9 @@ int run(const char *const argv[], const char *out);
 int run_bg(const char *const argv[], const char *out);
 int run_wait(int pid);
 
+/* Onion's wget, or PM_SD/.tmp_update/bin/wget, or "wget" from PATH */
+const char *wget_bin(void);
+
 /* fetch <url> to <file> with Onion's wget (HTTPS); nothing left behind on failure */
 int fetch(const char *url, const char *file);
 

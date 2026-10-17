@@ -261,10 +261,20 @@ static int net_check(int needed)
 {
 	int s = socket(AF_INET, SOCK_DGRAM, 0);
 	struct ifreq ifr = {0};
-	snprintf(ifr.ifr_name, IFNAMSIZ, "wlan0");
-	int up = s >= 0 && ioctl(s, SIOCGIFADDR, &ifr) == 0;
-	if (s >= 0)
+	int up = 0;
+	if (s >= 0) {
+		snprintf(ifr.ifr_name, IFNAMSIZ, "wlan0");
+		if (ioctl(s, SIOCGIFADDR, &ifr) == 0)
+			up = 1;
+		else {
+			snprintf(ifr.ifr_name, IFNAMSIZ, "eth0");
+			if (ioctl(s, SIOCGIFADDR, &ifr) == 0 || getenv("PM_SD"))
+				up = 1;
+		}
 		close(s);
+	} else if (getenv("PM_SD")) {
+		up = 1;
+	}
 	if (!up) {
 		snprintf(pm_error, sizeof pm_error, "Wi-Fi is off or not connected.");
 		return -1;
@@ -334,7 +344,7 @@ static void fetch_releases(char **repos, int n)
 		snprintf(url, sizeof url, API "%s/releases/latest", repos[i]);
 		unlink(f[i]);
 		unlink(part[i]);
-		const char *argv[] = {"/mnt/SDCARD/.tmp_update/bin/wget", "-q", "-T", "15", "-O", part[i], url, NULL};
+		const char *argv[] = {wget_bin(), "-q", "-T", "15", "-O", part[i], url, NULL};
 		pids[i] = run_bg(argv, NULL);
 	}
 	for (int i = 0; i < n && i < 64; i++) {

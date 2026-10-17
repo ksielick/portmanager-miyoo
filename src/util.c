@@ -14,8 +14,6 @@
 
 #include "vendor/sha256.h"
 
-#define WGET "/mnt/SDCARD/.tmp_update/bin/wget"
-
 void (*log_sink)(const char *line);
 static FILE *log_file;
 
@@ -257,6 +255,20 @@ int run(const char *const argv[], const char *out)
 	return run_wait(run_bg(argv, out));
 }
 
+const char *wget_bin(void)
+{
+	static char path[512];
+	const char *sd = getenv("PM_SD");
+	if (sd && *sd) {
+		snprintf(path, sizeof path, "%s/.tmp_update/bin/wget", sd);
+		if (access(path, X_OK) == 0)
+			return path;
+	}
+	if (access("/mnt/SDCARD/.tmp_update/bin/wget", X_OK) == 0)
+		return "/mnt/SDCARD/.tmp_update/bin/wget";
+	return "wget";
+}
+
 int fetch(const char *url, const char *file)
 {
 	char part[1100], errlog[1100];
@@ -264,7 +276,7 @@ int fetch(const char *url, const char *file)
 	snprintf(errlog, sizeof errlog, "%s.err", file);
 	for (int attempt = 0; attempt < 2; attempt++) {
 		unlink(part);
-		const char *argv[] = {WGET, "-q", "-T", "15", "-O", part, url, NULL};
+		const char *argv[] = {wget_bin(), "-q", "-T", "15", "-O", part, url, NULL};
 		if (run(argv, errlog) == 0 && file_size(part) > 0 && rename(part, file) == 0) {
 			unlink(errlog);
 			return 0;

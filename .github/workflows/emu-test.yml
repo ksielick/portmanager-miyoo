@@ -1,0 +1,61 @@
+name: Miyoo emulator tests
+
+# Builds portmaster-miyoo for the Miyoo Mini (Plus) and tests it on an emulated device
+# (qemu-arm Cortex-A7 + miyoo/emu/emu_shim.c).
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', 'miyoo/**', 'catalog.json', '.github/workflows/emu-test.yml']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      scenarios:
+        description: 'Scenarios (names from miyoo/emu/scenarios, space separated; empty = all)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  emu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain and dependencies (cache)
+        uses: actions/cache@v4
+        with:
+          path: miyoo/emu/deps
+          key: miyoo-deps-${{ runner.arch }}-${{ hashFiles('miyoo/emu/setup.sh') }}
+
+      - name: Setup
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash miyoo/emu/setup.sh
+
+      - name: Build device binary
+        run: bash src/build.sh
+
+      - name: Build emulator binary
+        run: EMU=1 bash src/build.sh
+
+      - name: Test in emulator
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 miyoo/emu/miyoo-emu.py run ${{ github.event.inputs.scenarios }} --bin build/miyoo_emu/portmaster_emu
+
+      - name: Upload results and device binary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: miyoo-emu-results
+          path: |
+            miyoo/emu/results/summary.*
+            miyoo/emu/results/*/log.txt
+            miyoo/emu/results/*/contact.png
+            miyoo/emu/results/*/shots/*.png
+            onion/App/PortManager/portmaster
+          retention-days: 14

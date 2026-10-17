@@ -1,0 +1,7 @@
+/build/
+/miyoo/emu/deps/
+/miyoo/emu/results/
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/

@@ -1,0 +1,7 @@
+# Full catalog by category
+press 1 X
+press 2 DOWN
+press 3 DOWN
+frames 4
+shots 1 2 3 4
+nonblank 1 2 3 4

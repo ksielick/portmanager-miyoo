@@ -1,0 +1,6 @@
+#!/bin/sh
+if [ -n "$GITHUB_TOKEN" ] && echo "$*" | grep -q "api.github.com"; then
+	exec wget --header="Authorization: Bearer $GITHUB_TOKEN" "$@"
+else
+	exec wget "$@"
+fi
