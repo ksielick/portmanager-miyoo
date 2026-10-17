@@ -32,8 +32,9 @@ int pm_lock(void);   /* one run at a time; -1 if another is running */
 void pm_unlock(void);
 
 /* network: refreshes the catalog from GitHub, checks the connection, fetches the latest
- * release of every installed port's repo; 0, or -1 with pm_error */
-int pm_check(void);
+ * release of every installed port's repo; with `only`, just that port's repo and no catalog
+ * refresh (the Port stays valid); 0, or -1 with pm_error */
+int pm_check(const Port *only);
 /* installs the latest release over an installed port; 0, or -1 with pm_error */
 int pm_update(Port *p);
 

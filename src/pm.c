@@ -395,16 +395,24 @@ static int refresh_catalog(void)
 	return 0;
 }
 
-int pm_check(void)
+/* checks `only`'s repo (any port, installed or not), or every installed port's */
+static int checks(const Port *p, const Port *only)
+{
+	return *p->asset && (only ? !strcmp(p->repo, only->repo) : p->installed);
+}
+
+int pm_check(const Port *only)
 {
 	pm_error[0] = 0;
-	refresh_catalog();
+	/* a new catalog reallocates ports: only for the whole check, `only` must stay valid */
+	if (!only)
+		refresh_catalog();
 	pm_scan();
 	char *repos[64];
 	int n = 0;
 	for (int i = 0; i < nports; i++) {
 		Port *p = &ports[i];
-		if (!p->installed || !*p->asset)
+		if (!checks(p, only))
 			continue;
 		int seen = 0;
 		for (int j = 0; j < n; j++)
@@ -425,7 +433,7 @@ int pm_check(void)
 		if (p->checked)
 			snprintf(p->latest, sizeof p->latest, "%s",
 				cJSON_GetObjectItemCaseSensitive(r->json, "tag_name")->valuestring);
-		else if (p->installed && *p->asset) {
+		else if (checks(p, only)) {
 			say("ERROR %s: no release info", p->name);
 			failed++;
 		}
@@ -828,11 +836,16 @@ void pm_info(const Port *p, char *buf, int size)
 	if (p->installed) {
 		n += snprintf(buf + n, size - n, "Installed: %s, in %s\n", *p->version ? p->version : "version unknown", p->dir);
 		if (p->checked && *p->asset)
-			n += snprintf(buf + n, size - n, "Latest: %s%s\n", p->latest, p->update ? " - update available" : "");
+			n += snprintf(buf + n, size - n, "Latest: %s%s\n", p->latest, p->update ? " - update available" : " - up to date");
+		else if (*p->asset)
+			n += snprintf(buf + n, size - n, "Latest: not checked (Y)\n");
 		n += snprintf(buf + n, size - n, *p->missing ? "Game files missing: %s\n" : "Game files: OK\n", p->missing);
 	}
-	else
+	else {
 		n += snprintf(buf + n, size - n, "Not installed (would go to %s)\n", p->dir);
+		if (p->checked && *p->asset)
+			n += snprintf(buf + n, size - n, "Latest: %s\n", p->latest);
+	}
 	n += snprintf(buf + n, size - n, "From: github.com/%s%s\n\n", p->repo, *p->asset ? "" : " (no releases yet)");
 	if (*p->get)
 		snprintf(buf + n, size - n, "%s\n", p->get);

@@ -122,8 +122,8 @@ static void draw_lines(const Lines *t, int top)
 	scrollbar(top, TEXT_ROWS, t->n, TOPH + 8, TEXT_ROWS * (CW + 6));
 }
 
-/* a scrollable page; returns the key that closed it (B, or `key` when given) */
-static int view(const char *title, const Lines *t, const char *hints, int key)
+/* a scrollable page; returns the key that closed it (B, or one of `keys`, 0-terminated) */
+static int view(const char *title, const Lines *t, const char *hints, const int *keys)
 {
 	int top = 0, last = t->n > TEXT_ROWS ? t->n - TEXT_ROWS : 0;
 	for (;;) {
@@ -132,8 +132,11 @@ static int view(const char *title, const Lines *t, const char *hints, int key)
 		footer(hints);
 		gfx_flip();
 		int k = input_key(NULL);
-		if (k < 0 || k == K_B || k == K_MENU || (key && k == key))
+		if (k < 0 || k == K_B || k == K_MENU)
 			return k;
+		for (const int *c = keys; c && *c; c++)
+			if (k == *c)
+				return k;
 		if (k == K_UP) top--;
 		if (k == K_DOWN) top++;
 		if (k == K_L1 || k == K_LEFT) top -= TEXT_ROWS - 1;
@@ -177,7 +180,7 @@ static void progress_begin(const char *title)
 static void progress_end(void)
 {
 	log_sink = NULL;
-	view(progress_title, &progress, "Up/Down  B: back", 0);
+	view(progress_title, &progress, "Up/Down  B: back", NULL);
 	lines_free(&progress);
 }
 
@@ -191,14 +194,26 @@ static int count_updates(void)
 	return n;
 }
 
-static void do_check(void)
+/* every installed port, or only one (from its details) */
+static void do_check(const Port *only)
 {
 	progress_begin("Checking for updates");
-	say("--- check");
-	if (pm_check()) {
+	say(only ? "--- check %s" : "--- check", only ? only->id : "");
+	if (pm_check(only)) {
 		lines_add(&progress, "");
 		lines_add(&progress, "Can't check for updates:");
 		lines_add(&progress, pm_error);
+	}
+	else if (only) {
+		char s[300];
+		if (only->update)
+			snprintf(s, sizeof s, "%s: %s -> %s\n\nB: back, then A: update.", only->name, only->version, only->latest);
+		else if (only->installed)
+			snprintf(s, sizeof s, "%s is up to date (%s).", only->name, only->latest);
+		else
+			snprintf(s, sizeof s, "%s: the latest release is %s.", only->name, only->latest);
+		lines_add(&progress, "");
+		lines_add(&progress, s);
 	}
 	else {
 		int n = count_updates();
@@ -278,13 +293,27 @@ static void do_update(Port *only)
 static void details(Port *p)
 {
 	static char buf[8192];
-	pm_info(p, buf, sizeof buf);
-	Lines t = {0};
-	lines_add(&t, buf);
-	int k = view(p->name, &t, p->update ? "Up/Down  A: update  B: back" : "Up/Down  B: back", p->update ? K_A : 0);
-	lines_free(&t);
-	if (k == K_A)
-		do_update(p);
+	for (;;) {
+		pm_info(p, buf, sizeof buf);
+		Lines t = {0};
+		lines_add(&t, buf);
+		/* Y checks this port's repo; A installs its update once one is known */
+		int keys[3] = {0}, nk = 0;
+		if (*p->asset)
+			keys[nk++] = K_Y;
+		if (p->update)
+			keys[nk++] = K_A;
+		const char *hints = p->update ? "Up/Down A:update Y:check B:back" :
+			*p->asset ? "Up/Down  Y: check  B: back" : "Up/Down  B: back";
+		int k = view(p->name, &t, hints, keys);
+		lines_free(&t);
+		if (k == K_Y)
+			do_check(p);
+		else if (k == K_A)
+			do_update(p);
+		else
+			return;
+	}
 }
 
 /* --- lists --- */
@@ -406,7 +435,7 @@ static int run_list(int all)
 		if (!all && k == K_X)
 			run_list(1);
 		if (!all && k == K_Y)
-			do_check();
+			do_check(NULL);
 		if (!all && k == K_START && nup)
 			do_update(NULL);
 	}

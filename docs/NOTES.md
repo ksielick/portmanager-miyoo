@@ -43,7 +43,8 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 
 ## The C program (2026-10-17, built, on the card, not run yet)
 
-- On the owner's card since 2026-10-17 (commit 26019dd): `App/PortManager/` (portmaster,
+- On the owner's card since 2026-10-17 (the binary of commit 52f3063, with the emulator
+  changes; the details' Y/A below not yet): `App/PortManager/` (portmaster,
   launch.sh, config.json, catalog.json) and `Roms/PORTS/Shortcuts/~Port manager.miyoocmd`.
   The shell version is removed from the card (`Games/PortManager`, the `~Port manager/`
   folder); its log is kept as `App/PortManager/log-shell-version.txt`. Ports cache cleared.
@@ -58,7 +59,8 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   `catalog.json`, `log.txt`) and `Roms/PORTS/Shortcuts/~Port manager.miyoocmd` -> its
   launch.sh. Work files and lock as before (`/mnt/SDCARD/.pm_work`).
 - Screens: the installed ports by name (status on the right: version, `old>new` in purple,
-  "files missing" in amber); A details (scrollable; A there updates when there's an update),
+  "files missing" in amber); A details (scrollable; Y there checks only that port's repo,
+  no catalog refresh, any port incl. not installed; A there updates when there's an update),
   X all ports (by category, headings), Y check for updates (progress page with the log lines
   as they come), Start update all (asks first), B back/exit. Held buttons repeat only for
   Up/Down/Left/Right/L1/R1.
@@ -67,12 +69,7 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   copy `onion/App/PortManager` (+ the root `catalog.json`) and the .miyoocmd over SSH
   (`mscp`, one file per call; App/ isn't on the SMB share), then clear
   `Shortcuts_cache*.db`.
-- Emulator tests (idea, not done): dethrace-miyoo's `miyoo/emu/` (qemu-arm Cortex-A7 +
-  `emu_shim.c` faking `/dev/fb0` 640x480x2 pages and `/dev/input/event0`, GitHub Actions)
-  could run the program without the device. Needed: `gfx_flip` must call `FBIOPAN_DISPLAY`
-  (the shim counts a frame per pan: button schedule, screenshots, hang watchdog); the wget
-  path (`util.c` WGET, `pm.c` fetch_releases) must follow `PM_SD` so a host wget can be used
-  (qemu-user runs host binaries on exec); a fake card with miyoo64 1.1.2 installed.
+- Emulator tests: see "Emulator tests" above (from dethrace-miyoo's `miyoo/emu/`).
 
 ## The shell version (first, 2026-10-17; replaced by the C program, removed from the card)
 
