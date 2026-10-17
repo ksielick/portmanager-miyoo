@@ -25,19 +25,23 @@ unbusy() {
 	sleep 1
 }
 
-# show <title> <file>: the text in panels of up to ~230 characters (B on a panel: stop)
+# show <title> <file>: the text wrapped at 42 characters (infoPanel doesn't wrap: a longer
+# line runs off the screen), 5 lines a panel (B on a panel: stop): infoPanel keeps only 255
+# characters of a message.
 show() {
-	awk -v max=230 '
-		function out() { if (p != "") print p; p = "" }
+	awk -v w=42 -v h=5 '
+		function flush() { if (n) print page; page = ""; n = 0 }
+		function emit(l) { page = n ? page "\\n" l : l; if (++n == h) flush() }
 		{
-			n = split($0, w, " ")
-			for (i = 1; i <= n; i++) {
-				if (length(p) + length(w[i]) + 1 > max) out()
-				p = (p == "" || p ~ /\\n$/) ? p w[i] : p " " w[i]
+			line = ""
+			k = split($0, words, " ")
+			for (i = 1; i <= k; i++) {
+				if (line != "" && length(line) + 1 + length(words[i]) > w) { emit(line); line = "" }
+				line = line == "" ? words[i] : line " " words[i]
 			}
-			if (p != "") p = p "\\n"
+			emit(line)
 		}
-		END { out() }' "$2" > /tmp/pm_pages.txt
+		END { flush() }' "$2" > /tmp/pm_pages.txt
 	n=$(wc -l < /tmp/pm_pages.txt)
 	i=0
 	while IFS= read -r page; do
