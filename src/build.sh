@@ -48,5 +48,7 @@ else
 	OUT=${OUT:-../onion/App/PortManager/portmaster}
 	mkdir -p "$(dirname "$OUT")"
 	"$CC" $CFLAGS -o "$OUT" $SRCS &&
-	"$STRIP" "$OUT" && ls -l "$OUT"
+	"$STRIP" "$OUT" &&
+	cp -f ../catalog.json "$(dirname "$OUT")/catalog.json" &&
+	ls -l "$OUT"
 fi

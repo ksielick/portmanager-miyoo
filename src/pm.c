@@ -142,6 +142,173 @@ static int has(const char *dir, const char *pat)
 	return found;
 }
 
+static int ends_with(const char *s, const char *suf)
+{
+	size_t sl = strlen(s), sufl = strlen(suf);
+	return sl >= sufl && !strcasecmp(s + sl - sufl, suf);
+}
+
+static int is_elf_file(const char *path)
+{
+	FILE *f = fopen(path, "rb");
+	if (!f)
+		return 0;
+	unsigned char magic[4];
+	size_t n = fread(magic, 1, 4, f);
+	fclose(f);
+	return (n == 4 && magic[0] == 0x7f && magic[1] == 'E' && magic[2] == 'L' && magic[3] == 'F');
+}
+
+/* finds a shortcut under Shortcuts (any category): by file name, or by its GameDir line */
+typedef struct {
+	const char *name, *gamedir;
+	char found[700];
+} Find;
+
+static void find_cb(const char *rel, void *ctx)
+{
+	Find *f = ctx;
+	if (*f->found || !strstr(rel, ".port"))
+		return;
+	if (f->name && strcmp(base_name(rel), f->name))
+		return;
+	if (f->gamedir) {
+		char full[1000], line[200];
+		snprintf(full, sizeof full, "%s/%s", SC, rel);
+		snprintf(line, sizeof line, "\nGameDir=\"%s\"", f->gamedir);
+		char *t = read_file(full, NULL);
+		int hit = t && strstr(t, line);
+		free(t);
+		if (!hit)
+			return;
+	}
+	snprintf(f->found, sizeof f->found, "Roms/PORTS/Shortcuts/%s", rel);
+}
+
+static void find_shortcut(const Port *p, char *found, size_t size)
+{
+	found[0] = 0;
+	Find f = {NULL, base_name(p->dir), ""};
+	walk_files(SC, find_cb, &f);
+	if (*f.found) {
+		snprintf(found, size, "%s", f.found);
+		return;
+	}
+	char bn[300];
+	snprintf(bn, sizeof bn, "%s.port", p->name);
+	Find f2 = {bn, NULL, ""};
+	walk_files(SC, find_cb, &f2);
+	if (*f2.found)
+		snprintf(found, size, "%s", f2.found);
+}
+
+static int is_data_file(const Port *p, const char *rel)
+{
+	/* Metadata files are never data */
+	if (!strcmp(rel, ".pm_version") || !strcmp(rel, ".miyoo64_version") || !strcmp(rel, ".pm_manifest"))
+		return 0;
+
+	/* Scripts, libraries, and binaries are never data */
+	if (ends_with(rel, ".sh") || ends_with(rel, ".so") || strstr(rel, ".so."))
+		return 0;
+	if (!strncmp(rel, "lib/", 4) || !strncmp(rel, "bin/", 4) || !strncmp(rel, "miyoo/", 6))
+		return 0;
+
+	char full[1024];
+	snprintf(full, sizeof full, "%s/%s", gdir(p), rel);
+	if (is_elf_file(full))
+		return 0;
+
+	/* 1. ROM file */
+	if (*p->rom && (!strcasecmp(rel, p->rom) || !strcasecmp(base_name(rel), p->rom)))
+		return 1;
+
+	/* 2. Common ROM / CD image / save extensions */
+	const char *exts[] = {
+		".z64", ".n64", ".v64", ".iso", ".cue", ".chd", ".pbp", ".rom",
+		".sav", ".srm", ".eep", ".fla", ".mpk", ".state", ".cfg", ".ini",
+		".mp3", ".ogg", ".wav", ".mid", ".midi", ".flac"
+	};
+	for (size_t i = 0; i < sizeof(exts) / sizeof(exts[0]); i++)
+		if (ends_with(rel, exts[i]))
+			return 1;
+
+	/* 3. Catalog required files */
+	for (int i = 0; i < p->nrequired; i++) {
+		const char *req = p->required[i];
+		size_t reqlen = strlen(req);
+		if (req[reqlen - 1] == '/' && !strncasecmp(rel, req, reqlen))
+			return 1;
+		if (!fnmatch(req, rel, FNM_CASEFOLD) || !fnmatch(req, base_name(rel), FNM_CASEFOLD))
+			return 1;
+	}
+
+	/* 4. Catalog required_any files */
+	for (int i = 0; i < p->nrequired_any; i++) {
+		const char *req = p->required_any[i];
+		size_t reqlen = strlen(req);
+		if (req[reqlen - 1] == '/' && !strncasecmp(rel, req, reqlen))
+			return 1;
+		if (!fnmatch(req, rel, FNM_CASEFOLD) || !fnmatch(req, base_name(rel), FNM_CASEFOLD))
+			return 1;
+	}
+
+	/* 5. Catalog backup directories / files (e.g. saves, config) */
+	for (int i = 0; i < p->nbackup; i++) {
+		const char *bk = p->backup[i];
+		size_t bklen = strlen(bk);
+		if (bk[bklen - 1] == '/' && !strncasecmp(rel, bk, bklen))
+			return 1;
+		if (!fnmatch(bk, rel, FNM_CASEFOLD) || !fnmatch(bk, base_name(rel), FNM_CASEFOLD))
+			return 1;
+	}
+
+	/* 6. Standard save / data folder names */
+	if (!strncasecmp(rel, "data/", 5) || !strncasecmp(rel, "data1/", 6) ||
+	    !strncasecmp(rel, "save/", 5) || !strncasecmp(rel, "saves/", 6) ||
+	    !strncasecmp(rel, "music/", 6) || !strncasecmp(rel, "sound/", 6) ||
+	    !strncasecmp(rel, "sounds/", 7) || !strncasecmp(rel, "movies/", 7) ||
+	    !strncasecmp(rel, "fmv/", 4))
+		return 1;
+
+	return 0;
+}
+
+typedef struct {
+	const Port *p;
+	int has_code;
+} ProgramCheck;
+
+static void check_prog_cb(const char *rel, void *ctx)
+{
+	ProgramCheck *pc = ctx;
+	if (pc->has_code)
+		return;
+	if (!is_data_file(pc->p, rel))
+		pc->has_code = 1;
+}
+
+static int has_program(const Port *p)
+{
+	if (legacy_app(p))
+		return 1;
+	const char *g = gdir(p);
+	char f[700];
+	snprintf(f, sizeof f, "%s/.pm_version", g);
+	if (file_exists(f))
+		return 1;
+	snprintf(f, sizeof f, "%s/.miyoo64_version", g);
+	if (file_exists(f))
+		return 1;
+	char sc[700];
+	find_shortcut(p, sc, sizeof sc);
+	if (*sc)
+		return 1;
+	ProgramCheck pc = {p, 0};
+	walk_files(g, check_prog_cb, &pc);
+	return pc.has_code;
+}
+
 static void read_version(Port *p)
 {
 	char f[700];
@@ -194,11 +361,12 @@ void pm_scan(void)
 	int ninst = 0;
 	for (int i = 0; i < nports; i++) {
 		Port *p = &ports[i];
-		p->installed = dir_has_files(gdir(p)) || legacy_app(p);
+		p->installed = has_program(p);
 		read_version(p);
-		if (p->installed) {
+		if (p->installed || dir_has_files(gdir(p))) {
 			check_data(p);
-			ninst++;
+			if (p->installed)
+				ninst++;
 		}
 		else
 			p->missing[0] = 0;
@@ -478,32 +646,6 @@ static void map_add(Map *m, int kind, const char *src, const char *dst)
 	snprintf(e->dst, sizeof e->dst, "%s", dst);
 }
 
-/* finds a shortcut under Shortcuts (any category): by file name, or by its GameDir line */
-typedef struct {
-	const char *name, *gamedir;
-	char found[700];
-} Find;
-
-static void find_cb(const char *rel, void *ctx)
-{
-	Find *f = ctx;
-	if (*f->found || !strstr(rel, ".port"))
-		return;
-	if (f->name && strcmp(base_name(rel), f->name))
-		return;
-	if (f->gamedir) {
-		char full[1000], line[200];
-		snprintf(full, sizeof full, "%s/%s", SC, rel);
-		snprintf(line, sizeof line, "\nGameDir=\"%s\"", f->gamedir);
-		char *t = read_file(full, NULL);
-		int hit = t && strstr(t, line);
-		free(t);
-		if (!hit)
-			return;
-	}
-	snprintf(f->found, sizeof f->found, "Roms/PORTS/Shortcuts/%s", rel);
-}
-
 static void map_cb(const char *rel, void *ctx)
 {
 	Map *m = ctx;
@@ -633,8 +775,6 @@ int pm_update(Port *p)
 	shortcuts_changed = 0;
 	if (!*p->asset)
 		return fail("%s: no releases yet", p->name);
-	if (!p->installed)
-		return fail("%s: not installed", p->name);
 	Release *r = release_of(p->repo);
 	if (!r || !r->json) {
 		char *repo[] = {p->repo};
@@ -835,6 +975,140 @@ int pm_update(Port *p)
 	return 0;
 }
 
+typedef struct {
+	const Port *p;
+	char **to_delete;
+	int n, cap;
+} CleanCtx;
+
+static void clean_cb(const char *rel, void *ctx)
+{
+	CleanCtx *c = ctx;
+	if (!is_data_file(c->p, rel)) {
+		if (c->n == c->cap) {
+			c->cap = c->cap ? c->cap * 2 : 64;
+			c->to_delete = realloc(c->to_delete, c->cap * sizeof *c->to_delete);
+		}
+		char full[1024];
+		snprintf(full, sizeof full, "%s/%s", gdir(c->p), rel);
+		c->to_delete[c->n++] = strdup(full);
+	}
+}
+
+static void rmdir_empty_subdirs(const char *dir)
+{
+	DIR *d = opendir(dir);
+	if (!d)
+		return;
+	struct dirent *e;
+	while ((e = readdir(d))) {
+		if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, ".."))
+			continue;
+		char sub[1024];
+		snprintf(sub, sizeof sub, "%s/%s", dir, e->d_name);
+		if (is_dir(sub)) {
+			rmdir_empty_subdirs(sub);
+			rmdir(sub);
+		}
+	}
+	closedir(d);
+}
+
+static void clean_port_files(const Port *p)
+{
+	const char *g = gdir(p);
+	char f[700];
+	snprintf(f, sizeof f, "%s/.pm_version", g);
+	unlink(f);
+	snprintf(f, sizeof f, "%s/.miyoo64_version", g);
+	unlink(f);
+	snprintf(f, sizeof f, "%s/.pm_manifest", g);
+	unlink(f);
+
+	CleanCtx ctx = {p, NULL, 0, 0};
+	walk_files(g, clean_cb, &ctx);
+	for (int i = 0; i < ctx.n; i++) {
+		say("%s: deleting %s", p->name, ctx.to_delete[i] + strlen(SD) + 1);
+		unlink(ctx.to_delete[i]);
+		free(ctx.to_delete[i]);
+	}
+	free(ctx.to_delete);
+
+	rmdir_empty_subdirs(g);
+	if (!dir_has_files(g))
+		rmdir(g);
+}
+
+int pm_uninstall(Port *p, int keep_data)
+{
+	pm_error[0] = 0;
+	if (!p->installed)
+		return fail("%s: not installed", p->name);
+	say("%s: removing port (keep_data=%d)", p->name, keep_data);
+
+	/* 1. Remove shortcut in Roms/PORTS/Shortcuts/ */
+	char sc[700];
+	find_shortcut(p, sc, sizeof sc);
+	if (*sc) {
+		char sc_path[1000];
+		snprintf(sc_path, sizeof sc_path, "%s/%s", SD, sc);
+		say("%s: removing shortcut %s", p->name, sc);
+		unlink(sc_path);
+
+		/* Try removing empty category folder, e.g. Roms/PORTS/Shortcuts/RPG */
+		char *slash = strrchr(sc_path, '/');
+		if (slash) {
+			*slash = 0;
+			rmdir(sc_path);
+		}
+	}
+
+	/* 2. Remove box art image in Roms/PORTS/Imgs/ if any */
+	char img[700];
+	snprintf(img, sizeof img, "%s/Roms/PORTS/Imgs/%s.png", SD, p->name);
+	unlink(img);
+	if (*p->category) {
+		snprintf(img, sizeof img, "%s/Roms/PORTS/Imgs/%s/%s.png", SD, p->category, p->name);
+		unlink(img);
+	}
+
+	/* 3. Invalidate Onion's cached Ports list */
+	DIR *d = opendir(SC);
+	struct dirent *e;
+	while (d && (e = readdir(d)))
+		if (strstr(e->d_name, "_cache") && strstr(e->d_name, ".db")) {
+			char cf[600];
+			snprintf(cf, sizeof cf, "%s/%s", SC, e->d_name);
+			unlink(cf);
+		}
+	if (d)
+		closedir(d);
+
+	/* 4. Remove program files / directory */
+	const char *g = gdir(p);
+	if (!keep_data) {
+		say("%s: deleting directory %s", p->name, g);
+		remove_tree(g);
+		if (legacy_app(p)) {
+			char app[600];
+			snprintf(app, sizeof app, "%s/App/%s", SD, base_name(p->dir));
+			remove_tree(app);
+		}
+	} else {
+		say("%s: cleaning program files, keeping game data", p->name);
+		clean_port_files(p);
+		if (legacy_app(p)) {
+			char app[600];
+			snprintf(app, sizeof app, "%s/App/%s", SD, base_name(p->dir));
+			remove_tree(app);
+		}
+	}
+
+	say("%s: removed", p->name);
+	pm_scan();
+	return 0;
+}
+
 void pm_info(const Port *p, char *buf, int size)
 {
 	int n = snprintf(buf, size, "%s (%s)\n", p->name, p->category);
@@ -852,6 +1126,8 @@ void pm_info(const Port *p, char *buf, int size)
 		n += snprintf(buf + n, size - n, "Not installed (would go to %s)\n", p->dir);
 		if (p->checked && *p->asset)
 			n += snprintf(buf + n, size - n, "Latest: %s\n", p->latest);
+		if (dir_has_files(gdir(p)))
+			n += snprintf(buf + n, size - n, *p->missing ? "Game files missing: %s\n" : "Game files: OK\n", p->missing);
 	}
 	n += snprintf(buf + n, size - n, "From: github.com/%s%s\n\n", p->repo, *p->asset ? "" : " (no releases yet)");
 	if (*p->get)

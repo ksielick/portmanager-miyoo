@@ -1,0 +1,525 @@
+{
+  "version": 0,
+  "sources": [
+    {
+      "name": "MiyooMini-Ports",
+      "url": "https://raw.githubusercontent.com/Producdevity/MiyooMini-Ports/master/ports.json",
+      "use": "name, notes, image, porter, status, assets of the entries below, matched by repo; the other entries there are listed as not installable yet"
+    }
+  ],
+  "ports": [
+    {
+      "id": "hexen2",
+      "name": "Hexen II",
+      "category": "FPS",
+      "repo": "cacuracaptors/uhexen2-miyoomini",
+      "asset": "^HexenII-miyoomini-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Hexen2",
+      "data": {
+        "required": [
+          "data1/pak0.pak",
+          "data1/pak1.pak"
+        ],
+        "optional": [
+          "data1/music/"
+        ]
+      },
+      "get": "Hexen II, GOG version. Copy everything inside its data1 folder into Roms/PORTS/Games/Hexen2/data1/. Music (optional): its music folder (Track02.ogg to Track17.ogg) into Roms/PORTS/Games/Hexen2/data1/music/. File name case doesn't matter."
+    },
+    {
+      "id": "skifree",
+      "name": "SkiFree",
+      "category": "Arcade",
+      "repo": "cacuracaptors/skifree-miyoomini",
+      "asset": "^SkiFree-Miyoo-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/SkiFree",
+      "data": null
+    },
+    {
+      "id": "tombraider",
+      "name": "Tomb Raider",
+      "category": "Platform",
+      "repo": "cacuracaptors/OpenLara-miyoomini",
+      "asset": "^OpenLara-Miyoo-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/OpenLara",
+      "data": {
+        "required_any": [
+          "Tomb Raider 1/GAME.GOG",
+          "Tomb Raider 1/DATA/"
+        ],
+        "optional": [
+          "Tomb Raider 1/02.mp3"
+        ]
+      },
+      "get": "Tomb Raider 1+2+3, GOG version (https://www.gog.com/en/game/tomb_raider_123). From its Tomb Raider 1 folder (GOG Galaxy: settings next to Play > Manage installation > Show folder) copy GAME.GOG and, for music (optional), 02.mp3 to 10.mp3 into Roms/PORTS/Games/OpenLara/Tomb Raider 1/. The first start unpacks GAME.GOG into DATA/ and FMV/ (about a minute, needs ~170 MB free) and deletes it."
+    },
+    {
+      "id": "pinball",
+      "name": "3D Pinball Space Cadet",
+      "category": "Arcade",
+      "repo": "cacuracaptors/spacecadetpinball-miyoomini",
+      "asset": "^Pinball-Miyoo-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Pinball",
+      "data": {
+        "required": [
+          "PINBALL.DAT",
+          "FONT.DAT",
+          "SOUND*.WAV"
+        ],
+        "optional": [
+          "PINBALL.MID"
+        ]
+      },
+      "get": "3D Pinball for Windows - Space Cadet, from your own Windows installation (Windows XP and earlier shipped it). Copy PINBALL.DAT, FONT.DAT, all SOUND*.WAV and, for music (optional), PINBALL.MID into Roms/PORTS/Games/Pinball/. The first start converts the music (a few minutes, once)."
+    },
+    {
+      "id": "fallout",
+      "name": "Fallout",
+      "category": "RPG",
+      "repo": "cacuracaptors/fallout1-ce-miyoomini",
+      "asset": "^Fallout1-Miyoo-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Fallout",
+      "data": {
+        "required": [
+          "MASTER.DAT",
+          "CRITTER.DAT",
+          "data/"
+        ]
+      },
+      "get": "Fallout, GOG or Steam version. Copy MASTER.DAT, CRITTER.DAT and the data folder into Roms/PORTS/Games/Fallout/. Don't copy fallout.cfg from the PC (delete it if it's there): the game writes its own."
+    },
+    {
+      "id": "fallout2",
+      "name": "Fallout 2",
+      "category": "RPG",
+      "repo": "cacuracaptors/fallout2-ce-miyoomini",
+      "asset": "^Fallout2-Miyoo-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Fallout 2",
+      "data": {
+        "required": [
+          "master.dat",
+          "critter.dat"
+        ],
+        "optional": [
+          "data/"
+        ]
+      },
+      "get": "Fallout 2, GOG or Steam version. Copy master.dat, critter.dat and the data folder (if your installation has one) into Roms/PORTS/Games/Fallout 2/. Don't copy fallout2.cfg from the PC (delete it if it's there): the game writes its own. The Restoration Project mod works too: see the port's README."
+    },
+    {
+      "id": "mk64",
+      "name": "Mario Kart 64",
+      "category": "Racing",
+      "repo": "cacuracaptors/mk64-miyoomini",
+      "asset": "^MarioKart64-Miyoo-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/MarioKart64",
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "Mario Kart 64 (USA)",
+          "formats": [
+            "z64",
+            "n64",
+            "v64",
+            "zip"
+          ],
+          "dest": "rom.z64",
+          "sha1": "579c48e211ae952530ffc8738709f078d5dd215e",
+          "size": 12582912
+        }
+      },
+      "get": "Mario Kart 64 (USA) cartridge dump as rom.z64 (SHA-1: 579c48e211ae952530ffc8738709f078d5dd215e, 12 MB). Save in Roms/PORTS/Games/MarioKart64/rom.z64. Any .z64, .n64, .v64 or .zip dump works (game data built on first start)."
+    },
+    {
+      "id": "miyoo64-diddykongracing",
+      "name": "Diddy Kong Racing",
+      "category": "Racing",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^DiddyKongRacing-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/DiddyKongRacing",
+      "backup": [
+        "data/"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "Diddy Kong Racing (USA) (Rev 1)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "6d96743d46f8c0cd0edb0ec5600b003c89b93755",
+          "size": 12582912
+        }
+      },
+      "get": "Diddy Kong Racing (USA), Rev 1 (version 1.1) dump as rom.z64 (SHA-1: 6d96743d46f8c0cd0edb0ec5600b003c89b93755, 12 MB). Save as Roms/PORTS/Games/DiddyKongRacing/rom.z64. Any .z64, .v64 or .n64 dump works.",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
+      "id": "miyoo64-fzerox",
+      "name": "F-Zero X",
+      "category": "Racing",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^FZeroX-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/FZeroX",
+      "backup": [
+        "data/"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "F-Zero X (USA)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "5f658e88ffa9de23cba6986a8fd3d3a90d7b4340",
+          "size": 16777216
+        }
+      },
+      "get": "F-Zero X (USA) dump as rom.z64 (SHA-1: 5f658e88ffa9de23cba6986a8fd3d3a90d7b4340, 16 MB). Save as Roms/PORTS/Games/FZeroX/rom.z64. Any .z64, .v64 or .n64 dump works. Kept on card (read while playing).",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
+      "id": "miyoo64-goldeneye",
+      "name": "GoldenEye 007",
+      "category": "FPS",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^GoldenEye-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/GoldenEye",
+      "backup": [
+        "data/"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "GoldenEye 007 (USA)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "abe01e4aeb033b6c0836819f549c791b26cfde83",
+          "size": 12582912
+        }
+      },
+      "get": "GoldenEye 007 (USA) dump as rom.z64 (SHA-1: abe01e4aeb033b6c0836819f549c791b26cfde83, 12 MB). Save as Roms/PORTS/Games/GoldenEye/rom.z64. Any .z64, .v64 or .n64 dump works.",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
+      "id": "miyoo64-ocarinaoftime",
+      "name": "Ocarina of Time",
+      "category": "Action",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^OcarinaOfTime-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/OcarinaOfTime",
+      "backup": [
+        "data/"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "The Legend of Zelda: Ocarina of Time (USA 1.0)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "ad69c91157f6705e8ab06c79fe08aad47bb57ba7",
+          "size": 33554432
+        }
+      },
+      "get": "The Legend of Zelda: Ocarina of Time (USA), v1.0 (Rev 0) dump as rom.z64 (SHA-1: ad69c91157f6705e8ab06c79fe08aad47bb57ba7, 32 MB). Save as Roms/PORTS/Games/OcarinaOfTime/rom.z64. Any .z64, .v64 or .n64 works.",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
+      "id": "miyoo64-papermario",
+      "name": "Paper Mario",
+      "category": "RPG",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^PaperMario-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/PaperMario",
+      "backup": [
+        "data/"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "Paper Mario (USA)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "3837f44cda784b466c9a2d99df70d77c322b97a0",
+          "size": 41943040
+        }
+      },
+      "get": "Paper Mario (USA) dump as rom.z64 (SHA-1: 3837f44cda784b466c9a2d99df70d77c322b97a0, 40 MB). Save as Roms/PORTS/Games/PaperMario/rom.z64. Any .z64, .v64 or .n64 works. Kept on card (read while playing).",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
+      "id": "miyoo64-perfectdark",
+      "name": "Perfect Dark",
+      "category": "FPS",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^PerfectDark-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/PerfectDark",
+      "backup": [
+        "data/"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "Perfect Dark (USA) (Rev 1)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "af8788ac4d1a57260eae9c53ffe851fcf2a3319b",
+          "md5": "e03b088b6ac9e0080440efed07c1e40f",
+          "size": 33554432
+        }
+      },
+      "get": "Perfect Dark (USA), Rev 1 (version 1.1) dump as rom.z64 (SHA-1: af8788ac4d1a57260eae9c53ffe851fcf2a3319b, 32 MB). Save as Roms/PORTS/Games/PerfectDark/rom.z64. Kept on card (read while playing).",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
+      "id": "miyoo64-starfox64",
+      "name": "Star Fox 64",
+      "category": "Action",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^StarFox64-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/StarFox64",
+      "backup": [
+        "data/"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "Star Fox 64 (USA) (Rev 1)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "09f0d105f476b00efa5303a3ebc42e60a7753b7a",
+          "size": 12582912
+        }
+      },
+      "get": "Star Fox 64 (USA), Rev 1 (version 1.1) dump as rom.z64 (SHA-1: 09f0d105f476b00efa5303a3ebc42e60a7753b7a, 12 MB). Save as Roms/PORTS/Games/StarFox64/rom.z64. Any .z64, .v64 or .n64 works.",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
+      "id": "miyoo64-supermario64",
+      "name": "Super Mario 64",
+      "category": "Platform",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^SuperMario64-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/SuperMario64",
+      "backup": [
+        "data/"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "Super Mario 64 (USA)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "9bef1128717f958171a4afac3ed78ee2bb4e86ce",
+          "size": 8388608
+        }
+      },
+      "get": "Super Mario 64 (USA) dump as rom.z64 (SHA-1: 9bef1128717f958171a4afac3ed78ee2bb4e86ce, 8 MB). Save as Roms/PORTS/Games/SuperMario64/rom.z64. Any .z64, .v64 or .n64 works.",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
+      "id": "miyoo64-supersmashbros",
+      "name": "Super Smash Bros.",
+      "category": "Action",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^SuperSmashBros-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/SuperSmashBros",
+      "backup": [
+        "data/"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "Super Smash Bros. (USA)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "e2929e10fccc0aa84e5776227e798abc07cedabf",
+          "size": 16777216
+        }
+      },
+      "get": "Super Smash Bros. (USA) dump as rom.z64 (SHA-1: e2929e10fccc0aa84e5776227e798abc07cedabf, 16 MB). Save as Roms/PORTS/Games/SuperSmashBros/rom.z64. Any .z64, .v64 or .n64 works.",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
+      "id": "carmageddon",
+      "name": "Carmageddon",
+      "category": "Racing",
+      "repo": "ksielick/dethrace-miyoo",
+      "asset": null,
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Carmageddon",
+      "data": {
+        "required": [
+          "DATA/"
+        ],
+        "optional": [
+          "MUSIC/",
+          "DATA/CUTSCENE/"
+        ]
+      },
+      "get": "Carmageddon Max Pack, GOG version: run miyoo\\install\\install_gog.bat from the port's repository on a Windows PC with the GOG offline installer, then copy build\\sdcard\\Roms to the card with a card reader (thousands of small files). Or the free demo: its DATA folder into Roms/PORTS/Games/Carmageddon/."
+    },
+    {
+      "id": "carmageddon-splatpack",
+      "name": "Carmageddon Splat Pack",
+      "category": "Racing",
+      "repo": "ksielick/dethrace-miyoo",
+      "asset": null,
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/SplatPack",
+      "data": {
+        "required": [
+          "DATA/"
+        ],
+        "optional": [
+          "MUSIC/",
+          "DATA/CUTSCENE/"
+        ]
+      },
+      "get": "Carmageddon Max Pack, GOG version (it has the Splat Pack): run miyoo\\install\\install_gog.bat from the port's repository on a Windows PC with the GOG offline installer, then copy build\\sdcard\\Roms to the card with a card reader."
+    },
+    {
+      "id": "redriver2",
+      "name": "REDRIVER2 (Driver 2)",
+      "category": "Racing",
+      "repo": "ksielick/redriver2-miyoo",
+      "asset": null,
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/REDRIVER2",
+      "data": {
+        "disc": {
+          "system": "psx",
+          "name": "Driver 2 (USA), both discs",
+          "where": "Roms/PS",
+          "formats": [
+            "chd",
+            "cue/bin"
+          ]
+        }
+      },
+      "get": "Your own Driver 2 (USA) PlayStation discs, both, as CHD or BIN/CUE in Roms/PS (where Onion's PlayStation games go)."
+    }
+  ]
+}

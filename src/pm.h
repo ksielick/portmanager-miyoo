@@ -37,6 +37,9 @@ void pm_unlock(void);
 int pm_check(const Port *only);
 /* installs the latest release over an installed port; 0, or -1 with pm_error */
 int pm_update(Port *p);
+/* removes an installed port; if keep_data is set, ROMs, game data and saves in its folder
+ * are kept; 0, or -1 with pm_error */
+int pm_uninstall(Port *p, int keep_data);
 
 /* a port's details and how to add its game files */
 void pm_info(const Port *p, char *buf, int size);

@@ -1,0 +1,13 @@
+# Remove SkiFree deleting folder and all data
+press 1 DOWN
+press 2 DOWN
+press 3 A
+press 4 X
+press 5 A
+press 6 B
+press 7 B
+frames 7
+shots 1 2 3 4 5 6 7
+nonblank 1 2 3 4 5 6 7
+assert_not_exists Roms/PORTS/Shortcuts/Arcade/SkiFree.port
+assert_not_exists Roms/PORTS/Games/SkiFree

@@ -1,0 +1,16 @@
+# Remove Fallout keeping game data in folder (ROMs, game data, saves)
+press 1 DOWN
+press 2 A
+press 3 X
+press 4 A
+press 5 A
+press 6 B
+frames 6
+shots 1 2 3 4 5 6
+nonblank 1 2 3 4 5 6
+assert_not_exists Roms/PORTS/Shortcuts/RPG/Fallout.port
+assert_not_exists Roms/PORTS/Games/Fallout/fallout-ce
+assert_not_exists Roms/PORTS/Games/Fallout/README.txt
+assert_exists Roms/PORTS/Games/Fallout/MASTER.DAT
+assert_exists Roms/PORTS/Games/Fallout/CRITTER.DAT
+assert_exists Roms/PORTS/Games/Fallout/data/dummy

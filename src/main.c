@@ -226,8 +226,11 @@ static int do_check(const Port *only)
 		}
 		else if (only->installed)
 			snprintf(s, sizeof s, "%s is up to date (%s).", only->name, only->latest);
-		else
-			snprintf(s, sizeof s, "%s: the latest release is %s.", only->name, only->latest);
+		else {
+			snprintf(s, sizeof s, "%s: the latest release is %s.\n\nA: install it.", only->name, only->latest);
+			hints = "Up/Down  A: install  B: back";
+			keys = key_a;
+		}
 		lines_add(&progress, "");
 		lines_add(&progress, s);
 	}
@@ -252,7 +255,7 @@ static int do_check(const Port *only)
 	return progress_end(hints, keys);
 }
 
-static int confirm(const char *question)
+static int confirm_choice(const char *question, const char *hints)
 {
 	header("Port manager", NULL);
 	Lines t = {0};
@@ -260,22 +263,31 @@ static int confirm(const char *question)
 	for (int r = 0; r < t.n; r++)
 		gfx_text(16, 180 + r * (CW + 6), t.l[r], COLS, C_TEXT);
 	lines_free(&t);
-	footer("A: yes   B: no");
+	footer(hints);
 	gfx_flip();
 	for (;;) {
 		int k = input_key(NULL);
 		if (k == K_A)
 			return 1;
-		if (k < 0 || k == K_B || k == K_MENU)
+		if (k == K_B)
 			return 0;
+		if (k < 0 || k == K_MENU)
+			return -1;
 	}
+}
+
+static int confirm(const char *question)
+{
+	return confirm_choice(question, "A: yes   B: no") == 1;
 }
 
 static void do_update(Port *only)
 {
 	int n = only ? 1 : count_updates();
 	char q[300];
-	if (only && !*only->version)
+	if (only && !only->installed)
+		snprintf(q, sizeof q, "Install %s %s?", only->name, only->latest);
+	else if (only && !*only->version)
 		snprintf(q, sizeof q, "Install %s %s over the installed copy (version unknown)?\n\n"
 			"Files it replaces and its saves are backed up first.", only->name, only->latest);
 	else if (only)
@@ -299,7 +311,7 @@ static void do_update(Port *only)
 			ok++;
 	}
 	char s[80];
-	snprintf(s, sizeof s, "Done: %d updated%s", ok, bad ? "" : ".");
+	snprintf(s, sizeof s, "Done: %d %s%s", ok, only && !only->installed ? "installed" : "updated", bad ? "" : ".");
 	lines_add(&progress, "");
 	lines_add(&progress, s);
 	if (bad) {
@@ -317,16 +329,22 @@ static void details(Port *p)
 		Lines t = {0};
 		lines_add(&t, buf);
 		/* Y checks this port's repo; A installs its update once one is known, or the latest
-		 * release over a copy of unknown version (installed without the port manager) */
+		 * release over a copy of unknown version, or an uninstalled port; X removes */
 		int unknown = p->installed && p->checked && !*p->version;
-		int keys[3] = {0}, nk = 0;
+		int installable = !p->installed && p->checked && *p->latest;
+		int keys[4] = {0}, nk = 0;
 		if (*p->asset)
 			keys[nk++] = K_Y;
-		if (p->update || unknown)
+		if (p->update || unknown || installable)
 			keys[nk++] = K_A;
-		const char *hints = p->update ? "Up/Down A:update Y:check B:back" :
-			unknown ? "Up/Down A:install Y:check B:back" :
-			*p->asset ? "Up/Down  Y: check  B: back" : "Up/Down  B: back";
+		if (p->installed)
+			keys[nk++] = K_X;
+		const char *hints =
+			p->installed && p->update ? "Up/Down A:update Y:check X:delete B:back" :
+			p->installed && unknown   ? "Up/Down A:install Y:check X:delete B:back" :
+			p->installed              ? "Up/Down Y:check X:delete B:back" :
+			installable               ? "Up/Down A:install Y:check B:back" :
+			*p->asset                 ? "Up/Down  Y: check  B: back" : "Up/Down  B: back";
 		int k = view(p->name, &t, hints, keys);
 		lines_free(&t);
 		if (k == K_Y) {
@@ -335,6 +353,30 @@ static void details(Port *p)
 		}
 		else if (k == K_A)
 			do_update(p);
+		else if (k == K_X && p->installed) {
+			char q1[256];
+			snprintf(q1, sizeof q1, "Remove %s?\n\nThis will remove the port and its shortcut.", p->name);
+			if (!confirm(q1))
+				continue;
+			char q2[512];
+			snprintf(q2, sizeof q2, "Keep game data in the folder?\n(%s)\n\ne.g. ROMs, saves, game data files.", p->dir);
+			int choice = confirm_choice(q2, "A: keep   B: delete all");
+			if (choice < 0)
+				continue;
+			int keep_data = (choice == 1);
+			progress_begin("Removing port");
+			say("--- remove %s", p->id);
+			if (pm_uninstall(p, keep_data)) {
+				lines_add(&progress, "");
+				lines_add(&progress, "Can't remove port:");
+				lines_add(&progress, pm_error);
+			} else {
+				lines_add(&progress, "");
+				lines_add(&progress, keep_data ? "Port removed (game data kept in folder)." : "Port and folder removed.");
+			}
+			progress_end(NULL, NULL);
+			return;
+		}
 		else
 			return;
 	}
