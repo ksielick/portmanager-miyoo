@@ -89,9 +89,6 @@
           "MASTER.DAT",
           "CRITTER.DAT",
           "data/"
-        ],
-        "forbidden": [
-          "fallout.cfg"
         ]
       },
       "get": "Fallout, GOG or Steam version. Copy MASTER.DAT, CRITTER.DAT and the data folder into Roms/PORTS/Games/Fallout/. Don't copy fallout.cfg from the PC (delete it if it's there): the game writes its own."
@@ -111,9 +108,6 @@
         ],
         "optional": [
           "data/"
-        ],
-        "forbidden": [
-          "fallout2.cfg"
         ]
       },
       "get": "Fallout 2, GOG or Steam version. Copy master.dat, critter.dat and the data folder (if your installation has one) into Roms/PORTS/Games/Fallout 2/. Don't copy fallout2.cfg from the PC (delete it if it's there): the game writes its own. The Restoration Project mod works too: see the port's README."
