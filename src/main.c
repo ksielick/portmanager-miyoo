@@ -177,11 +177,13 @@ static void progress_begin(const char *title)
 	progress_draw("Please wait...");
 }
 
-static void progress_end(void)
+/* shows the result; returns the key that closed it (B, or one of `keys`) */
+static int progress_end(const char *hints, const int *keys)
 {
 	log_sink = NULL;
-	view(progress_title, &progress, "Up/Down  B: back", NULL);
+	int k = view(progress_title, &progress, hints ? hints : "Up/Down  B: back", keys);
 	lines_free(&progress);
+	return k;
 }
 
 /* --- actions --- */
@@ -194,9 +196,13 @@ static int count_updates(void)
 	return n;
 }
 
-/* every installed port, or only one (from its details) */
-static void do_check(const Port *only)
+/* every installed port, or only one (from its details); returns the key that closed the
+ * result: A (install `only`'s release) or Start (update all) when offered there, else B */
+static int do_check(const Port *only)
 {
+	static const int key_a[] = {K_A, 0}, key_start[] = {K_START, 0};
+	const char *hints = NULL;
+	const int *keys = NULL;
 	progress_begin("Checking for updates");
 	say(only ? "--- check %s" : "--- check", only ? only->id : "");
 	if (pm_check(only)) {
@@ -206,12 +212,18 @@ static void do_check(const Port *only)
 	}
 	else if (only) {
 		char s[300];
-		if (only->update)
-			snprintf(s, sizeof s, "%s: %s -> %s\n\nB: back, then A: update.", only->name, only->version, only->latest);
-		else if (only->installed && !*only->version)
+		if (only->update) {
+			snprintf(s, sizeof s, "%s: %s -> %s", only->name, only->version, only->latest);
+			hints = "Up/Down  A: update  B: back";
+			keys = key_a;
+		}
+		else if (only->installed && !*only->version) {
 			snprintf(s, sizeof s, "%s: the latest release is %s. The installed version is unknown "
-				"(installed without the port manager).\n\nB: back, then A: install %s over it.",
-				only->name, only->latest, only->latest);
+				"(installed without the port manager).\n\nA: install %s over it (files that are "
+				"the same stay as they are).", only->name, only->latest, only->latest);
+			hints = "Up/Down  A: install  B: back";
+			keys = key_a;
+		}
 		else if (only->installed)
 			snprintf(s, sizeof s, "%s is up to date (%s).", only->name, only->latest);
 		else
@@ -231,13 +243,13 @@ static void do_check(const Port *only)
 					snprintf(s, sizeof s, "  %s: %s -> %s", ports[i].name, ports[i].version, ports[i].latest);
 					lines_add(&progress, s);
 				}
-			lines_add(&progress, "");
-			lines_add(&progress, "Start on the list: update all.");
+			hints = "Up/Down  Start: update all  B: back";
+			keys = key_start;
 		}
 		else
 			lines_add(&progress, "All installed ports are up to date.");
 	}
-	progress_end();
+	return progress_end(hints, keys);
 }
 
 static int confirm(const char *question)
@@ -294,7 +306,7 @@ static void do_update(Port *only)
 		snprintf(s, sizeof s, "%d failed (see above).", bad);
 		lines_add(&progress, s);
 	}
-	progress_end();
+	progress_end(NULL, NULL);
 }
 
 static void details(Port *p)
@@ -317,8 +329,10 @@ static void details(Port *p)
 			*p->asset ? "Up/Down  Y: check  B: back" : "Up/Down  B: back";
 		int k = view(p->name, &t, hints, keys);
 		lines_free(&t);
-		if (k == K_Y)
-			do_check(p);
+		if (k == K_Y) {
+			if (do_check(p) == K_A)
+				do_update(p);
+		}
 		else if (k == K_A)
 			do_update(p);
 		else
@@ -444,8 +458,8 @@ static int run_list(int all)
 			details(&ports[rows[sel].port]);
 		if (!all && k == K_X)
 			run_list(1);
-		if (!all && k == K_Y)
-			do_check(NULL);
+		if (!all && k == K_Y && do_check(NULL) == K_START)
+			do_update(NULL);
 		if (!all && k == K_START && nup)
 			do_update(NULL);
 	}
