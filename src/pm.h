@@ -20,6 +20,8 @@ typedef struct {
 	int checked;      /* the latest release is known */
 	char latest[64];
 	int update;       /* installed, version known and older than latest */
+	long asset_size;  /* size in bytes of the asset, 0 if unknown */
+	char asset_name[128]; /* filename of the asset in release */
 } Port;
 
 extern Port *ports;

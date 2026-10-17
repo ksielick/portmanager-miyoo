@@ -165,37 +165,47 @@ static const char *progress_title;
 static long dl_current = 0, dl_total = 0;
 static int dl_active = 0;
 
-static void draw_progress_bar(long cur, long total)
+static void draw_ascii_progress(long cur, long total)
 {
-	int bx = 16;
-	int by = 388;
-	int bw = SCR_W - 32; /* 608 px */
-	int bh = 14;
+	char bar[40];
+	char info[40];
+	int bar_width = 24;
 
-	gfx_fill(bx, by, bw, bh, C_BAR);
-	gfx_fill(bx + 1, by + 1, bw - 2, bh - 2, C_SEL);
-
-	int fw = 0;
-	if (total > 0) {
-		fw = (int)((double)cur / total * (bw - 4));
-		if (fw < 0) fw = 0;
-		if (fw > bw - 4) fw = bw - 4;
-	}
-	if (fw > 0)
-		gfx_fill(bx + 2, by + 2, fw, bh - 4, C_GOOD);
-
-	char info[64];
 	if (total > 0) {
 		int pct = (int)((double)cur / total * 100.0);
 		if (pct > 100) pct = 100;
+		if (pct < 0) pct = 0;
+		int fill = (int)((double)cur / total * bar_width);
+		if (fill > bar_width) fill = bar_width;
+
+		bar[0] = '[';
+		for (int i = 0; i < bar_width; i++) {
+			if (i < fill - 1)
+				bar[1 + i] = '=';
+			else if (i == fill - 1 && fill < bar_width)
+				bar[1 + i] = '>';
+			else if (i == fill - 1)
+				bar[1 + i] = '=';
+			else
+				bar[1 + i] = ' ';
+		}
+		bar[1 + bar_width] = ']';
+		snprintf(bar + 2 + bar_width, sizeof bar - (2 + bar_width), " %3d%%", pct);
+
 		double cur_mb = (double)cur / (1024.0 * 1024.0);
 		double tot_mb = (double)total / (1024.0 * 1024.0);
-		snprintf(info, sizeof info, "%3d%%  %.1f / %.1f MB", pct, cur_mb, tot_mb);
+		if (tot_mb >= 1.0)
+			snprintf(info, sizeof info, "  %.1f / %.1f MB", cur_mb, tot_mb);
+		else
+			snprintf(info, sizeof info, "  %ld / %ld KB", (cur + 1023) / 1024, (total + 1023) / 1024);
 	} else {
 		double cur_mb = (double)cur / (1024.0 * 1024.0);
-		snprintf(info, sizeof info, "      %.1f MB", cur_mb);
+		snprintf(bar, sizeof bar, "[===>                    ]");
+		snprintf(info, sizeof info, "  %.1f MB downloaded", cur_mb);
 	}
-	gfx_text(bx, by + bh + 4, info, COLS, C_TEXT);
+
+	gfx_text(16, 390, bar, COLS, C_GOOD);
+	gfx_text(16, 414, info, COLS, C_TEXT);
 }
 
 static void progress_draw(const char *hints)
@@ -205,7 +215,7 @@ static void progress_draw(const char *hints)
 	header(progress_title, NULL);
 	draw_lines_limit(&progress, top, rows);
 	if (dl_active)
-		draw_progress_bar(dl_current, dl_total);
+		draw_ascii_progress(dl_current, dl_total);
 	footer(hints);
 	gfx_flip();
 }
@@ -282,23 +292,30 @@ static int do_check(const Port *only)
 		lines_add(&progress, pm_error);
 	}
 	else if (only) {
-		char s[300];
+		char s[350];
+		char sz_line[64] = "";
+		if (only->asset_size > 0) {
+			if (only->asset_size >= 1024 * 1024)
+				snprintf(sz_line, sizeof sz_line, "\nDownload size: %.1f MB", (double)only->asset_size / (1024.0 * 1024.0));
+			else
+				snprintf(sz_line, sizeof sz_line, "\nDownload size: %ld KB", (only->asset_size + 1023) / 1024);
+		}
 		if (only->update) {
-			snprintf(s, sizeof s, "%s: %s -> %s", only->name, only->version, only->latest);
+			snprintf(s, sizeof s, "%s: %s -> %s%s", only->name, only->version, only->latest, sz_line);
 			hints = "Up/Down  A: update  B: back";
 			keys = key_a;
 		}
 		else if (only->installed && !*only->version) {
-			snprintf(s, sizeof s, "%s: the latest release is %s. The installed version is unknown "
+			snprintf(s, sizeof s, "%s: the latest release is %s.%s\nThe installed version is unknown "
 				"(installed without the port manager).\n\nA: install %s over it (files that are "
-				"the same stay as they are).", only->name, only->latest, only->latest);
+				"the same stay as they are).", only->name, only->latest, sz_line, only->latest);
 			hints = "Up/Down  A: install  B: back";
 			keys = key_a;
 		}
 		else if (only->installed)
 			snprintf(s, sizeof s, "%s is up to date (%s).", only->name, only->latest);
 		else {
-			snprintf(s, sizeof s, "%s: the latest release is %s.\n\nA: install it.", only->name, only->latest);
+			snprintf(s, sizeof s, "%s: the latest release is %s.%s\n\nA: install it.", only->name, only->latest, sz_line);
 			hints = "Up/Down  A: install  B: back";
 			keys = key_a;
 		}
@@ -314,7 +331,17 @@ static int do_check(const Port *only)
 			lines_add(&progress, s);
 			for (int i = 0; i < nports; i++)
 				if (ports[i].update) {
-					snprintf(s, sizeof s, "  %s: %s -> %s", ports[i].name, ports[i].version, ports[i].latest);
+					if (ports[i].asset_size >= 1024 * 1024)
+						snprintf(s, sizeof s, "  %s: %s -> %s (%.1f MB)",
+							ports[i].name, ports[i].version, ports[i].latest,
+							(double)ports[i].asset_size / (1024.0 * 1024.0));
+					else if (ports[i].asset_size > 0)
+						snprintf(s, sizeof s, "  %s: %s -> %s (%ld KB)",
+							ports[i].name, ports[i].version, ports[i].latest,
+							(ports[i].asset_size + 1023) / 1024);
+					else
+						snprintf(s, sizeof s, "  %s: %s -> %s",
+							ports[i].name, ports[i].version, ports[i].latest);
 					lines_add(&progress, s);
 				}
 			hints = "Up/Down  Start: update all  B: back";

@@ -44,6 +44,20 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 - **Workflow** (`.github/workflows/emu-test.yml`):
   - Automatically runs all 8 scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries). All 8 scenarios passed 100% in CI.
 
+## ASCII Progress Bar & Download Size Display (2026-10-17 22:12)
+
+- **Download size line in check results**:
+  - `src/pm.c`: `pm_check()` now extracts the release asset's byte size (`p->asset_size`) and filename (`p->asset_name`) using the refactored `find_asset()` helper.
+  - `src/main.c`: `do_check()` displays a dedicated line with the file size under the version update text:
+    `Star Fox 64: 1.1.2 -> 1.1.3`
+    `Download size: 1.8 MB`
+  - In update all summary, size is shown next to each port: `  <Name>: <old> -> <new> (X.X MB)`.
+- **ASCII download progress bar**:
+  - Replaced graphical rect bar with a retro terminal ASCII bar:
+    `[=============>          ]  54%` (rendered in `C_GOOD` green)
+    `  1.0 / 1.8 MB` (in `C_TEXT` white)
+  - Fits cleanly into the monospace font8x8 layout above the footer without overlapping.
+
 ## Details View Primary Action Button (2026-10-17 22:06)
 
 - **`A` as primary action**:

@@ -581,6 +581,25 @@ static int refresh_catalog(void)
 	return 0;
 }
 
+static const cJSON *find_asset(const Port *p, const cJSON *rel_json)
+{
+	if (!rel_json || !p->asset || !*p->asset)
+		return NULL;
+	regex_t re;
+	if (regcomp(&re, p->asset, REG_EXTENDED | REG_NOSUB))
+		return NULL;
+	const cJSON *a, *asset = NULL;
+	cJSON_ArrayForEach(a, cJSON_GetObjectItemCaseSensitive(rel_json, "assets")) {
+		const cJSON *nm = cJSON_GetObjectItemCaseSensitive(a, "name");
+		if (cJSON_IsString(nm) && !regexec(&re, nm->valuestring, 0, NULL, 0)) {
+			asset = a;
+			break;
+		}
+	}
+	regfree(&re);
+	return asset;
+}
+
 /* checks `only`'s repo (any port, installed or not), or every installed port's */
 static int checks(const Port *p, const Port *only)
 {
@@ -616,9 +635,21 @@ int pm_check(const Port *only)
 		Port *p = &ports[i];
 		Release *r = release_of(p->repo);
 		p->checked = r && r->json;
-		if (p->checked)
-			snprintf(p->latest, sizeof p->latest, "%s",
-				cJSON_GetObjectItemCaseSensitive(r->json, "tag_name")->valuestring);
+		p->asset_size = 0;
+		p->asset_name[0] = 0;
+		if (p->checked) {
+			const cJSON *tag = cJSON_GetObjectItemCaseSensitive(r->json, "tag_name");
+			if (cJSON_IsString(tag))
+				snprintf(p->latest, sizeof p->latest, "%s", tag->valuestring);
+			const cJSON *ast = find_asset(p, r->json);
+			if (ast) {
+				const cJSON *sz = cJSON_GetObjectItemCaseSensitive(ast, "size");
+				const cJSON *nm = cJSON_GetObjectItemCaseSensitive(ast, "name");
+				p->asset_size = cJSON_IsNumber(sz) ? (long)sz->valuedouble : 0;
+				if (cJSON_IsString(nm))
+					snprintf(p->asset_name, sizeof p->asset_name, "%s", nm->valuestring);
+			}
+		}
 		else if (checks(p, only)) {
 			say("ERROR %s: no release info", p->name);
 			failed++;
@@ -801,18 +832,7 @@ int pm_update(Port *p)
 	const char *tag = cJSON_GetObjectItemCaseSensitive(r->json, "tag_name")->valuestring;
 
 	/* the release's file */
-	regex_t re;
-	if (regcomp(&re, p->asset, REG_EXTENDED | REG_NOSUB))
-		return fail("%s: bad asset pattern in the catalog", p->name);
-	const cJSON *a, *asset = NULL;
-	cJSON_ArrayForEach(a, cJSON_GetObjectItemCaseSensitive(r->json, "assets")) {
-		const cJSON *nm = cJSON_GetObjectItemCaseSensitive(a, "name");
-		if (cJSON_IsString(nm) && !regexec(&re, nm->valuestring, 0, NULL, 0)) {
-			asset = a;
-			break;
-		}
-	}
-	regfree(&re);
+	const cJSON *asset = find_asset(p, r->json);
 	if (!asset)
 		return fail("%s: the release has no matching file", p->name);
 	const char *aname = cJSON_GetObjectItemCaseSensitive(asset, "name")->valuestring;
