@@ -12,6 +12,8 @@
 # settings) are never touched; a game's `backup` folders and every replaced file go to
 # Backups/PortManager/<date>-<id>-before-<tag>/ first; a shortcut or picture the player
 # changed is kept. Log: log.txt next to this script.
+# jq takes ~0.5 s to start on the Miyoo, so it runs once for the catalog and once per release
+# (fetched in parallel); everything else reads the .tsv files it leaves in $WORK.
 SD=${PM_SD:-/mnt/SDCARD}
 HERE=$(cd "$(dirname "$0")" && pwd)
 CAT=${PM_CATALOG:-$HERE/catalog.json}
@@ -21,8 +23,7 @@ WORK=$SD/.pm_work
 LOG=$HERE/log.txt
 STAMP=$(date +%Y%m%d-%H%M%S)
 TAB=$(printf '\t')
-NL='
-'
+US=$(printf '\037')
 PATH=$SD/.tmp_update/bin:$PATH
 
 say() { echo "$*"; echo "$*" >> "$LOG"; }
@@ -36,70 +37,113 @@ fetch() {
 	return 1
 }
 
-# field <id> <jq expression on the entry>
-field() { jq -r --arg id "$1" ".ports[] | select(.id == \$id) | $2 // empty" "$CAT"; }
-
-refresh_catalog() {
-	[ -n "$PM_CATALOG" ] && return
-	if fetch "$CAT_URL" "$WORK/catalog.json" &&
-		jq -e '.ports | length > 0' "$WORK/catalog.json" > /dev/null 2>&1; then
-		cmp -s "$WORK/catalog.json" "$CAT" || { cp "$WORK/catalog.json" "$CAT" && say "catalog updated"; }
-	else
-		say "catalog: no connection, using the copy on the card"
+# the catalog (refreshed from GitHub unless PM_CATALOG is set) as catalog.tsv: one line per
+# port, fields separated by \037, lists joined by |
+load_catalog() {
+	if [ -z "$PM_CATALOG" ]; then
+		if fetch "$CAT_URL" "$WORK/catalog.json" && ! cmp -s "$WORK/catalog.json" "$CAT"; then
+			cp "$WORK/catalog.json" "$CAT"
+			NEWCAT=1
+		fi
 	fi
+	jq -r '.ports[] | [.id, .name, .dir, .layout, .repo, (.asset // ""), (.category // ""),
+		((.skip // []) | join("|")), ((.backup // []) | join("|")),
+		((.data.required // []) | join("|")), ((.data.required_any // []) | join("|")),
+		(.data.rom.dest // ""), (.shortcut.GameDataFile // ""), (.shortcut.run // "")]
+		| join("\u001f")' "$CAT" > "$WORK/catalog.tsv" 2>> "$LOG" && [ -s "$WORK/catalog.tsv" ] ||
+		{ fail "catalog: can't read $CAT"; exit 1; }
+	[ -n "$NEWCAT" ] && say "catalog updated"
 }
 
-# release <owner/repo>: prints the file with its latest release (fetched once per run)
-release() {
-	r=$WORK/release_$(echo "$1" | tr '/' '_').json
-	[ -s "$r" ] || fetch "https://api.github.com/repos/$1/releases/latest" "$r" || return 1
-	jq -e .tag_name "$r" > /dev/null 2>&1 || { rm -f "$r"; return 1; }
-	echo "$r"
+ids() { cut -d"$US" -f1 "$WORK/catalog.tsv"; }
+
+# entry <id>: the port's fields as shell variables
+entry() {
+	line=$(grep "^$1$US" "$WORK/catalog.tsv" | head -1)
+	[ -n "$line" ] || return 1
+	o=$IFS
+	IFS=$US
+	set -f
+	set -- $line
+	IFS=$o
+	set +f
+	id=$1 name=$2 dir=$3 layout=$4 repo=$5 asset=$6 category=$7 skips=$8 backups=$9
+	shift 9
+	required=$1 required_any=$2 rom=$3 sc_gdf=$4 sc_run=$5
+	G=$SD/$dir
+	base=$(basename "$dir")
 }
 
-version_of() { cat "$SD/$1/.pm_version" 2>/dev/null || cat "$SD/$1/.miyoo64_version" 2>/dev/null; }
+version_of() { cat "$G/.pm_version" 2>/dev/null || cat "$G/.miyoo64_version" 2>/dev/null; }
 
-# installed <dir> <layout>: the game folder has files (or, for app-to-ports, an old App/ copy)
+# installed: the game folder has files (or, for app-to-ports, an old App/ copy)
 installed() {
-	[ -n "$(ls -A "$SD/$1" 2>/dev/null)" ] && return 0
-	[ "$2" = app-to-ports ] && [ -f "$SD/App/$(basename "$1")/launch.sh" ]
+	[ -n "$(ls -A "$G" 2>/dev/null)" ] && return 0
+	[ "$layout" = app-to-ports ] && [ -f "$SD/App/$base/launch.sh" ]
+}
+
+rel_file() { echo "$WORK/release_$(echo "$1" | tr '/' '_').tsv"; }
+
+# fetch_releases <repo>...: each repo's latest release, in parallel, as release_<repo>.tsv:
+# the tag, then "name\037url\037digest\037size" per file
+fetch_releases() {
+	for r in $(echo "$@" | tr ' ' '\n' | sort -u); do
+		(
+			f=$(rel_file "$r")
+			fetch "https://api.github.com/repos/$r/releases/latest" "$f.json" &&
+				jq -r '.tag_name, (.assets[] | [.name, .browser_download_url, (.digest // ""),
+					(.size | tostring)] | join("\u001f"))' "$f.json" > "$f.part" 2>> "$LOG" &&
+				[ -s "$f.part" ] && mv "$f.part" "$f"
+			rm -f "$f.json" "$f.part"
+		) &
+	done
+	wait
 }
 
 # has <folder> <path, case-insensitive, * allowed>
 has() { find "$1" -maxdepth 4 -ipath "$1/${2%/}" 2>/dev/null | grep -q .; }
 
-# data_missing <id> <dir>: one line per missing (or unwanted) game file
+# data_missing: one line per missing game file of the current entry
 data_missing() {
-	d=$SD/$2
 	set -f
-	old_ifs=$IFS
-	IFS=$NL
-	for p in $(field "$1" '.data.required[]?'); do has "$d" "$p" || echo "$p"; done
-	any=$(field "$1" '.data.required_any[]?')
-	if [ -n "$any" ]; then
+	o=$IFS
+	IFS='|'
+	for p in $required; do has "$G" "$p" || echo "$p"; done
+	if [ -n "$required_any" ]; then
 		ok=
-		for p in $any; do has "$d" "$p" && ok=1; done
-		[ -n "$ok" ] || echo "one of: $(echo "$any" | tr '\n' ',' | sed 's/,$//; s/,/, /g')"
+		for p in $required_any; do has "$G" "$p" && ok=1; done
+		[ -n "$ok" ] || echo "one of: $(echo "$required_any" | sed 's/|/, /g')"
 	fi
-	for p in $(field "$1" '.data.forbidden[]?'); do has "$d" "$p" && echo "remove $p"; done
-	IFS=$old_ifs
+	IFS=$o
 	set +f
-	rom=$(field "$1" '.data.rom.dest')
-	[ -n "$rom" ] && [ ! -f "$d/$rom" ] && echo "$rom"
+	if [ -n "$rom" ] && [ ! -f "$G/$rom" ]; then echo "$rom"; fi
+}
+
+# installed entries (as "id" lines) and their repos
+scan() {
+	: > "$WORK/installed"
+	repos=
+	for i in $(ids); do
+		entry "$i"
+		installed || continue
+		echo "$id" >> "$WORK/installed"
+		[ -n "$asset" ] && repos="$repos $repo"
+	done
 }
 
 cmd_check() {
-	for id in $(jq -r '.ports[].id' "$CAT"); do
-		name=$(field "$id" .name)
-		dir=$(field "$id" .dir)
-		installed "$dir" "$(field "$id" .layout)" || continue
-		cur=$(version_of "$dir")
-		if [ -z "$(field "$id" .asset)" ]; then
+	scan
+	fetch_releases $repos
+	for i in $(cat "$WORK/installed"); do
+		entry "$i"
+		cur=$(version_of)
+		r=$(rel_file "$repo")
+		if [ -z "$asset" ]; then
 			say "NOREL $id $name: ${cur:-version unknown}, no releases yet"
-		elif ! rel=$(release "$(field "$id" .repo)"); then
+		elif [ ! -s "$r" ]; then
 			say "ERROR $id $name: no release info (no connection?)"
 		else
-			tag=$(jq -r .tag_name "$rel")
+			tag=$(head -1 "$r")
 			if [ "$cur" = "$tag" ]; then
 				say "OK $id $name: $tag"
 			elif [ -z "$cur" ]; then
@@ -108,49 +152,50 @@ cmd_check() {
 				say "UPDATE $id $name: $cur -> $tag"
 			fi
 		fi
-		miss=$(data_missing "$id" "$dir")
+		miss=$(data_missing)
 		[ -n "$miss" ] && say "MISSING $id $name: $(echo "$miss" | tr '\n' ';' | sed 's/;$//; s/;/; /g')"
 	done
 }
 
-# map_files <id> <stage> <dir> <layout> > map: one "kind<TAB>source<TAB>destination" line
-# per file to install (source absolute, destination relative to the card)
+# map_files <stage> > map: one "kind<TAB>source<TAB>destination" line per file to install
+# (source absolute, destination relative to the card)
 map_files() {
-	base=$(basename "$3")
-	skips=$(field "$1" '.skip[]?')
-	(cd "$2" && find . -type f) | sed 's#^\./##' | while IFS= read -r p; do
+	(cd "$1" && find . -type f) | sed 's#^\./##' | while IFS= read -r p; do
 		skip=
 		set -f
+		o=$IFS
+		IFS='|'
 		for s in $skips; do
 			case "$p" in $s*) skip=1 ;; esac
 		done
+		IFS=$o
 		set +f
 		[ -n "$skip" ] && continue
-		case "$4/$p" in
+		case "$layout/$p" in
 		"app-to-ports/App/$base/config.json") ;;
-		"app-to-ports/App/$base/"*) echo "game$TAB$2/$p$TAB$3/${p#App/$base/}" ;;
-		*/Roms/PORTS/Imgs/*) echo "img$TAB$2/$p$TAB$p" ;;
-		app-to-ports/Roms/PORTS/Shortcuts/*.port) echo "template$TAB$2/$p$TAB" ;;
+		"app-to-ports/App/$base/"*) echo "game$TAB$1/$p$TAB$dir/${p#App/$base/}" ;;
+		*/Roms/PORTS/Imgs/*) echo "img$TAB$1/$p$TAB$p" ;;
+		app-to-ports/Roms/PORTS/Shortcuts/*.port) echo "template$TAB$1/$p$TAB" ;;
 		sdcard-root/Roms/PORTS/Shortcuts/*.port)
 			n=$(basename "$p")
 			to=$(find "$SC" -name "$n" -type f 2>/dev/null | head -1)
-			[ -n "$to" ] || to=$SC/$(field "$1" .category)/$n
-			echo "shortcut$TAB$2/$p$TAB${to#$SD/}" ;;
-		sdcard-root/Roms/PORTS/Games/*) echo "game$TAB$2/$p$TAB$p" ;;
+			[ -n "$to" ] || to=$SC/$category/$n
+			echo "shortcut$TAB$1/$p$TAB${to#$SD/}" ;;
+		sdcard-root/Roms/PORTS/Games/*) echo "game$TAB$1/$p$TAB$p" ;;
 		esac
 	done
 }
 
-# shortcut_from <release shortcut> <dir> <id> > our shortcut: the release's settings
-# (GameName, FullResolution, ...) without its App/ paths, then our GameDir and launch
+# shortcut_from <release shortcut> > our shortcut: the release's settings (GameName,
+# FullResolution, ...) without its App/ paths, then our GameDir and launch
 shortcut_from() {
 	echo '#!/bin/sh'
-	echo "# $(basename "$1" .port): runs $2/$(field "$3" .shortcut.run). Written by Port manager (portmaster-miyoo)."
+	echo "# $(basename "$1" .port): runs $dir/$sc_run. Written by Port manager (portmaster-miyoo)."
 	grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$1" | grep -vE '^(APP|GameDir|GameDataFile)=' | grep -v 'App/'
-	echo "GameDir=\"$(basename "$2")\""
-	echo "GameDataFile=\"$(field "$3" .shortcut.GameDataFile)\""
-	echo "cd \"$SD/$2\" || exit 1"
-	echo "exec sh \"$SD/$2/$(field "$3" .shortcut.run)\""
+	echo "GameDir=\"$base\""
+	echo "GameDataFile=\"$sc_gdf\""
+	echo "cd \"$G\" || exit 1"
+	echo "exec sh \"$G/$sc_run\""
 }
 
 # backup_saves: the entry's backup folders, once, before its first replaced file
@@ -158,38 +203,35 @@ backup_saves() {
 	[ -n "$saved" ] && return
 	saved=1
 	set -f
-	for b in $(field "$id" '.backup[]?'); do
+	o=$IFS
+	IFS='|'
+	for b in $backups; do
 		[ -d "$G/$b" ] || continue
 		mkdir -p "$BK/$dir"
 		cp -r "$G/${b%/}" "$BK/$dir/" && say "$name: saved $dir/$b to the backup"
 	done
+	IFS=$o
 	set +f
 }
 
+# update_one <id> [byname]
 update_one() {
-	id=$1
-	name=$(field "$id" .name)
-	[ -n "$name" ] || { fail "$id: not in the catalog"; return 1; }
-	dir=$(field "$id" .dir)
-	layout=$(field "$id" .layout)
-	re=$(field "$id" .asset)
-	G=$SD/$dir
-	base=$(basename "$dir")
-	[ -n "$re" ] || { say "$name: no releases yet"; return 0; }
-	installed "$dir" "$layout" || { say "$name: not installed"; return 0; }
-	rel=$(release "$(field "$id" .repo)") || { fail "$name: no release info (no connection?)"; return 1; }
-	tag=$(jq -r .tag_name "$rel")
-	cur=$(version_of "$dir")
+	entry "$1" || { fail "$1: not in the catalog"; return 1; }
+	[ -n "$asset" ] || { say "$name: no releases yet"; return 0; }
+	installed || { say "$name: not installed"; return 0; }
+	r=$(rel_file "$repo")
+	[ -s "$r" ] || { fail "$name: no release info (no connection?)"; return 1; }
+	tag=$(head -1 "$r")
+	cur=$(version_of)
 	[ "$cur" = "$tag" ] && { say "$name: $tag, up to date"; return 0; }
 	[ -z "$cur" ] && [ -z "$2" ] && { say "$name: version unknown, latest $tag (update it by name)"; return 0; }
 
-	a=$(jq -r --arg re "$re" '[.assets[] | select(.name | test($re))][0] // empty |
-		[.name, .browser_download_url, (.digest // ""), (.size | tostring)] | @tsv' "$rel")
-	[ -n "$a" ] || { fail "$name: $tag has no file matching $re"; return 1; }
-	aname=$(echo "$a" | cut -f1)
-	url=$(echo "$a" | cut -f2)
-	digest=$(echo "$a" | cut -f3)
-	size=$(echo "$a" | cut -f4)
+	aname=$(tail -n +2 "$r" | cut -d"$US" -f1 | grep -E "$asset" | head -1)
+	[ -n "$aname" ] || { fail "$name: $tag has no file matching $asset"; return 1; }
+	a=$(grep -F "$aname$US" "$r" | head -1)
+	url=$(echo "$a" | cut -d"$US" -f2)
+	digest=$(echo "$a" | cut -d"$US" -f3)
+	size=$(echo "$a" | cut -d"$US" -f4)
 	z=$WORK/$aname
 	say "$name: ${cur:-?} -> $tag, downloading $aname ($((size / 1024)) KB)"
 	fetch "$url" "$z" || { fail "$name: download failed"; return 1; }
@@ -236,12 +278,12 @@ update_one() {
 		fi
 	fi
 
-	map_files "$id" "$ST" "$dir" "$layout" > "$WORK/map"
+	map_files "$ST" > "$WORK/map"
 	tpl=$(grep "^template$TAB" "$WORK/map" | head -1 | cut -f2)
 	if [ -n "$tpl" ]; then
-		shortcut_from "$tpl" "$dir" "$id" > "$WORK/shortcut.port"
+		shortcut_from "$tpl" > "$WORK/shortcut.port"
 		to=$(grep -rl "^GameDir=\"$base\"" "$SC" 2>/dev/null | head -1)
-		[ -n "$to" ] || to=$SC/$(field "$id" .category)/$(basename "$tpl")
+		[ -n "$to" ] || to=$SC/$category/$(basename "$tpl")
 		echo "shortcut$TAB$WORK/shortcut.port$TAB${to#$SD/}" >> "$WORK/map"
 	fi
 
@@ -299,12 +341,15 @@ update_one() {
 }
 
 cmd_update() {
+	scan
 	if [ $# -gt 0 ]; then
-		for id in "$@"; do update_one "$id" byname; done
+		repos=
+		for i in "$@"; do entry "$i" && repos="$repos $repo"; done
+		fetch_releases $repos
+		for i in "$@"; do update_one "$i" byname; done
 	else
-		for id in $(jq -r '.ports[].id' "$CAT"); do
-			installed "$(field "$id" .dir)" "$(field "$id" .layout)" && update_one "$id"
-		done
+		fetch_releases $repos
+		for i in $(cat "$WORK/installed"); do update_one "$i"; done
 	fi
 	# Onion's cached Ports list (rebuilt when the list opens)
 	[ -n "$shortcuts_changed" ] && rm -f "$SC"/Shortcuts_cache*.db
@@ -317,14 +362,14 @@ if ! mkdir "$WORK/lock" 2> /dev/null; then
 	exit 1
 fi
 trap 'rm -rf "$WORK/lock" "$WORK/stage"' EXIT
-rm -f "$WORK"/release_*.json
+rm -f "$WORK"/release_*
 echo "--- $(date) pm.sh $*" >> "$LOG"
 [ -f "$CAT" ] || { fail "no catalog: $CAT"; exit 1; }
 cmd=$1
 [ $# -gt 0 ] && shift
 case "$cmd" in
-check) refresh_catalog; cmd_check ;;
-update) refresh_catalog; cmd_update "$@" ;;
-*) sed -n '2,13s/^# \{0,1\}//p' "$0"; exit 1 ;;
+check) load_catalog; cmd_check ;;
+update) load_catalog; cmd_update "$@" ;;
+*) sed -n '2,16s/^# \{0,1\}//p' "$0"; exit 1 ;;
 esac
 sync

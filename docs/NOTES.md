@@ -31,15 +31,17 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   installed files' md5 in `<game>/.pm_manifest`.
 - `menu.sh`: infoPanel "Checking...", then prompt "Update"/"Cancel" (prompt returns the
   option's index, 255 for B), infoPanel with the result.
-- Tested over SSH: `check` right for all installed entries (98 s — mostly the many `jq` starts;
-  to speed up); dry run of 1.1.3 for Perfect Dark and Super Mario 64: 3 files each
+- Tested over SSH: `check` right for all installed entries: 98 s at first (jq takes ~0.5 s to
+  start on the Miyoo and ran ~180 times), 8.6 s since jq runs once for the catalog and once per
+  release, releases fetched in parallel (wget ~0.8 s each); dry run of 1.1.3 (all 9: 48 s with
+  the downloads): 3 files each
   (`launch.sh`, the new `full_resolution`, our shortcut regenerated with the release's
   `FullResolution=1`), the user's pictures kept. Fixed: release info was cached across runs.
 - PC backup before the first real update: `G:\Emulacja\redriver2-miyoo\backup\20261017-before-pm-1.1.3\miyoo-sdcard.tar`
   (md5 20bc3e88431424f1b50aad1b0746dbeb: Shortcuts, the 9 miyoo64 games' `data/`,
   `launch.sh`, `.miyoo64_version`).
-- Next: the owner runs "~Port manager" from the Ports list (1.1.2 -> 1.1.3); then speed
-  (one jq call per entry), install of new ports, curl + CA bundle.
+- Next: the owner runs "~Port manager" from the Ports list (1.1.2 -> 1.1.3); then
+  install of new ports, curl + CA bundle.
 
 ## The owner's card (2026-10-17)
 
