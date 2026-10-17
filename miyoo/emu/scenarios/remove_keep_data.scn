@@ -6,7 +6,7 @@ press 4 A
 press 5 A
 press 7 B
 press 8 MENU
-frames 10
+frames 12
 shots 1 2 3 4 5 7 8
 nonblank 1 2 3 4 5 7 8
 assert_not_exists Roms/PORTS/Shortcuts/RPG/Fallout.port

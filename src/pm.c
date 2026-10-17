@@ -148,7 +148,7 @@ static int ends_with(const char *s, const char *suf)
 	return sl >= sufl && !strcasecmp(s + sl - sufl, suf);
 }
 
-static int is_elf_file(const char *path)
+static int is_code_file(const char *path)
 {
 	FILE *f = fopen(path, "rb");
 	if (!f)
@@ -156,7 +156,14 @@ static int is_elf_file(const char *path)
 	unsigned char magic[4];
 	size_t n = fread(magic, 1, 4, f);
 	fclose(f);
-	return (n == 4 && magic[0] == 0x7f && magic[1] == 'E' && magic[2] == 'L' && magic[3] == 'F');
+	if (n >= 4 && magic[0] == 0x7f && magic[1] == 'E' && magic[2] == 'L' && magic[3] == 'F')
+		return 1;
+	if (n >= 2 && magic[0] == '#' && magic[1] == '!')
+		return 1;
+	struct stat st;
+	if (stat(path, &st) == 0 && (st.st_mode & 0111))
+		return 1;
+	return 0;
 }
 
 /* finds a shortcut under Shortcuts (any category): by file name, or by its GameDir line */
@@ -216,7 +223,7 @@ static int is_data_file(const Port *p, const char *rel)
 
 	char full[1024];
 	snprintf(full, sizeof full, "%s/%s", gdir(p), rel);
-	if (is_elf_file(full))
+	if (is_code_file(full))
 		return 0;
 
 	/* 1. ROM file */
@@ -270,6 +277,12 @@ static int is_data_file(const Port *p, const char *rel)
 	    !strncasecmp(rel, "sounds/", 7) || !strncasecmp(rel, "movies/", 7) ||
 	    !strncasecmp(rel, "fmv/", 4))
 		return 1;
+
+	/* 7. Documentation and text files are program/release files unless required above */
+	if (ends_with(rel, ".txt") || ends_with(rel, ".md") || ends_with(rel, ".pdf") || ends_with(rel, ".doc") ||
+	    !strncasecmp(base_name(rel), "readme", 6) || !strncasecmp(base_name(rel), "license", 7) ||
+	    !strncasecmp(base_name(rel), "changelog", 9) || !strncasecmp(base_name(rel), "copying", 7))
+		return 0;
 
 	return 0;
 }
@@ -977,6 +990,7 @@ int pm_update(Port *p)
 
 typedef struct {
 	const Port *p;
+	char gdir[600];
 	char **to_delete;
 	int n, cap;
 } CleanCtx;
@@ -990,7 +1004,7 @@ static void clean_cb(const char *rel, void *ctx)
 			c->to_delete = realloc(c->to_delete, c->cap * sizeof *c->to_delete);
 		}
 		char full[1024];
-		snprintf(full, sizeof full, "%s/%s", gdir(c->p), rel);
+		snprintf(full, sizeof full, "%s/%s", c->gdir, rel);
 		c->to_delete[c->n++] = strdup(full);
 	}
 }
@@ -1016,7 +1030,8 @@ static void rmdir_empty_subdirs(const char *dir)
 
 static void clean_port_files(const Port *p)
 {
-	const char *g = gdir(p);
+	char g[600];
+	snprintf(g, sizeof g, "%s/%s", SD, p->dir);
 	char f[700];
 	snprintf(f, sizeof f, "%s/.pm_version", g);
 	unlink(f);
@@ -1025,13 +1040,15 @@ static void clean_port_files(const Port *p)
 	snprintf(f, sizeof f, "%s/.pm_manifest", g);
 	unlink(f);
 
-	CleanCtx ctx = {p, NULL, 0, 0};
+	CleanCtx ctx = {0};
+	ctx.p = p;
+	snprintf(ctx.gdir, sizeof ctx.gdir, "%s", g);
 	walk_files(g, clean_cb, &ctx);
 	for (int i = 0; i < ctx.n; i++) {
-		say("%s: deleting %s", p->name, ctx.to_delete[i] + strlen(SD) + 1);
 		unlink(ctx.to_delete[i]);
 		free(ctx.to_delete[i]);
 	}
+	say("%s: %d program file(s) removed", p->name, ctx.n);
 	free(ctx.to_delete);
 
 	rmdir_empty_subdirs(g);
