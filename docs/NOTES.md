@@ -44,6 +44,13 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 - **Workflow** (`.github/workflows/emu-test.yml`):
   - Automatically runs all 8 scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries). All 8 scenarios passed 100% in CI.
 
+## Details View Primary Action Button (2026-10-17 22:06)
+
+- **`A` as primary action**:
+  - In `details()`, `A` is now always mapped: triggers `do_check(p)` when unchecked or up to date (`A:check`), and triggers `do_update(p)` when an update or install is available (`A:update` / `A:install`).
+  - Seamless `A -> A -> A` workflow: press `A` on the main list to open details, press `A` to check updates, and press `A` on the results page to install.
+  - `Y` remains as a secondary check shortcut (`Y:check`). Footer hints are compact and fit within the screen width without clipping.
+
 ## Download Progress Bar & Auto-scroll (2026-10-17 21:55)
 
 - **Download progress bar**:

@@ -399,31 +399,39 @@ static void details(Port *p)
 		pm_info(p, buf, sizeof buf);
 		Lines t = {0};
 		lines_add(&t, buf);
-		/* Y checks this port's repo; A installs its update once one is known, or the latest
-		 * release over a copy of unknown version, or an uninstalled port; X removes */
+		/* A performs the primary action: check if unchecked/up to date, or update/install;
+		 * Y also checks; X removes */
 		int unknown = p->installed && p->checked && !*p->version;
 		int installable = !p->installed && p->checked && *p->latest;
+		int has_action = (p->update || unknown || installable);
 		int keys[4] = {0}, nk = 0;
+		if (*p->asset || has_action)
+			keys[nk++] = K_A;
 		if (*p->asset)
 			keys[nk++] = K_Y;
-		if (p->update || unknown || installable)
-			keys[nk++] = K_A;
 		if (p->installed)
 			keys[nk++] = K_X;
 		const char *hints =
-			p->installed && p->update ? "Up/Down A:update Y:check X:delete B:back" :
-			p->installed && unknown   ? "Up/Down A:install Y:check X:delete B:back" :
-			p->installed              ? "Up/Down Y:check X:delete B:back" :
-			installable               ? "Up/Down A:install Y:check B:back" :
-			*p->asset                 ? "Up/Down  Y: check  B: back" : "Up/Down  B: back";
+			p->installed && p->update ? "A:update  Y:check  X:delete  B:back" :
+			p->installed && unknown   ? "A:install  Y:check  X:delete  B:back" :
+			installable               ? "A:install  Y:check  B:back" :
+			p->installed && *p->asset ? "A:check  X:delete  B:back" :
+			*p->asset                 ? "A:check  B:back" :
+			p->installed              ? "X:delete  B:back" : "B:back";
 		int k = view(p->name, &t, hints, keys);
 		lines_free(&t);
-		if (k == K_Y) {
+		if (k == K_A) {
+			if (has_action)
+				do_update(p);
+			else if (*p->asset) {
+				if (do_check(p) == K_A)
+					do_update(p);
+			}
+		}
+		else if (k == K_Y && *p->asset) {
 			if (do_check(p) == K_A)
 				do_update(p);
 		}
-		else if (k == K_A)
-			do_update(p);
 		else if (k == K_X && p->installed) {
 			char q1[256];
 			snprintf(q1, sizeof q1, "Remove %s?\n\nThis will remove the port and its shortcut.", p->name);
