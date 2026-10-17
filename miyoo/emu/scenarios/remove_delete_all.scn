@@ -5,9 +5,10 @@ press 3 A
 press 4 X
 press 5 A
 press 6 B
-press 7 B
-frames 7
-shots 1 2 3 4 5 6 7
-nonblank 1 2 3 4 5 6 7
+press 8 B
+press 9 MENU
+frames 11
+shots 1 2 3 4 5 6 8 9
+nonblank 1 2 3 4 5 6 8 9
 assert_not_exists Roms/PORTS/Shortcuts/Arcade/SkiFree.port
 assert_not_exists Roms/PORTS/Games/SkiFree
