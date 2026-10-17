@@ -29,8 +29,14 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   working files in `/mnt/SDCARD/.pm_work`, backups in `Backups/PortManager/`, log in
   `PortManager/log.txt`; version in `<game>/.pm_version` (also `.miyoo64_version` when there),
   installed files' md5 in `<game>/.pm_manifest`.
-- `menu.sh`: infoPanel "Checking...", then prompt "Update"/"Cancel" (prompt returns the
-  option's index, 255 for B), infoPanel with the result.
+- `menu.sh` (owner, 2026-10-17: nothing checked at start, the installed ports listed, update
+  checks for installed ports only, the whole catalog on request): opens offline with a prompt
+  list "Check for updates", "All ports in the catalog", then the installed ports (`pm.sh
+  list`, ~1 s); a port opens its details and game-file instructions (`pm.sh info`); "Check
+  for updates" runs `pm.sh check` (network, catalog refreshed) and offers "Update all" or one
+  port; "All ports" lists the catalog (`pm.sh all`) with status. Onion's `prompt` takes up to
+  100 items, `-s <index>` preselects, returns the index (255 for B); `infoPanel` messages are
+  cut at 255 characters, so longer texts go in several panels (A: next, B: stop).
 - Tested over SSH: `check` right for all installed entries: 98 s at first (jq takes ~0.5 s to
   start on the Miyoo and ran ~180 times), 8.6 s since jq runs once for the catalog and once per
   release, releases fetched in parallel (wget ~0.8 s each); dry run of 1.1.3 (all 9: 48 s with

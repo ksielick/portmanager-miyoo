@@ -3,9 +3,13 @@
 # catalog.json, downloading each one from its author's GitHub release. Everything stays in
 # Onion's Ports list (Roms/PORTS/Games, Roms/PORTS/Shortcuts/<Category>, Roms/PORTS/Imgs),
 # never App/. Docs: https://github.com/ksielick/portmaster-miyoo
+#   pm.sh list             installed ports, "id<TAB>label" (no network)
+#   pm.sh all              every port in the catalog, "id<TAB>label" (no network)
+#   pm.sh info <id>        a port's details and how to add its game files (no network)
 #   pm.sh check            installed ports: version, latest release, missing game data
 #   pm.sh update [id...]   installed ports with a newer release (all, or the ids given;
 #                          an id given by name is updated even when its version is unknown)
+# check and update first refresh catalog.json from GitHub; list, all and info use the copy.
 # PM_DRY=1: update only says what it would do. PM_SD: the card (default /mnt/SDCARD).
 # PM_CATALOG: a catalog file to use as is (default: catalog.json here, refreshed from GitHub).
 # Rules: only files from the release are written; the player's files (game data, saves,
@@ -37,10 +41,11 @@ fetch() {
 	return 1
 }
 
-# the catalog (refreshed from GitHub unless PM_CATALOG is set) as catalog.tsv: one line per
-# port, fields separated by \037, lists joined by |
+# load_catalog [refresh]: the catalog (with refresh: first fetched from GitHub, unless
+# PM_CATALOG is set) as catalog.tsv: one line per port, fields separated by \037, lists
+# joined by |
 load_catalog() {
-	if [ -z "$PM_CATALOG" ]; then
+	if [ -n "$1" ] && [ -z "$PM_CATALOG" ]; then
 		if fetch "$CAT_URL" "$WORK/catalog.json" && ! cmp -s "$WORK/catalog.json" "$CAT"; then
 			cp "$WORK/catalog.json" "$CAT"
 			NEWCAT=1
@@ -155,6 +160,50 @@ cmd_check() {
 		miss=$(data_missing)
 		[ -n "$miss" ] && say "MISSING $id $name: $(echo "$miss" | tr '\n' ';' | sed 's/;$//; s/;/; /g')"
 	done
+}
+
+cmd_list() {
+	for i in $(ids); do
+		entry "$i"
+		installed || continue
+		v=$(version_of)
+		m=$(data_missing)
+		echo "$id$TAB$name  ${v:-(version unknown)}${m:+  - game files missing}"
+	done | sort -f -t"$TAB" -k2
+}
+
+cmd_all() {
+	for i in $(ids); do
+		entry "$i"
+		if installed; then
+			v=$(version_of)
+			s="installed ${v:-(version unknown)}"
+		elif [ -z "$asset" ]; then
+			s="no release yet"
+		else
+			s="not installed"
+		fi
+		echo "$id$TAB$category: $name - $s"
+	done | sort -f -t"$TAB" -k2
+}
+
+cmd_info() {
+	entry "$1" || { echo "$1: not in the catalog"; return 1; }
+	echo "$name ($category)"
+	if installed; then
+		v=$(version_of)
+		echo "Installed: ${v:-version unknown}, in $dir"
+		m=$(data_missing)
+		if [ -n "$m" ]; then
+			echo "Game files missing: $(echo "$m" | tr '\n' ';' | sed 's/;$//; s/;/; /g')"
+		else
+			echo "Game files: OK"
+		fi
+	else
+		echo "Not installed (would go to $dir)"
+	fi
+	if [ -n "$asset" ]; then echo "From: github.com/$repo"; else echo "From: github.com/$repo (no releases yet)"; fi
+	jq -r --arg id "$1" '.ports[] | select(.id == $id) | .get // empty' "$CAT"
 }
 
 # map_files <stage> > map: one "kind<TAB>source<TAB>destination" line per file to install
@@ -368,8 +417,11 @@ echo "--- $(date) pm.sh $*" >> "$LOG"
 cmd=$1
 [ $# -gt 0 ] && shift
 case "$cmd" in
-check) load_catalog; cmd_check ;;
-update) load_catalog; cmd_update "$@" ;;
-*) sed -n '2,16s/^# \{0,1\}//p' "$0"; exit 1 ;;
+list) load_catalog; cmd_list ;;
+all) load_catalog; cmd_all ;;
+info) load_catalog; cmd_info "$1" ;;
+check) load_catalog refresh; cmd_check ;;
+update) load_catalog refresh; cmd_update "$@" ;;
+*) sed -n '2,20s/^# \{0,1\}//p' "$0"; exit 1 ;;
 esac
 sync
