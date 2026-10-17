@@ -115,17 +115,24 @@ static void lines_free(Lines *t)
 	memset(t, 0, sizeof *t);
 }
 
-static void draw_lines(const Lines *t, int top)
+static void draw_lines_limit(const Lines *t, int top, int max_rows)
 {
-	for (int r = 0; r < TEXT_ROWS && top + r < t->n; r++)
+	for (int r = 0; r < max_rows && top + r < t->n; r++)
 		gfx_text(16, TOPH + 8 + r * (CW + 6), t->l[top + r], COLS, C_TEXT);
-	scrollbar(top, TEXT_ROWS, t->n, TOPH + 8, TEXT_ROWS * (CW + 6));
+	scrollbar(top, max_rows, t->n, TOPH + 8, max_rows * (CW + 6));
 }
 
-/* a scrollable page; returns the key that closed it (B, or one of `keys`, 0-terminated) */
-static int view(const char *title, const Lines *t, const char *hints, const int *keys)
+static void draw_lines(const Lines *t, int top)
 {
-	int top = 0, last = t->n > TEXT_ROWS ? t->n - TEXT_ROWS : 0;
+	draw_lines_limit(t, top, TEXT_ROWS);
+}
+
+/* a scrollable page; returns the key that closed it (B, or one of `keys`, 0-terminated).
+ * If start_top < 0, starts scrolled all the way to the bottom. */
+static int view_at(const char *title, const Lines *t, const char *hints, const int *keys, int start_top)
+{
+	int last = t->n > TEXT_ROWS ? t->n - TEXT_ROWS : 0;
+	int top = (start_top < 0 || start_top > last) ? last : start_top;
 	for (;;) {
 		header(title, NULL);
 		draw_lines(t, top);
@@ -146,16 +153,59 @@ static int view(const char *title, const Lines *t, const char *hints, const int 
 	}
 }
 
+static int view(const char *title, const Lines *t, const char *hints, const int *keys)
+{
+	return view_at(title, t, hints, keys, 0);
+}
+
 /* --- the progress page: pm's log lines appear as they come --- */
 
 static Lines progress;
 static const char *progress_title;
+static long dl_current = 0, dl_total = 0;
+static int dl_active = 0;
+
+static void draw_progress_bar(long cur, long total)
+{
+	int bx = 16;
+	int by = 388;
+	int bw = SCR_W - 32; /* 608 px */
+	int bh = 14;
+
+	gfx_fill(bx, by, bw, bh, C_BAR);
+	gfx_fill(bx + 1, by + 1, bw - 2, bh - 2, C_SEL);
+
+	int fw = 0;
+	if (total > 0) {
+		fw = (int)((double)cur / total * (bw - 4));
+		if (fw < 0) fw = 0;
+		if (fw > bw - 4) fw = bw - 4;
+	}
+	if (fw > 0)
+		gfx_fill(bx + 2, by + 2, fw, bh - 4, C_GOOD);
+
+	char info[64];
+	if (total > 0) {
+		int pct = (int)((double)cur / total * 100.0);
+		if (pct > 100) pct = 100;
+		double cur_mb = (double)cur / (1024.0 * 1024.0);
+		double tot_mb = (double)total / (1024.0 * 1024.0);
+		snprintf(info, sizeof info, "%3d%%  %.1f / %.1f MB", pct, cur_mb, tot_mb);
+	} else {
+		double cur_mb = (double)cur / (1024.0 * 1024.0);
+		snprintf(info, sizeof info, "      %.1f MB", cur_mb);
+	}
+	gfx_text(bx, by + bh + 4, info, COLS, C_TEXT);
+}
 
 static void progress_draw(const char *hints)
 {
-	int top = progress.n > TEXT_ROWS ? progress.n - TEXT_ROWS : 0;
+	int rows = dl_active ? (TEXT_ROWS - 2) : TEXT_ROWS;
+	int top = progress.n > rows ? progress.n - rows : 0;
 	header(progress_title, NULL);
-	draw_lines(&progress, top);
+	draw_lines_limit(&progress, top, rows);
+	if (dl_active)
+		draw_progress_bar(dl_current, dl_total);
 	footer(hints);
 	gfx_flip();
 }
@@ -165,7 +215,20 @@ static void progress_sink(const char *line)
 	/* lines meant for the log only */
 	if (!strncmp(line, "NONET ", 6) || !strncmp(line, "ERROR ", 6) || !strncmp(line, "--- ", 4))
 		return;
+	dl_active = 0;
 	lines_add(&progress, line);
+	progress_draw("Please wait...");
+}
+
+static void download_progress(long current, long total)
+{
+	if (total > 0 && current < total) {
+		dl_current = current;
+		dl_total = total;
+		dl_active = 1;
+	} else {
+		dl_active = 0;
+	}
 	progress_draw("Please wait...");
 }
 
@@ -173,7 +236,9 @@ static void progress_begin(const char *title)
 {
 	lines_free(&progress);
 	progress_title = title;
+	dl_active = 0;
 	log_sink = progress_sink;
+	on_download_progress = download_progress;
 	progress_draw("Please wait...");
 }
 
@@ -181,7 +246,9 @@ static void progress_begin(const char *title)
 static int progress_end(const char *hints, const int *keys)
 {
 	log_sink = NULL;
-	int k = view(progress_title, &progress, hints ? hints : "Up/Down  B: back", keys);
+	on_download_progress = NULL;
+	dl_active = 0;
+	int k = view_at(progress_title, &progress, hints ? hints : "Up/Down  B: back", keys, -1);
 	lines_free(&progress);
 	return k;
 }

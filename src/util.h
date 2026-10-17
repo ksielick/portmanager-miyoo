@@ -31,8 +31,12 @@ int run_wait(int pid);
 /* Onion's wget, or PM_SD/.tmp_update/bin/wget, or "wget" from PATH */
 const char *wget_bin(void);
 
-/* fetch <url> to <file> with Onion's wget (HTTPS); nothing left behind on failure */
-int fetch(const char *url, const char *file);
+/* fetch <url> to <file> with Onion's wget (HTTPS); nothing left behind on failure.
+ * If total_bytes > 0, download progress is reported to on_download_progress */
+int fetch(const char *url, const char *file, long total_bytes);
+
+typedef void (*progress_cb)(long current_bytes, long total_bytes);
+extern progress_cb on_download_progress;
 
 /* "a/b/c" -> "c" (static buffer) */
 const char *base_name(const char *path);

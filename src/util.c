@@ -273,19 +273,50 @@ const char *wget_bin(void)
 	return "wget";
 }
 
-int fetch(const char *url, const char *file)
+progress_cb on_download_progress = NULL;
+
+int fetch(const char *url, const char *file, long total_bytes)
 {
 	char part[1100], errlog[1100];
 	snprintf(part, sizeof part, "%s.part", file);
 	snprintf(errlog, sizeof errlog, "%s.err", file);
+	const char *to = total_bytes > 0 ? "60" : "15";
 	for (int attempt = 0; attempt < 2; attempt++) {
 		unlink(part);
-		const char *argv[] = {wget_bin(), "-q", "-T", "15", "-O", part, url, NULL};
-		if (run(argv, errlog) == 0 && file_size(part) > 0 && rename(part, file) == 0) {
+		const char *argv[] = {wget_bin(), "-q", "-T", to, "-O", part, url, NULL};
+		int pid = run_bg(argv, errlog);
+		if (pid < 0)
+			continue;
+		int status = -1;
+		long last_bytes = -1;
+		while (1) {
+			int st;
+			pid_t res = waitpid(pid, &st, WNOHANG);
+			if (res == pid) {
+				status = WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+				break;
+			}
+			if (res < 0) {
+				status = -1;
+				break;
+			}
+			long cur = file_size(part);
+			if (cur >= 0 && cur != last_bytes) {
+				last_bytes = cur;
+				if (on_download_progress && (total_bytes > 0 || cur > 0))
+					on_download_progress(cur, total_bytes);
+			}
+			usleep(60000); /* 60 ms */
+		}
+		if (status == 0 && file_size(part) > 0 && rename(part, file) == 0) {
+			if (on_download_progress && total_bytes > 0)
+				on_download_progress(total_bytes, total_bytes);
 			unlink(errlog);
 			return 0;
 		}
 	}
+	if (on_download_progress)
+		on_download_progress(0, 0);
 	unlink(part);
 	return -1;
 }

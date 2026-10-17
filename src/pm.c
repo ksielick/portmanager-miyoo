@@ -472,7 +472,7 @@ static int net_check(int needed)
 	}
 	char rl[400];
 	snprintf(rl, sizeof rl, "%s/rate_limit.json", WORK);
-	if (fetch("https://api.github.com/rate_limit", rl)) {
+	if (fetch("https://api.github.com/rate_limit", rl, 0)) {
 		snprintf(pm_error, sizeof pm_error, "The internet works, but GitHub doesn't answer. Try again later.");
 		return -1;
 	}
@@ -537,7 +537,7 @@ static void fetch_releases(char **repos, int n)
 		char url[300];
 		snprintf(url, sizeof url, API "%s/releases/latest", repos[i]);
 		if (!(run_wait(pids[i]) == 0 && file_size(part[i]) > 0 && rename(part[i], f[i]) == 0))
-			fetch(url, f[i]);
+			fetch(url, f[i], 0);
 		unlink(part[i]);
 		char *text = read_file(f[i], NULL);
 		cJSON *j = text ? cJSON_Parse(text) : NULL;
@@ -564,7 +564,7 @@ static int refresh_catalog(void)
 {
 	char f[400];
 	snprintf(f, sizeof f, "%s/catalog.json", WORK);
-	if (fetch(CAT_URL, f))
+	if (fetch(CAT_URL, f, 0))
 		return -1;
 	if (same_file(f, CAT))
 		return 0;
@@ -831,7 +831,8 @@ int pm_update(Port *p)
 
 	say("%s: %s -> %s, downloading %s (%d KB)", p->name, *p->version ? p->version : "?", tag, aname,
 		cJSON_IsNumber(size) ? size->valueint / 1024 : 0);
-	if (!cJSON_IsString(url) || fetch(url->valuestring, zip))
+	long total_bytes = cJSON_IsNumber(size) ? (long)size->valuedouble : 0;
+	if (!cJSON_IsString(url) || fetch(url->valuestring, zip, total_bytes))
 		return fail("%s: download failed", p->name);
 	if (cJSON_IsString(digest) && !strncmp(digest->valuestring, "sha256:", 7)) {
 		char h[65];

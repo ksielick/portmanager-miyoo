@@ -44,6 +44,16 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 - **Workflow** (`.github/workflows/emu-test.yml`):
   - Automatically runs all 8 scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries). All 8 scenarios passed 100% in CI.
 
+## Download Progress Bar & Auto-scroll (2026-10-17 21:55)
+
+- **Download progress bar**:
+  - `src/util.c`: `fetch()` now accepts `total_bytes` and runs `wget` in the background with `run_bg()`, polling `file_size(part)` every 60ms with non-blocking `waitpid(..., WNOHANG)`.
+  - `src/main.c`: `download_progress()` callback displays a graphical progress bar (`C_SEL` container, `C_GOOD` fill) above the footer, with percentage and MB downloaded (`XXX%  X.X / X.X MB`).
+  - Progress bar smoothly updates at 60ms intervals without freezing the screen.
+- **Auto-scroll to bottom**:
+  - `progress_draw()` maintains `top = progress.n > rows ? progress.n - rows : 0` so new messages automatically scroll into view.
+  - `view_at()` supports `start_top = -1` (used by `progress_end()`), so when checking or updating finishes, the view starts scrolled all the way to the bottom displaying the final status (e.g. "Done: 1 updated.") without manual scrolling.
+
 ## Check Progress Clarity & Tools (2026-10-17 21:50)
 
 - **Muted `scan: %d/%d` from UI**: `pm_scan()` now logs `--- scan: %d/%d ports installed` so it only writes to `log.txt` and is filtered out by `progress_sink()`.
