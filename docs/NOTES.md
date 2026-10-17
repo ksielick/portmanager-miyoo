@@ -21,22 +21,30 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 ## The program (first version, 2026-10-17)
 
 - `onion/` mirrors the card: `Roms/PORTS/Games/PortManager/` (`pm.sh`, `menu.sh`, plus
-  `catalog.json` copied from the repo root) and `Roms/PORTS/Shortcuts/~Port manager.miyoocmd`
-  (the entry at the top of the Ports list; Onion runs `.miyoocmd` files as scripts). Deployed
-  by copying these over SMB.
+  `catalog.json` copied from the repo root) and `Roms/PORTS/Shortcuts/~Port manager/~Refresh
+  list.miyoocmd` (Onion runs `.miyoocmd` files as scripts; it builds the rest of the menu
+  folder). Deployed by copying these over SMB, then `menu.sh build`.
 - `pm.sh check` / `pm.sh update [id...]` (`PM_DRY=1` = plan only); refreshes `catalog.json`
   from raw.githubusercontent.com on each run (so push catalog changes before testing);
   working files in `/mnt/SDCARD/.pm_work`, backups in `Backups/PortManager/`, log in
   `PortManager/log.txt`; version in `<game>/.pm_version` (also `.miyoo64_version` when there),
   installed files' md5 in `<game>/.pm_manifest`.
-- `menu.sh` (owner, 2026-10-17: nothing checked at start, the installed ports listed, update
-  checks for installed ports only, the whole catalog on request): opens offline with a prompt
-  list "Check for updates", "All ports in the catalog", then the installed ports (`pm.sh
-  list`, ~1 s); a port opens its details and game-file instructions (`pm.sh info`); "Check
-  for updates" runs `pm.sh check` (network, catalog refreshed) and offers "Update all" or one
-  port; "All ports" lists the catalog (`pm.sh all`) with status. Onion's `prompt` takes up to
-  100 items, `-s <index>` preselects, returns the index (255 for B); `infoPanel` messages are
-  cut at 255 characters, so longer texts go in several panels (A: next, B: stop).
+- The menu (owner, 2026-10-17: nothing checked at start, the installed ports listed, update
+  checks for installed ports only, the whole catalog on request) is **a folder in Onion's
+  Ports list**, `Shortcuts/~Port manager/`, built by `menu.sh build` (no network, ~4 s): one
+  `.miyoocmd` per installed port, "<Name> (<version>)", which shows its details and
+  game-file instructions (`pm.sh info`); `~Check for updates` (`pm.sh check`, network,
+  catalog refreshed; afterwards `~Update all (N)` and `~Update <Name> <old> to <new>` appear,
+  choosing one is the confirmation); `~Refresh list`; the subfolder `~All ports in the
+  catalog` ("<Category> - <Name> (status)"). MainUI does the browsing and B; file names
+  can't hold `: / \ * ? " < > |` (FAT). After a rebuild the `*_cache*.db` list caches go.
+- Why not a list dialog: Onion's `prompt` on this card **always exits with 136 (signal 8,
+  SIGFPE)** — tested over SSH with MainUI paused (`kill -STOP`) and keys sent by Onion's
+  `sendkeys <code> <value>` (A=57, B=29, Down=108): A, Down+A, B, with/without `-m`, 2 or 19
+  items: all 136, so the choice can't be read (the first menu then opened an empty entry and
+  B couldn't leave it). Careful with such tests: a run that hangs leaves MainUI stopped
+  (`kill -CONT` it) and keys possibly held (`sendkeys 57 0 29 0 108 0`). `infoPanel`
+  messages are cut at 255 characters, so longer texts go in several panels.
 - Tested over SSH: `check` right for all installed entries: 98 s at first (jq takes ~0.5 s to
   start on the Miyoo and ran ~180 times), 8.6 s since jq runs once for the catalog and once per
   release, releases fetched in parallel (wget ~0.8 s each); dry run of 1.1.3 (all 9: 48 s with
