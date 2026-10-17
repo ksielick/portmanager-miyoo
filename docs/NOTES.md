@@ -27,7 +27,7 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 - **qemu-arm + emu_shim.c** ported from `dethrace-miyoo` into `miyoo/emu/`:
   - `src/gfx.c`: `gfx_flip()` now issues `ioctl(fb, FBIOPAN_DISPLAY, &var)` so `emu_shim.c` counts frames and can capture screenshots / dispatch input.
   - `src/util.c` and `src/pm.c`: `wget_bin()` dynamically resolves `wget` from `$PM_SD/.tmp_update/bin/wget`, `/mnt/SDCARD/.tmp_update/bin/wget`, or system `PATH`; `net_check` accepts `eth0` or `$PM_SD` when `wlan0` is not present (CI / emulator).
-  - `src/build.sh`: supports `EMU=1` to compile `build/miyoo_emu/portmaster_emu` with `emu_shim.c`, `-Wl,--wrap=open,--wrap=open64,--wrap=ioctl,--wrap=read`, `-lm -lpthread`.
+  - `src/build.sh`: uses `-D_FILE_OFFSET_BITS=64` so `readdir()` handles 64-bit inodes from 64-bit Linux hosts under `qemu-arm` without failing with `EOVERFLOW`. Supports `EMU=1` to compile `build/miyoo_emu/portmaster_emu` with `emu_shim.c`, `-Wl,--wrap=open,--wrap=open64,--wrap=ioctl,--wrap=read`, `-lm -lpthread`.
   - `emu_shim.c`: intercepts `read` on `/dev/input/event0` so when all scripted events are processed and the UI is idle waiting for input, it terminates cleanly (`_exit(0)`).
 - **Mock SD card template** (`miyoo/emu/test_sd/`):
   - `.tmp_update/bin/`: host-forwarding wrappers for `wget`, `timeout` (translating `-t` flag for GNU coreutils), `nslookup`, `7z`.
