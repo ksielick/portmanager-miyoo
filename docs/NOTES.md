@@ -38,6 +38,14 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   choosing one is the confirmation); `~Refresh list`; the subfolder `~All ports in the
   catalog` ("<Category> - <Name> (status)"). MainUI does the browsing and B; file names
   can't hold `: / \ * ? " < > |` (FAT). After a rebuild the `*_cache*.db` list caches go.
+- Network test before check/update (`net_check`, ~1 s; owner asked for it after a "no
+  connection?" list during an internet outage): Wi-Fi address on wlan0 (`ip -4 addr`), DNS
+  (`timeout -t 5 nslookup`, once more on failure — the home router's DNS drops out now and
+  then; without the timeout one lookup took 26 s), GitHub's `rate_limit` (free; 60 requests
+  an hour without a token, each check takes one per repo = 7 now). One sentence comes back
+  as `NONET <why>` and the menu shows only that. Release fetches are retried once, wget times
+  out after 15 s. A run killed mid-way (e.g. its output cut by `head`) used to leave
+  `.pm_work/lock`; the lock now holds the pid and a dead one is taken over.
 - Why not a list dialog: Onion's `prompt` on this card **always exits with 136 (signal 8,
   SIGFPE)** — tested over SSH with MainUI paused (`kill -STOP`) and keys sent by Onion's
   `sendkeys <code> <value>` (A=57, B=29, Down=108): A, Down+A, B, with/without `-m`, 2 or 19

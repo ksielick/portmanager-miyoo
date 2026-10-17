@@ -90,7 +90,9 @@ check)
 	grep '^UPDATE ' /tmp/pm_check.txt > "$UPDATES"
 	build
 	unbusy
-	if grep -q '^ERROR' /tmp/pm_check.txt; then
+	if grep -q '^NONET ' /tmp/pm_check.txt; then
+		{ echo "Can't check for updates:"; grep '^NONET ' /tmp/pm_check.txt | cut -d' ' -f2-; } > /tmp/pm_msg.txt
+	elif grep -q '^ERROR' /tmp/pm_check.txt; then
 		{ echo "Can't check:"; grep '^ERROR' /tmp/pm_check.txt | head -3 | cut -d' ' -f3-; echo "Is Wi-Fi on?"; } > /tmp/pm_msg.txt
 	elif [ -s "$UPDATES" ]; then
 		{ echo "Updates:"; cut -d' ' -f3- "$UPDATES"; echo "Choose ~Update all or one ~Update entry in the list."; } > /tmp/pm_msg.txt
@@ -108,7 +110,7 @@ update)
 	[ -f "$UPDATES" ] && grep -vwFf /tmp/pm_done.txt "$UPDATES" > "$UPDATES.new"; mv -f "$UPDATES.new" "$UPDATES" 2>/dev/null
 	build
 	unbusy
-	grep -E ' -> .*replaced|^ERROR|kept your|^backup' /tmp/pm_update.txt > /tmp/pm_msg.txt
+	grep -E ' -> .*replaced|^ERROR|^NONET|kept your|^backup' /tmp/pm_update.txt | sed 's/^NONET /Can'"'"'t update: /' > /tmp/pm_msg.txt
 	[ -s /tmp/pm_msg.txt ] || echo "Nothing was updated." > /tmp/pm_msg.txt
 	show "$T" /tmp/pm_msg.txt ;;
 *)

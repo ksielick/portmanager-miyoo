@@ -36,7 +36,7 @@ fail() { say "ERROR $*"; }
 # fetch <url> <file>: nothing is left behind on failure
 fetch() {
 	rm -f "$2.part"
-	wget -q -T 30 -O "$2.part" "$1" 2>> "$LOG" && [ -s "$2.part" ] && mv "$2.part" "$2" && return 0
+	wget -q -T 15 -O "$2.part" "$1" 2>> "$LOG" && [ -s "$2.part" ] && mv "$2.part" "$2" && return 0
 	rm -f "$2.part"
 	return 1
 }
@@ -87,6 +87,27 @@ installed() {
 	[ "$layout" = app-to-ports ] && [ -f "$SD/App/$base/launch.sh" ]
 }
 
+# net_check <requests needed>: says why GitHub can't be used now (Wi-Fi, internet, GitHub,
+# its 60 requests/hour limit for us without a token), or nothing. rate_limit itself is free.
+net_check() {
+	ip -4 addr show wlan0 2> /dev/null | grep -q 'inet ' ||
+		{ echo "Wi-Fi is off or not connected."; return 1; }
+	{ timeout -t 5 nslookup api.github.com || timeout -t 5 nslookup api.github.com; } > /dev/null 2>&1 ||
+		{ echo "Wi-Fi is connected, but there's no internet (github.com can't be found)."; return 1; }
+	fetch https://api.github.com/rate_limit "$WORK/rate_limit.json" ||
+		{ echo "The internet works, but GitHub doesn't answer. Try again later."; return 1; }
+	set -- $(sed -n 's/.*"core":{"limit":[0-9]*,"remaining":\([0-9]*\),"reset":\([0-9]*\).*/\1 \2/p' "$WORK/rate_limit.json") "$1"
+	if [ $# -eq 3 ] && [ "$1" -lt "$3" ]; then
+		echo "GitHub's limit of 60 checks an hour is used up ($1 left, $3 needed). Try again in $((($2 - $(date +%s)) / 60 + 1)) min."
+		return 1
+	fi
+}
+
+# online <repos...>: stops the command with "NONET <why>" when GitHub can't be used
+online() {
+	why=$(net_check "$(echo "$@" | tr ' ' '\n' | grep . | sort -u | wc -l)") || { say "NONET $why"; exit 1; }
+}
+
 rel_file() { echo "$WORK/release_$(echo "$1" | tr '/' '_').tsv"; }
 
 # fetch_releases <repo>...: each repo's latest release, in parallel, as release_<repo>.tsv:
@@ -95,7 +116,8 @@ fetch_releases() {
 	for r in $(echo "$@" | tr ' ' '\n' | sort -u); do
 		(
 			f=$(rel_file "$r")
-			fetch "https://api.github.com/repos/$r/releases/latest" "$f.json" &&
+			u=https://api.github.com/repos/$r/releases/latest
+			{ fetch "$u" "$f.json" || fetch "$u" "$f.json"; } &&
 				jq -r '.tag_name, (.assets[] | [.name, .browser_download_url, (.digest // ""),
 					(.size | tostring)] | join("\u001f"))' "$f.json" > "$f.part" 2>> "$LOG" &&
 				[ -s "$f.part" ] && mv "$f.part" "$f"
@@ -138,6 +160,7 @@ scan() {
 
 cmd_check() {
 	scan
+	online $repos
 	fetch_releases $repos
 	for i in $(cat "$WORK/installed"); do
 		entry "$i"
@@ -395,9 +418,11 @@ cmd_update() {
 	if [ $# -gt 0 ]; then
 		repos=
 		for i in "$@"; do entry "$i" && repos="$repos $repo"; done
+		online $repos
 		fetch_releases $repos
 		for i in "$@"; do update_one "$i" byname; done
 	else
+		online $repos
 		fetch_releases $repos
 		for i in $(cat "$WORK/installed"); do update_one "$i"; done
 	fi
@@ -407,11 +432,17 @@ cmd_update() {
 }
 
 mkdir -p "$WORK"
+# one run at a time; a lock whose process is gone (killed run) is taken over
 if ! mkdir "$WORK/lock" 2> /dev/null; then
-	echo "ERROR the port manager is already running (or $WORK/lock was left behind)"
-	exit 1
+	p=$(cat "$WORK/lock/pid" 2> /dev/null)
+	if [ -n "$p" ] && kill -0 "$p" 2> /dev/null; then
+		echo "ERROR the port manager is already running"
+		exit 1
+	fi
 fi
+echo $$ > "$WORK/lock/pid"
 trap 'rm -rf "$WORK/lock" "$WORK/stage"' EXIT
+trap 'exit 1' INT TERM HUP PIPE
 rm -f "$WORK"/release_*
 echo "--- $(date) pm.sh $*" >> "$LOG"
 [ -f "$CAT" ] || { fail "no catalog: $CAT"; exit 1; }
