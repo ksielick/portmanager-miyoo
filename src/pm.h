@@ -7,7 +7,7 @@
 
 typedef struct {
 	char *id, *name, *dir, *layout, *repo, *asset, *category, *get;
-	char *rom, *sc_gdf, *sc_run;
+	char *rom, *rom_name, *sc_gdf, *sc_run;
 	char **skip, **backup, **required, **required_any;
 	int nskip, nbackup, nrequired, nrequired_any;
 

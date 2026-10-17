@@ -54,12 +54,27 @@ void gfx_fill(int x, int y, int w, int h, uint32_t c)
 
 int gfx_text(int x, int y, const char *s, int max, uint32_t c)
 {
-	for (int n = 0; s[n] && n < max; n++, x += CW) {
-		const char *g = font8x8_basic[(unsigned char)s[n] & 127];
+	int n = 0;
+	for (int i = 0; s[i] && n < max; i++) {
+		unsigned char ch = (unsigned char)s[i];
+		if (ch >= 1 && ch <= 6) {
+			switch (ch) {
+			case 1: c = C_TEXT; break;
+			case 2: c = C_DIM; break;
+			case 3: c = C_ACCENT; break;
+			case 4: c = C_GOOD; break;
+			case 5: c = C_WARN; break;
+			case 6: c = C_BAD; break;
+			}
+			continue;
+		}
+		const char *g = font8x8_basic[ch & 127];
 		for (int yy = 0; yy < 8; yy++)
 			for (int xx = 0; xx < 8; xx++)
 				if (g[yy] >> xx & 1)
 					gfx_fill(x + xx * FONT_SCALE, y + yy * FONT_SCALE, FONT_SCALE, FONT_SCALE, c);
+		x += CW;
+		n++;
 	}
 	return x;
 }

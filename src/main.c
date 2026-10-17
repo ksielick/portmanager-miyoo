@@ -26,7 +26,9 @@ static void header(const char *title, const char *right)
 {
 	gfx_fill(0, 0, SCR_W, SCR_H, C_BG);
 	gfx_fill(0, 0, SCR_W, TOPH, C_BAR);
-	gfx_text(16, (TOPH - CW) / 2, title, COLS, C_TEXT);
+	int max_left = (right && *right) ? COLS - (int)strlen(right) - 2 : COLS;
+	if (max_left < 10) max_left = 10;
+	gfx_text(16, (TOPH - CW) / 2, title, max_left, C_TEXT);
 	if (right && *right)
 		gfx_text(SCR_W - 16 - (int)strlen(right) * CW, (TOPH - CW) / 2, right, 12, C_DIM);
 }
@@ -79,25 +81,37 @@ static void lines_add(Lines *t, const char *text)
 		size_t len = e ? (size_t)(e - p) : strlen(p), i = 0;
 		if (len == 0)
 			lines_push(t, "", 0);
+		char cur_clr = 0;
 		while (i < len) {
 			while (i < len && p[i] == ' ')
 				i++;
 			if (i >= len)
 				break;
-			size_t start = i, last = 0, j = i;
-			while (j < len && j - start < COLS) {
+			size_t start = i, last = 0, j = i, cols = 0;
+			while (j < len && cols < COLS) {
+				unsigned char ch = (unsigned char)p[j];
+				if (ch >= 1 && ch <= 6) {
+					cur_clr = (char)ch;
+					j++;
+					continue;
+				}
 				if (p[j] == ' ')
 					last = j;
+				cols++;
 				j++;
 			}
-			if (j >= len) {
-				lines_push(t, p + start, len - start);
-				break;
+			size_t end = (j >= len) ? len : (last > start ? last : j);
+			if (cur_clr && ((unsigned char)p[start] < 1 || (unsigned char)p[start] > 6)) {
+				char tmp[COLS * 2 + 16];
+				tmp[0] = cur_clr;
+				size_t chunk_len = end - start;
+				if (chunk_len > sizeof(tmp) - 2)
+					chunk_len = sizeof(tmp) - 2;
+				memcpy(tmp + 1, p + start, chunk_len);
+				lines_push(t, tmp, chunk_len + 1);
+			} else {
+				lines_push(t, p + start, end - start);
 			}
-			if (p[j] == ' ')
-				last = j;
-			size_t end = last > start ? last : j;
-			lines_push(t, p + start, end - start);
 			i = end;
 		}
 		if (!e)
@@ -129,12 +143,12 @@ static void draw_lines(const Lines *t, int top)
 
 /* a scrollable page; returns the key that closed it (B, or one of `keys`, 0-terminated).
  * If start_top < 0, starts scrolled all the way to the bottom. */
-static int view_at(const char *title, const Lines *t, const char *hints, const int *keys, int start_top)
+static int view_at(const char *title, const char *right, const Lines *t, const char *hints, const int *keys, int start_top)
 {
 	int last = t->n > TEXT_ROWS ? t->n - TEXT_ROWS : 0;
 	int top = (start_top < 0 || start_top > last) ? last : start_top;
 	for (;;) {
-		header(title, NULL);
+		header(title, right);
 		draw_lines(t, top);
 		footer(hints);
 		gfx_flip();
@@ -153,9 +167,9 @@ static int view_at(const char *title, const Lines *t, const char *hints, const i
 	}
 }
 
-static int view(const char *title, const Lines *t, const char *hints, const int *keys)
+static int view(const char *title, const char *right, const Lines *t, const char *hints, const int *keys)
 {
-	return view_at(title, t, hints, keys, 0);
+	return view_at(title, right, t, hints, keys, 0);
 }
 
 /* --- the progress page: pm's log lines appear as they come --- */
@@ -258,7 +272,7 @@ static int progress_end(const char *hints, const int *keys)
 	log_sink = NULL;
 	on_download_progress = NULL;
 	dl_active = 0;
-	int k = view_at(progress_title, &progress, hints ? hints : "Up/Down  B: back", keys, -1);
+	int k = view_at(progress_title, NULL, &progress, hints ? hints : "Up/Down  B: back", keys, -1);
 	lines_free(&progress);
 	return k;
 }
@@ -445,7 +459,7 @@ static void details(Port *p)
 			p->installed && *p->asset ? "A:check  X:delete  B:back" :
 			*p->asset                 ? "A:check  B:back" :
 			p->installed              ? "X:delete  B:back" : "B:back";
-		int k = view(p->name, &t, hints, keys);
+		int k = view(p->name, p->category, &t, hints, keys);
 		lines_free(&t);
 		if (k == K_A) {
 			if (has_action)
@@ -623,14 +637,14 @@ int main(void)
 	if (pm_init()) {
 		Lines t = {0};
 		lines_add(&t, "The catalog (catalog.json next to this program) is missing or broken.");
-		view("Port manager", &t, "B: exit", 0);
+		view("Port manager", NULL, &t, "B: exit", 0);
 		lines_free(&t);
 		r = 1;
 	}
 	else if (pm_lock()) {
 		Lines t = {0};
 		lines_add(&t, "The port manager is already running.");
-		view("Port manager", &t, "B: exit", 0);
+		view("Port manager", NULL, &t, "B: exit", 0);
 		lines_free(&t);
 		r = 1;
 	}

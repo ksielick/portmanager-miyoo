@@ -1,4 +1,5 @@
 #include "pm.h"
+#include "gfx.h"
 
 #include <dirent.h>
 #include <fnmatch.h>
@@ -74,6 +75,7 @@ static int load_catalog(const char *path)
 		p->category = str(e, "category");
 		p->get = str(e, "get");
 		p->rom = str(rom, "dest");
+		p->rom_name = str(rom, "name");
 		p->sc_gdf = str(sc, "GameDataFile");
 		p->sc_run = str(sc, "run");
 		p->skip = strs(e, "skip", &p->nskip);
@@ -1149,25 +1151,57 @@ int pm_uninstall(Port *p, int keep_data)
 
 void pm_info(const Port *p, char *buf, int size)
 {
-	int n = snprintf(buf, size, "%s (%s)\n", p->name, p->category);
+	int n = 0;
+
+	/* 1. Installed */
 	if (p->installed) {
-		n += snprintf(buf + n, size - n, "Installed: %s, in %s\n", *p->version ? p->version : "version unknown", p->dir);
-		if (p->checked && *p->asset)
-			n += snprintf(buf + n, size - n, "Latest: %s%s\n", p->latest,
-				!*p->version ? " - yours unknown (installed without the port manager); A installs it" :
-				p->update ? " - update available" : " - up to date");
-		else if (*p->asset)
-			n += snprintf(buf + n, size - n, "Latest: not checked (Y)\n");
-		n += snprintf(buf + n, size - n, *p->missing ? "Game files missing: %s\n" : "Game files: OK\n", p->missing);
+		if (*p->version)
+			n += snprintf(buf + n, size - n, CLR_DIM "Installed: " CLR_TEXT "%s\n", p->version);
+		else
+			n += snprintf(buf + n, size - n, CLR_DIM "Installed: " CLR_WARN "version unknown\n");
+	} else {
+		n += snprintf(buf + n, size - n, CLR_DIM "Installed: " CLR_DIM "not installed\n");
 	}
-	else {
-		n += snprintf(buf + n, size - n, "Not installed (would go to %s)\n", p->dir);
-		if (p->checked && *p->asset)
-			n += snprintf(buf + n, size - n, "Latest: %s\n", p->latest);
-		if (dir_has_files(gdir(p)))
-			n += snprintf(buf + n, size - n, *p->missing ? "Game files missing: %s\n" : "Game files: OK\n", p->missing);
+
+	/* 2. Latest */
+	if (!p->checked) {
+		n += snprintf(buf + n, size - n, CLR_DIM "Latest:    " CLR_WARN "not checked (A:check)\n");
+	} else if (*p->asset) {
+		if (p->installed) {
+			if (!*p->version)
+				n += snprintf(buf + n, size - n, CLR_DIM "Latest:    " CLR_WARN "%s (yours unknown)\n", p->latest);
+			else if (p->update)
+				n += snprintf(buf + n, size - n, CLR_DIM "Latest:    " CLR_WARN "%s (update available)\n", p->latest);
+			else
+				n += snprintf(buf + n, size - n, CLR_DIM "Latest:    " CLR_GOOD "%s (up to date)\n", p->latest);
+		} else {
+			n += snprintf(buf + n, size - n, CLR_DIM "Latest:    " CLR_GOOD "%s\n", p->latest);
+		}
+	} else {
+		n += snprintf(buf + n, size - n, CLR_DIM "Latest:    " CLR_DIM "no releases yet\n");
 	}
-	n += snprintf(buf + n, size - n, "From: github.com/%s%s\n\n", p->repo, *p->asset ? "" : " (no releases yet)");
-	if (*p->get)
-		snprintf(buf + n, size - n, "%s\n", p->get);
+
+	/* 3. Location on card */
+	n += snprintf(buf + n, size - n, CLR_DIM "Location:  " CLR_TEXT "%s\n", p->dir);
+
+	/* 4. ROM / Game files / Source */
+	if (p->rom_name && *p->rom_name)
+		n += snprintf(buf + n, size - n, CLR_DIM "ROM:       " CLR_TEXT "%s\n", p->rom_name);
+
+	if (*p->missing) {
+		n += snprintf(buf + n, size - n, CLR_DIM "Files:     " CLR_WARN "missing (%s)\n", p->missing);
+	} else if (p->installed || dir_has_files(gdir(p))) {
+		n += snprintf(buf + n, size - n, CLR_DIM "Files:     " CLR_GOOD "OK\n");
+	} else if (p->nrequired == 0 && (!p->rom || !*p->rom)) {
+		n += snprintf(buf + n, size - n, CLR_DIM "Files:     " CLR_GOOD "OK (none required)\n");
+	} else {
+		n += snprintf(buf + n, size - n, CLR_DIM "Files:     " CLR_DIM "not found yet\n");
+	}
+
+	n += snprintf(buf + n, size - n, CLR_DIM "Source:    " CLR_TEXT "github.com/%s%s\n",
+		p->repo, *p->asset ? "" : " (no releases yet)");
+
+	/* 5. Instructions */
+	if (p->get && *p->get)
+		n += snprintf(buf + n, size - n, "\n" CLR_DIM "Instructions:\n" CLR_TEXT "%s\n", p->get);
 }

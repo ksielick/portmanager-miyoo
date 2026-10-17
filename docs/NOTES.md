@@ -139,11 +139,16 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   `catalog.json`, `log.txt`) and `Roms/PORTS/Shortcuts/~Port manager.miyoocmd` -> its
   launch.sh. Work files and lock as before (`/mnt/SDCARD/.pm_work`).
 - Screens: the installed ports by name (status on the right: version, `old>new` in purple,
-  "files missing" in amber); A details (scrollable; Y there checks only that port's repo,
-  no catalog refresh, any port incl. not installed; A there updates when there's an update),
-  X all ports (by category, headings), Y check for updates (progress page with the log lines
-  as they come), Start update all (asks first), B back/exit. Held buttons repeat only for
-  Up/Down/Left/Right/L1/R1.
+  "files missing" in amber); A details (scrollable; category displayed in the header on the
+  right; color-coded layout: Installed version, Latest version highlighted with amber for
+  not-checked/updates or green for up-to-date, Location on SD card, ROM name & Game files status,
+  Source repo, and Instructions; A checks when unchecked or updates/installs when available;
+  Y also checks; X uninstalls), X all ports (by category, headings), Y check for updates
+  (progress page with ASCII progress bar and download size in MB/KB), Start update all,
+  B back/exit. Held buttons repeat only for Up/Down/Left/Right/L1/R1.
+- Inline color escapes in `gfx.h` / `gfx.c` (`CLR_TEXT`, `CLR_DIM`, `CLR_ACCENT`, `CLR_GOOD`,
+  `CLR_WARN`, `CLR_BAD` as `\x01`..`\x06`), handled transparently by `gfx_text()` without
+  advancing visible column counters; `lines_add()` tracks active color across word-wrapped lines.
 - Manifest: sha256 now (the shell version's md5 manifests were never written: only dry runs).
 - Deployed (above) but never run yet. No host compiler or WSL on the PC. To deploy again:
   copy `onion/App/PortManager` (+ the root `catalog.json`) and the .miyoocmd over SSH

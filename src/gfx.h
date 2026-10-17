@@ -21,6 +21,14 @@
 #define C_WARN 0xE0B050
 #define C_BAD 0xE06C6C
 
+/* inline text colour escapes */
+#define CLR_TEXT   "\x01" /* white C_TEXT */
+#define CLR_DIM    "\x02" /* gray C_DIM */
+#define CLR_ACCENT "\x03" /* purple C_ACCENT */
+#define CLR_GOOD   "\x04" /* green C_GOOD */
+#define CLR_WARN   "\x05" /* amber C_WARN */
+#define CLR_BAD    "\x06" /* red C_BAD */
+
 /* the Miyoo's buttons as evdev key codes */
 enum {
 	K_UP = 103, K_DOWN = 108, K_LEFT = 105, K_RIGHT = 106,
