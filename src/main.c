@@ -176,17 +176,15 @@ static int view(const char *title, const char *right, const Lines *t, const char
 
 static Lines progress;
 static const char *progress_title;
-static long dl_current = 0, dl_total = 0;
-static int dl_active = 0;
+static int dl_line_idx = -1;
 
-static void draw_ascii_progress(long cur, long total)
+static void make_ascii_bar(char *buf, size_t size, long cur, long total)
 {
-	char bar[40];
-	char info[40];
-	int bar_width = 24;
-
+	int bar_width = 16;
+	char bar[32];
+	int pct = 0;
 	if (total > 0) {
-		int pct = (int)((double)cur / total * 100.0);
+		pct = (int)((double)cur / total * 100.0);
 		if (pct > 100) pct = 100;
 		if (pct < 0) pct = 0;
 		int fill = (int)((double)cur / total * bar_width);
@@ -204,32 +202,27 @@ static void draw_ascii_progress(long cur, long total)
 				bar[1 + i] = ' ';
 		}
 		bar[1 + bar_width] = ']';
-		snprintf(bar + 2 + bar_width, sizeof bar - (2 + bar_width), " %3d%%", pct);
+		bar[2 + bar_width] = 0;
 
 		double cur_mb = (double)cur / (1024.0 * 1024.0);
 		double tot_mb = (double)total / (1024.0 * 1024.0);
 		if (tot_mb >= 1.0)
-			snprintf(info, sizeof info, "  %.1f / %.1f MB", cur_mb, tot_mb);
+			snprintf(buf, size, CLR_GOOD "%s" CLR_TEXT " %3d%%  %.1f/%.1f MB",
+				bar, pct, cur_mb, tot_mb);
 		else
-			snprintf(info, sizeof info, "  %ld / %ld KB", (cur + 1023) / 1024, (total + 1023) / 1024);
+			snprintf(buf, size, CLR_GOOD "%s" CLR_TEXT " %3d%%  %ld/%ld KB",
+				bar, pct, (cur + 1023) / 1024, (total + 1023) / 1024);
 	} else {
 		double cur_mb = (double)cur / (1024.0 * 1024.0);
-		snprintf(bar, sizeof bar, "[===>                    ]");
-		snprintf(info, sizeof info, "  %.1f MB downloaded", cur_mb);
+		snprintf(buf, size, CLR_GOOD "[===>            ]" CLR_TEXT "  %.1f MB", cur_mb);
 	}
-
-	gfx_text(16, 390, bar, COLS, C_GOOD);
-	gfx_text(16, 414, info, COLS, C_TEXT);
 }
 
 static void progress_draw(const char *hints)
 {
-	int rows = dl_active ? (TEXT_ROWS - 2) : TEXT_ROWS;
-	int top = progress.n > rows ? progress.n - rows : 0;
+	int top = progress.n > TEXT_ROWS ? progress.n - TEXT_ROWS : 0;
 	header(progress_title, NULL);
-	draw_lines_limit(&progress, top, rows);
-	if (dl_active)
-		draw_ascii_progress(dl_current, dl_total);
+	draw_lines_limit(&progress, top, TEXT_ROWS);
 	footer(hints);
 	gfx_flip();
 }
@@ -239,28 +232,36 @@ static void progress_sink(const char *line)
 	/* lines meant for the log only */
 	if (!strncmp(line, "NONET ", 6) || !strncmp(line, "ERROR ", 6) || !strncmp(line, "--- ", 4))
 		return;
-	dl_active = 0;
+	dl_line_idx = -1;
 	lines_add(&progress, line);
 	progress_draw("Please wait...");
 }
 
 static void download_progress(long current, long total)
 {
-	if (total > 0 && current < total) {
-		dl_current = current;
-		dl_total = total;
-		dl_active = 1;
+	if (total <= 0) {
+		dl_line_idx = -1;
+		return;
+	}
+	char s[80];
+	make_ascii_bar(s, sizeof s, current, total);
+	if (dl_line_idx >= 0 && dl_line_idx < progress.n) {
+		free(progress.l[dl_line_idx]);
+		progress.l[dl_line_idx] = strdup(s);
 	} else {
-		dl_active = 0;
+		dl_line_idx = progress.n;
+		lines_push(&progress, s, strlen(s));
 	}
 	progress_draw("Please wait...");
+	if (current >= total)
+		dl_line_idx = -1;
 }
 
 static void progress_begin(const char *title)
 {
 	lines_free(&progress);
 	progress_title = title;
-	dl_active = 0;
+	dl_line_idx = -1;
 	log_sink = progress_sink;
 	on_download_progress = download_progress;
 	progress_draw("Please wait...");
@@ -271,7 +272,7 @@ static int progress_end(const char *hints, const int *keys)
 {
 	log_sink = NULL;
 	on_download_progress = NULL;
-	dl_active = 0;
+	dl_line_idx = -1;
 	int k = view_at(progress_title, NULL, &progress, hints ? hints : "Up/Down  B: back", keys, -1);
 	lines_free(&progress);
 	return k;

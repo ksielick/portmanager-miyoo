@@ -851,9 +851,15 @@ int pm_update(Port *p)
 	snprintf(basebuf, sizeof basebuf, "%s", base);
 	base = basebuf;
 
-	say("%s: %s -> %s, downloading %s (%d KB)", p->name, *p->version ? p->version : "?", tag, aname,
-		cJSON_IsNumber(size) ? size->valueint / 1024 : 0);
 	long total_bytes = cJSON_IsNumber(size) ? (long)size->valuedouble : 0;
+	if (total_bytes >= 1024 * 1024)
+		say("%s: %s -> %s, downloading %s (%.1f MB)", p->name, *p->version ? p->version : "?", tag, aname,
+			(double)total_bytes / (1024.0 * 1024.0));
+	else if (total_bytes > 0)
+		say("%s: %s -> %s, downloading %s (%ld KB)", p->name, *p->version ? p->version : "?", tag, aname,
+			(total_bytes + 1023) / 1024);
+	else
+		say("%s: %s -> %s, downloading %s", p->name, *p->version ? p->version : "?", tag, aname);
 	if (!cJSON_IsString(url) || fetch(url->valuestring, zip, total_bytes))
 		return fail("%s: download failed", p->name);
 	if (cJSON_IsString(digest) && !strncmp(digest->valuestring, "sha256:", 7)) {

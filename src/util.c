@@ -287,8 +287,10 @@ int fetch(const char *url, const char *file, long total_bytes)
 		int pid = run_bg(argv, errlog);
 		if (pid < 0)
 			continue;
+		if (on_download_progress && total_bytes > 0)
+			on_download_progress(0, total_bytes);
 		int status = -1;
-		long last_bytes = -1;
+		long last_bytes = 0;
 		while (1) {
 			int st;
 			pid_t res = waitpid(pid, &st, WNOHANG);

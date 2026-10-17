@@ -144,8 +144,11 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   not-checked/updates or green for up-to-date, Location on SD card, ROM name & Game files status,
   Source repo, and Instructions; A checks when unchecked or updates/installs when available;
   Y also checks; X uninstalls), X all ports (by category, headings), Y check for updates
-  (progress page with ASCII progress bar and download size in MB/KB), Start update all,
+  (progress page with download size in MB/KB), Start update all,
   B back/exit. Held buttons repeat only for Up/Down/Left/Right/L1/R1.
+- Inline download progress bar: during asset downloads, an ASCII progress bar (`[====>  ]  54%  1.0/1.8 MB`)
+  appears as an inline line directly under the download announcement in the log, updates in place,
+  and stays permanently at 100% in the scrollable log history after download completes.
 - Inline color escapes in `gfx.h` / `gfx.c` (`CLR_TEXT`, `CLR_DIM`, `CLR_ACCENT`, `CLR_GOOD`,
   `CLR_WARN`, `CLR_BAD` as `\x01`..`\x06`), handled transparently by `gfx_text()` without
   advancing visible column counters; `lines_add()` tracks active color across word-wrapped lines.
