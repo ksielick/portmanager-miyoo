@@ -208,6 +208,10 @@ static void do_check(const Port *only)
 		char s[300];
 		if (only->update)
 			snprintf(s, sizeof s, "%s: %s -> %s\n\nB: back, then A: update.", only->name, only->version, only->latest);
+		else if (only->installed && !*only->version)
+			snprintf(s, sizeof s, "%s: the latest release is %s. The installed version is unknown "
+				"(installed without the port manager).\n\nB: back, then A: install %s over it.",
+				only->name, only->latest, only->latest);
 		else if (only->installed)
 			snprintf(s, sizeof s, "%s is up to date (%s).", only->name, only->latest);
 		else
@@ -259,7 +263,10 @@ static void do_update(Port *only)
 {
 	int n = only ? 1 : count_updates();
 	char q[300];
-	if (only)
+	if (only && !*only->version)
+		snprintf(q, sizeof q, "Install %s %s over the installed copy (version unknown)?\n\n"
+			"Files it replaces and its saves are backed up first.", only->name, only->latest);
+	else if (only)
 		snprintf(q, sizeof q, "Update %s from %s to %s?\n\nIts saves are backed up first.", only->name, only->version, only->latest);
 	else
 		snprintf(q, sizeof q, "Update %d port(s)?\n\nTheir saves are backed up first.", n);
@@ -297,13 +304,16 @@ static void details(Port *p)
 		pm_info(p, buf, sizeof buf);
 		Lines t = {0};
 		lines_add(&t, buf);
-		/* Y checks this port's repo; A installs its update once one is known */
+		/* Y checks this port's repo; A installs its update once one is known, or the latest
+		 * release over a copy of unknown version (installed without the port manager) */
+		int unknown = p->installed && p->checked && !*p->version;
 		int keys[3] = {0}, nk = 0;
 		if (*p->asset)
 			keys[nk++] = K_Y;
-		if (p->update)
+		if (p->update || unknown)
 			keys[nk++] = K_A;
 		const char *hints = p->update ? "Up/Down A:update Y:check B:back" :
+			unknown ? "Up/Down A:install Y:check B:back" :
 			*p->asset ? "Up/Down  Y: check  B: back" : "Up/Down  B: back";
 		int k = view(p->name, &t, hints, keys);
 		lines_free(&t);

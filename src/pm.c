@@ -836,7 +836,9 @@ void pm_info(const Port *p, char *buf, int size)
 	if (p->installed) {
 		n += snprintf(buf + n, size - n, "Installed: %s, in %s\n", *p->version ? p->version : "version unknown", p->dir);
 		if (p->checked && *p->asset)
-			n += snprintf(buf + n, size - n, "Latest: %s%s\n", p->latest, p->update ? " - update available" : " - up to date");
+			n += snprintf(buf + n, size - n, "Latest: %s%s\n", p->latest,
+				!*p->version ? " - yours unknown (installed without the port manager); A installs it" :
+				p->update ? " - update available" : " - up to date");
 		else if (*p->asset)
 			n += snprintf(buf + n, size - n, "Latest: not checked (Y)\n");
 		n += snprintf(buf + n, size - n, *p->missing ? "Game files missing: %s\n" : "Game files: OK\n", p->missing);
