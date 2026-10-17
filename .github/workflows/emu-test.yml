@@ -45,7 +45,7 @@ jobs:
       - name: Test in emulator
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 miyoo/emu/miyoo-emu.py run ${{ github.event.inputs.scenarios }} --bin build/miyoo_emu/portmaster_emu
+        run: python3 miyoo/emu/miyoo-emu.py run ${{ github.event.inputs.scenarios }} --bin build/miyoo_emu/portmanager_emu
 
       - name: Upload results and device binary
         if: always()
@@ -54,5 +54,5 @@ jobs:
           name: miyoo-emu-results
           path: |
             miyoo/emu/results/**
-            onion/App/PortManager/portmaster
+            onion/App/PortManager/portmanager
           retention-days: 14

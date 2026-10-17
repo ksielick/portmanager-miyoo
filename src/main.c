@@ -1,6 +1,6 @@
-/* Port manager for OnionOS on the Miyoo Mini (portmaster-miyoo): lists the installed ports
+/* Port manager for OnionOS on the Miyoo Mini (portmanager-miyoo): lists the installed ports
  * and the whole catalog, shows a port's details and how to add its game files, checks the
- * authors' GitHub releases and installs updates. https://github.com/ksielick/portmaster-miyoo
+ * authors' GitHub releases and installs updates. https://github.com/ksielick/portmanager-miyoo
  * Buttons: Up/Down choose, L1/R1 a page, A details, X all ports, Y check for updates,
  * Start update all, B back (exit on the first screen). */
 #include <stdio.h>

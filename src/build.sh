@@ -38,14 +38,14 @@ SRCS="main.c gfx.c util.c pm.c vendor/cJSON.c vendor/miniz.c vendor/sha256.c"
 CFLAGS="-O2 -Wall -Wextra -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -static -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
 
 if [ "$EMU" = "1" ]; then
-	OUT=${OUT:-../build/miyoo_emu/portmaster_emu}
+	OUT=${OUT:-../build/miyoo_emu/portmanager_emu}
 	mkdir -p "$(dirname "$OUT")"
 	"$CC" $CFLAGS -Wl,--wrap=open,--wrap=open64,--wrap=ioctl,--wrap=read \
 		-o "$OUT" $SRCS ../miyoo/emu/emu_shim.c -lm -lpthread &&
 	cp -f ../catalog.json "$(dirname "$OUT")/catalog.json" &&
 	ls -l "$OUT"
 else
-	OUT=${OUT:-../onion/App/PortManager/portmaster}
+	OUT=${OUT:-../onion/App/PortManager/portmanager}
 	mkdir -p "$(dirname "$OUT")"
 	"$CC" $CFLAGS -o "$OUT" $SRCS &&
 	"$STRIP" "$OUT" &&

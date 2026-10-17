@@ -1,3 +1,3 @@
 #!/bin/sh
-# Port manager (portmaster-miyoo): installs and updates ports from their authors' releases
+# Port manager (portmanager-miyoo): installs and updates ports from their authors' releases
 exec sh /mnt/SDCARD/App/PortManager/launch.sh

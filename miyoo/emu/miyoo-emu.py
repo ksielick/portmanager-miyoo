@@ -218,7 +218,7 @@ def run_scenario(sc, opts):
                 pass
 
     # 2. Copy binary and catalog into app_dir
-    app_bin = os.path.join(app_dir, "portmaster")
+    app_bin = os.path.join(app_dir, "portmanager")
     shutil.copy2(opts.bin, app_bin)
     try:
         os.chmod(app_bin, 0o755)
@@ -368,7 +368,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=["run", "list"])
     ap.add_argument("scenarios", nargs="*")
-    ap.add_argument("--bin", default=os.path.join(REPO, "build", "miyoo_emu", "portmaster_emu"),
+    ap.add_argument("--bin", default=os.path.join(REPO, "build", "miyoo_emu", "portmanager_emu"),
                     help="the emulator build of the port manager")
     ap.add_argument("--out", default=os.path.join(HERE, "results"))
     ap.add_argument("--qemu", default=None, help="qemu-arm (default: from PATH)")

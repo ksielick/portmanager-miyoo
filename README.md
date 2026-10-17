@@ -1,6 +1,6 @@
-# portmaster-miyoo
+# portmanager-miyoo
 
-Test repo for a port manager on the Miyoo Mini (OnionOS), PortMaster-like: it lists, installs
+Test repo for a port manager on the Miyoo Mini (OnionOS): it lists, installs
 and updates native Miyoo ports, downloading each one from its author's GitHub releases. No
 port zips are hosted here, only a catalog of where they are released (`catalog.json`).
 

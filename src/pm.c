@@ -19,7 +19,7 @@
 #include "vendor/cJSON.h"
 #include "vendor/miniz.h"
 
-#define CAT_URL "https://raw.githubusercontent.com/ksielick/portmaster-miyoo/main/catalog.json"
+#define CAT_URL "https://raw.githubusercontent.com/ksielick/portmanager-miyoo/main/catalog.json"
 #define API "https://api.github.com/repos/"
 
 Port *ports;
@@ -712,7 +712,7 @@ static int shortcut_from(const Port *p, const char *tpl, const char *out)
 	char *dot = strstr(name, ".port");
 	if (dot)
 		*dot = 0;
-	int n = snprintf(text, sizeof text, "#!/bin/sh\n# %s: runs %s/%s. Written by Port manager (portmaster-miyoo).\n",
+	int n = snprintf(text, sizeof text, "#!/bin/sh\n# %s: runs %s/%s. Written by Port manager (portmanager-miyoo).\n",
 		name, p->dir, p->sc_run);
 	for (char *line = strtok(t, "\n"); line; line = strtok(NULL, "\n")) {
 		size_t k = 0;
