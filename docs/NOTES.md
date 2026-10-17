@@ -56,6 +56,10 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   - Pixel-perfect OnionOS squircle icon created with "PM" letters, cyan accent outline, and "PORT MANAGER" pill in `onion/App/PortManager/icon.png` (referenced in `config.json`) and `onion/Roms/PORTS/Imgs/~Port manager.png`.
 - **Miyoo64 Exact ROM Requirements**:
   - Catalog updated with exact names, USA release versions, and SHA-1 checksums for all 10 supported N64 ports (Diddy Kong Racing, F-Zero X, GoldenEye 007, Ocarina of Time, Paper Mario, Perfect Dark, Star Fox 64, Super Mario 64, Super Smash Bros, Mario Kart 64).
+- **Plants vs. Zombies (Fnava1/pvz-portable-miyoo-)**:
+  - Added to catalog under `Strategy` category. Release `v1.0.1` (`PvZ_MiyooMiniPlus_v1.0.1.zip`).
+  - Layout: `sdcard-root` (`Roms/PORTS/Games/Plants vs. Zombies`, `Roms/PORTS/Shortcuts/Strategy/Plants vs. Zombies.port`, `Roms/PORTS/Imgs/Plants vs. Zombies.png`).
+  - Required data: `main.pak` (or converted `main_mmp.pak`). Saves backed up in `userdata/`.
 
 ## The C program (2026-10-17, on the owner's card, works)
 

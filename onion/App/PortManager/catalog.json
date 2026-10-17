@@ -520,6 +520,25 @@
         }
       },
       "get": "Your own Driver 2 (USA) PlayStation discs, both, as CHD or BIN/CUE in Roms/PS (where Onion's PlayStation games go)."
+    },
+    {
+      "id": "pvz",
+      "name": "Plants vs. Zombies",
+      "category": "Strategy",
+      "repo": "Fnava1/pvz-portable-miyoo-",
+      "asset": "^PvZ_MiyooMiniPlus_.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Plants vs. Zombies",
+      "data": {
+        "required_any": [
+          "main.pak",
+          "main_mmp.pak"
+        ]
+      },
+      "backup": [
+        "userdata/"
+      ],
+      "get": "Plants vs. Zombies: GOTY Edition, Steam or EA App version. Copy main.pak from your PC game installation directly into Roms/PORTS/Games/Plants vs. Zombies/. On first launch, the game will automatically optimize assets into main_mmp.pak."
     }
   ]
 }
