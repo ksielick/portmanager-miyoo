@@ -44,6 +44,14 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 - **Workflow** (`.github/workflows/emu-test.yml`):
   - Automatically runs all 8 scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries). All 8 scenarios passed 100% in CI.
 
+## Deployment to Miyoo (2026-10-17 21:25)
+
+- **Backup**: `backup/20261017-before-deploy/portmanager-backup.tar` (618 KB tar of `/mnt/SDCARD/App/PortManager`) and `~Port manager.miyoocmd` backed up on PC before updating.
+- **Deployed files**:
+  - `App/PortManager/`: updated `portmanager` (compiled C binary with uninstall support and portmanager-miyoo repo URL), `launch.sh`, `config.json`, `icon.png` (74x74 OnionOS transparent sticker), `catalog.json` (with PvZ and Zuma Deluxe). Removed old `portmaster` binary.
+  - `Roms/PORTS/Shortcuts/~Port manager.miyoocmd` and `Roms/PORTS/Imgs/~Port manager.png`: updated over SMB.
+  - Cleared `Roms/PORTS/Shortcuts/Shortcuts_cache*.db` to force OnionOS list reload.
+
 ## Port Uninstallation & OnionOS Icon (2026-10-17)
 
 - **Uninstallation (`X` in port details)**:
