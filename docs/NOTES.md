@@ -41,7 +41,12 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 - **Workflow** (`.github/workflows/emu-test.yml`):
   - Automatically runs scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries).
 
-## The C program (2026-10-17, built, not run on the device yet)
+## The C program (2026-10-17, built, on the card, not run yet)
+
+- On the owner's card since 2026-10-17 (commit 26019dd): `App/PortManager/` (portmaster,
+  launch.sh, config.json, catalog.json) and `Roms/PORTS/Shortcuts/~Port manager.miyoocmd`.
+  The shell version is removed from the card (`Games/PortManager`, the `~Port manager/`
+  folder); its log is kept as `App/PortManager/log-shell-version.txt`. Ports cache cleared.
 
 - `src/`: `main.c` (screens), `gfx.c` (fb0 + evdev + font8x8 x2: 38 columns), `pm.c` (the
   logic of the shell version, same rules), `util.c` (files, sha256, wget, run); vendored
