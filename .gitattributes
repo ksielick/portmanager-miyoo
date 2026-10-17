@@ -2,4 +2,4 @@
 *.sh text eol=lf
 *.miyoocmd text eol=lf
 *.json text eol=lf
-onion/Roms/PORTS/Games/PortManager/pmview binary
+onion/App/PortManager/portmaster binary

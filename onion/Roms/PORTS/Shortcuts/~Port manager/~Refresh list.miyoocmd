@@ -1,2 +1,0 @@
-#!/bin/sh
-exec sh "/mnt/SDCARD/Roms/PORTS/Games/PortManager/menu.sh" build

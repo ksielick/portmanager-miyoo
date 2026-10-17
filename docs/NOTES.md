@@ -17,8 +17,34 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 - Ports to cover first: dethrace-miyoo (Carmageddon x2), REDRIVER2, miyoo64, all of
   cacuracaptors' ports; use Producdevity/MiyooMini-Ports as a source.
 - Before changing the card: a **backup on the PC**.
+- **The whole port manager is one C program** (owner, 2026-10-17: "cały w C", not a UI in C
+  over shell scripts). The program itself is an app: **in Onion's Apps** (`App/PortManager`)
+  and as `~Port manager` in the Ports list (owner) — the "never App/" rule is for the ports.
+- Text pages scroll up/down instead of separate panels (owner).
 
-## The program (first version, 2026-10-17)
+## The C program (2026-10-17, built, not run on the device yet)
+
+- `src/`: `main.c` (screens), `gfx.c` (fb0 + evdev + font8x8 x2: 38 columns), `pm.c` (the
+  logic of the shell version, same rules), `util.c` (files, sha256, wget, run); vendored
+  `cJSON` (MIT), `miniz` (MIT, zips), Brad Conte's `sha256` (public domain), `font8x8`
+  (public domain). `src/build.sh` -> `onion/App/PortManager/portmaster` (static, ~550 KB).
+  Only HTTPS goes outside: Onion's `wget` (no TLS library in the program yet); 7z/tar
+  releases also through Onion's tools; nslookup/timeout for the DNS test.
+- On the card: `App/PortManager/` (`portmaster`, `launch.sh`, `config.json` for Apps,
+  `catalog.json`, `log.txt`) and `Roms/PORTS/Shortcuts/~Port manager.miyoocmd` -> its
+  launch.sh. Work files and lock as before (`/mnt/SDCARD/.pm_work`).
+- Screens: the installed ports by name (status on the right: version, `old>new` in purple,
+  "files missing" in amber); A details (scrollable; A there updates when there's an update),
+  X all ports (by category, headings), Y check for updates (progress page with the log lines
+  as they come), Start update all (asks first), B back/exit. Held buttons repeat only for
+  Up/Down/Left/Right/L1/R1.
+- Manifest: sha256 now (the shell version's md5 manifests were never written: only dry runs).
+- Not tested yet (owner, 2026-10-17: "na razie nie korzystaj z miyoo"). No host compiler or WSL
+  on the PC; redriver2-miyoo's emulator tests (`miyoo/emu/`, CI) could run it without the
+  device. To deploy: copy `onion/App/PortManager` (+ catalog.json) and the .miyoocmd, then
+  remove the shell version (`Roms/PORTS/Games/PortManager`, `Shortcuts/~Port manager/`).
+
+## The shell version (first, 2026-10-17; replaced by the C program, still on the card)
 
 - `onion/` mirrors the card: `Roms/PORTS/Games/PortManager/` (`pm.sh`, `menu.sh`, plus
   `catalog.json` copied from the repo root) and `Roms/PORTS/Shortcuts/~Port manager/~Refresh
