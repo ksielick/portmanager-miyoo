@@ -1,6 +1,6 @@
 name: Miyoo emulator tests
 
-# Builds portmaster-miyoo for the Miyoo Mini (Plus) and tests it on an emulated device
+# Builds portmanager-miyoo for the Miyoo Mini (Plus) and tests it on an emulated device
 # (qemu-arm Cortex-A7 + miyoo/emu/emu_shim.c).
 
 on:
