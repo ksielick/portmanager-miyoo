@@ -53,9 +53,6 @@ jobs:
         with:
           name: miyoo-emu-results
           path: |
-            miyoo/emu/results/summary.*
-            miyoo/emu/results/*/log.txt
-            miyoo/emu/results/*/contact.png
-            miyoo/emu/results/*/shots/*.png
+            miyoo/emu/results/**
             onion/App/PortManager/portmaster
           retention-days: 14

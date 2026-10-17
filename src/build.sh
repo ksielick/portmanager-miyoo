@@ -35,7 +35,7 @@ else
 fi
 
 SRCS="main.c gfx.c util.c pm.c vendor/cJSON.c vendor/miniz.c vendor/sha256.c"
-CFLAGS="-O2 -Wall -Wextra -D_GNU_SOURCE -static -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
+CFLAGS="-O2 -Wall -Wextra -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -static -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard"
 
 if [ "$EMU" = "1" ]; then
 	OUT=${OUT:-../build/miyoo_emu/portmaster_emu}

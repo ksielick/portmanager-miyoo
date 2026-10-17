@@ -33,6 +33,10 @@ void say(const char *fmt, ...)
 		fprintf(log_file, "%s\n", line);
 		fflush(log_file);
 	}
+	if (getenv("MIYOO_EMU_DIR")) {
+		fprintf(stderr, "pm: %s\n", line);
+		fflush(stderr);
+	}
 	if (log_sink)
 		log_sink(line);
 }

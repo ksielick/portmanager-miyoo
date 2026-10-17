@@ -191,16 +191,20 @@ static void check_data(Port *p)
 
 void pm_scan(void)
 {
+	int ninst = 0;
 	for (int i = 0; i < nports; i++) {
 		Port *p = &ports[i];
 		p->installed = dir_has_files(gdir(p)) || legacy_app(p);
 		read_version(p);
-		if (p->installed)
+		if (p->installed) {
 			check_data(p);
+			ninst++;
+		}
 		else
 			p->missing[0] = 0;
 		p->update = p->installed && p->checked && *p->version && strcmp(p->version, p->latest);
 	}
+	say("scan: %d/%d ports installed", ninst, nports);
 }
 
 int pm_init(void)
@@ -224,6 +228,7 @@ int pm_init(void)
 	char log[600];
 	snprintf(log, sizeof log, "%s/log.txt", HERE);
 	log_open(log);
+	say("init: SD=%s", SD);
 	if (load_catalog(CAT))
 		return -1;
 	pm_scan();
