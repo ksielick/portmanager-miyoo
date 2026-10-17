@@ -1,3 +1,0 @@
-#!/bin/sh
-# Port manager (portmaster-miyoo): checks and updates the ports from their authors' releases
-exec sh /mnt/SDCARD/Roms/PORTS/Games/PortManager/menu.sh

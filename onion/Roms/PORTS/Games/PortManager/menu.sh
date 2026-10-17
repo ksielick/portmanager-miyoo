@@ -1,12 +1,19 @@
 #!/bin/sh
-# "~Port manager" in Onion's Ports list. Opens with the installed ports, from the catalog on
-# the card and without the network; "Check for updates" (installed ports only) and "All ports
-# in the catalog" are chosen from that list. pm.sh does the work, this shows it with Onion's
-# prompt (a list, returns the chosen index, 255 for B) and infoPanel (255 characters a panel).
+# The port manager's menu, made of Onion's own Ports list: the folder
+# Roms/PORTS/Shortcuts/~Port manager holds one .miyoocmd per installed port (its details and
+# game-file instructions), "~Check for updates", after a check "~Update all" and
+# "~Update <port> <old> to <new>", "~Refresh list", and the folder "~All ports in the catalog".
+# Each entry runs this script; MainUI does the browsing (Onion's `prompt` dies with signal 8
+# on exit on this card, so its choice can't be read). Nothing uses the network except
+# check and update.
+#   menu.sh build | info <id> | check | update [id...]
 D=$(cd "$(dirname "$0")" && pwd)
-PATH=/mnt/SDCARD/.tmp_update/bin:$PATH
+SD=/mnt/SDCARD
+PATH=$SD/.tmp_update/bin:$PATH
 T="Port manager"
 TAB=$(printf '\t')
+F="$SD/Roms/PORTS/Shortcuts/~Port manager"
+UPDATES=$SD/.pm_work/updates.txt
 
 busy() {
 	rm -f /tmp/dismiss_info_panel
@@ -18,7 +25,7 @@ unbusy() {
 	sleep 1
 }
 
-# show <title> <file>: the text in panels of up to ~230 characters (A: next, B: stop)
+# show <title> <file>: the text in panels of up to ~230 characters (B on a panel: stop)
 show() {
 	awk -v max=230 '
 		function out() { if (p != "") print p; p = "" }
@@ -37,74 +44,73 @@ show() {
 		i=$((i + 1))
 		t=$1
 		[ "$n" -gt 1 ] && t="$1 ($i/$n)"
-		infoPanel -t "$t" -m "$page" < /dev/null || break
+		infoPanel -t "$t" -m "$page" < /dev/null
+		[ $? -eq 255 ] && break
 	done < /tmp/pm_pages.txt
 }
 
-port_info() {
-	sh "$D/pm.sh" info "$1" > /tmp/pm_info.txt 2>&1
-	show "$T" /tmp/pm_info.txt
+# entry <folder> <label> <menu.sh arguments>: a .miyoocmd named after the label
+entry() {
+	f=$(echo "$2" | tr '/\\:*?"<>|' '---------')
+	printf '#!/bin/sh\nexec sh "%s/menu.sh" %s\n' "$D" "$3" > "$1/$f.miyoocmd"
 }
 
-check_updates() {
+build() {
+	case "$F" in /mnt/SDCARD/Roms/PORTS/Shortcuts/~Port\ manager) ;; *) echo "bad menu folder: $F"; exit 1 ;; esac
+	sh "$D/pm.sh" list > /tmp/pm_list.txt 2>> /tmp/pm_menu.log
+	sh "$D/pm.sh" all > /tmp/pm_all.txt 2>> /tmp/pm_menu.log
+	rm -rf "$F.new"
+	mkdir -p "$F.new/~All ports in the catalog"
+	while IFS="$TAB" read -r id label; do entry "$F.new" "$label" "info $id"; done < /tmp/pm_list.txt
+	while IFS="$TAB" read -r id label; do entry "$F.new/~All ports in the catalog" "$label" "info $id"; done < /tmp/pm_all.txt
+	entry "$F.new" "~Check for updates" check
+	entry "$F.new" "~Refresh list" build
+	if [ -s "$UPDATES" ]; then
+		entry "$F.new" "~Update all ($(wc -l < "$UPDATES"))" update
+		while read -r _ id rest; do
+			entry "$F.new" "~Update $(echo "$rest" | sed 's/: / /; s/ -> / to /')" "update $id"
+		done < "$UPDATES"
+	fi
+	rm -rf "$F"
+	mv "$F.new" "$F"
+	# Onion's cached lists of these folders
+	rm -f "$SD/Roms/PORTS/Shortcuts/"*_cache*.db
+	sync
+}
+
+case "$1" in
+build)
+	build ;;
+info)
+	sh "$D/pm.sh" info "$2" > /tmp/pm_info.txt 2>&1
+	show "$T" /tmp/pm_info.txt ;;
+check)
 	busy "Checking for updates..."
 	sh "$D/pm.sh" check > /tmp/pm_check.txt 2>&1
+	grep '^UPDATE ' /tmp/pm_check.txt > "$UPDATES"
+	build
 	unbusy
 	if grep -q '^ERROR' /tmp/pm_check.txt; then
 		{ echo "Can't check:"; grep '^ERROR' /tmp/pm_check.txt | head -3 | cut -d' ' -f3-; echo "Is Wi-Fi on?"; } > /tmp/pm_msg.txt
-		show "$T" /tmp/pm_msg.txt
-		return
-	fi
-	grep '^UPDATE ' /tmp/pm_check.txt > /tmp/pm_updates.txt
-	if [ ! -s /tmp/pm_updates.txt ]; then
-		echo "All installed ports are up to date." > /tmp/pm_msg.txt
-		show "$T" /tmp/pm_msg.txt
-		return
-	fi
-	set -- "Update all"
-	while IFS= read -r l; do set -- "$@" "$(echo "$l" | cut -d' ' -f3-)"; done < /tmp/pm_updates.txt
-	prompt -t "$T: updates" "$@"
-	r=$?
-	[ $r -eq 255 ] && return
-	if [ $r -eq 0 ]; then
-		ids=$(cut -d' ' -f2 /tmp/pm_updates.txt)
+	elif [ -s "$UPDATES" ]; then
+		{ echo "Updates:"; cut -d' ' -f3- "$UPDATES"; echo "Choose ~Update all or one ~Update entry in the list."; } > /tmp/pm_msg.txt
 	else
-		ids=$(sed -n "${r}p" /tmp/pm_updates.txt | cut -d' ' -f2)
+		echo "All installed ports are up to date." > /tmp/pm_msg.txt
 	fi
+	show "$T" /tmp/pm_msg.txt ;;
+update)
+	shift
+	[ $# -gt 0 ] || set -- $(cut -d' ' -f2 "$UPDATES" 2>/dev/null)
 	busy "Updating..."
-	sh "$D/pm.sh" update $ids > /tmp/pm_update.txt 2>&1
+	sh "$D/pm.sh" update "$@" > /tmp/pm_update.txt 2>&1
+	# updated ports leave the update list
+	grep '^DONE ' /tmp/pm_update.txt | cut -d' ' -f2 > /tmp/pm_done.txt
+	[ -f "$UPDATES" ] && grep -vwFf /tmp/pm_done.txt "$UPDATES" > "$UPDATES.new"; mv -f "$UPDATES.new" "$UPDATES" 2>/dev/null
+	build
 	unbusy
 	grep -E ' -> .*replaced|^ERROR|kept your|^backup' /tmp/pm_update.txt > /tmp/pm_msg.txt
 	[ -s /tmp/pm_msg.txt ] || echo "Nothing was updated." > /tmp/pm_msg.txt
-	show "$T" /tmp/pm_msg.txt
-}
-
-all_ports() {
-	sh "$D/pm.sh" all > /tmp/pm_all.txt 2>&1
-	asel=0
-	while :; do
-		set --
-		while IFS="$TAB" read -r id label; do set -- "$@" "$label"; done < /tmp/pm_all.txt
-		prompt -t "$T: all ports" -s "$asel" "$@"
-		r=$?
-		[ $r -eq 255 ] && return
-		asel=$r
-		port_info "$(sed -n "$((r + 1))p" /tmp/pm_all.txt | cut -f1)"
-	done
-}
-
-sel=0
-while :; do
-	sh "$D/pm.sh" list > /tmp/pm_list.txt 2>&1
-	set -- "Check for updates" "All ports in the catalog"
-	while IFS="$TAB" read -r id label; do set -- "$@" "$label"; done < /tmp/pm_list.txt
-	prompt -t "$T" -s "$sel" "$@"
-	r=$?
-	[ $r -eq 255 ] && exit 0
-	sel=$r
-	case $r in
-	0) check_updates ;;
-	1) all_ports ;;
-	*) port_info "$(sed -n "$((r - 1))p" /tmp/pm_list.txt | cut -f1)" ;;
-	esac
-done
+	show "$T" /tmp/pm_msg.txt ;;
+*)
+	sed -n '2,9s/^# \{0,1\}//p' "$0" ;;
+esac

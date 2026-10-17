@@ -168,7 +168,7 @@ cmd_list() {
 		installed || continue
 		v=$(version_of)
 		m=$(data_missing)
-		echo "$id$TAB$name  ${v:-(version unknown)}${m:+  - game files missing}"
+		echo "$id$TAB$name (${v:-version unknown}${m:+, game files missing})"
 	done | sort -f -t"$TAB" -k2
 }
 
@@ -177,13 +177,13 @@ cmd_all() {
 		entry "$i"
 		if installed; then
 			v=$(version_of)
-			s="installed ${v:-(version unknown)}"
+			s="installed${v:+ $v}${v:-, version unknown}"
 		elif [ -z "$asset" ]; then
 			s="no release yet"
 		else
 			s="not installed"
 		fi
-		echo "$id$TAB$category: $name - $s"
+		echo "$id$TAB$category - $name ($s)"
 	done | sort -f -t"$TAB" -k2
 }
 
@@ -387,6 +387,7 @@ update_one() {
 	echo "$tag" > "$G/.pm_version"
 	[ -f "$G/.miyoo64_version" ] && echo "$tag" > "$G/.miyoo64_version"
 	say "$name: ${cur:-?} -> $tag, $n file(s) replaced"
+	echo "DONE $id"
 }
 
 cmd_update() {
