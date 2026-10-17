@@ -317,6 +317,7 @@ if ! mkdir "$WORK/lock" 2> /dev/null; then
 	exit 1
 fi
 trap 'rm -rf "$WORK/lock" "$WORK/stage"' EXIT
+rm -f "$WORK"/release_*.json
 echo "--- $(date) pm.sh $*" >> "$LOG"
 [ -f "$CAT" ] || { fail "no catalog: $CAT"; exit 1; }
 cmd=$1
