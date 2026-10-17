@@ -46,6 +46,14 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   as `NONET <why>` and the menu shows only that. Release fetches are retried once, wget times
   out after 15 s. A run killed mid-way (e.g. its output cut by `head`) used to leave
   `.pm_work/lock`; the lock now holds the pid and a dead one is taken over.
+- Texts (port details, check/update results) show in **pmview** (`src/pmview.c`, built by
+  `src/build.sh` with redriver2-miyoo's Arm toolchain, static, 342 KB): one scrollable page
+  (owner: scroll up/down rather than separate panels), drawn straight to fb0's shown page
+  (turned 180°) with font8x8 (public domain) at x2 = 38 columns, 17 lines; Up/Down a line,
+  Left/Right or L1/R1 a page, A/B/Menu closes; scroll bar and "first-last/total". Tested on
+  the device with MainUI paused, keys from `sendkeys` and screenshots by redriver2-miyoo's
+  `miyoo/tools/mshot.sh`. menu.sh falls back to infoPanel panels (42 columns, 5 lines:
+  infoPanel doesn't wrap and keeps 255 characters) when pmview is missing or fails.
 - Why not a list dialog: Onion's `prompt` on this card **always exits with 136 (signal 8,
   SIGFPE)** — tested over SSH with MainUI paused (`kill -STOP`) and keys sent by Onion's
   `sendkeys <code> <value>` (A=57, B=29, Down=108): A, Down+A, B, with/without `-m`, 2 or 19
