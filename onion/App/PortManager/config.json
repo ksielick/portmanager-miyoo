@@ -1,5 +1,5 @@
 {
-  "label": "Port manager",
+  "label": "Port Manager",
   "icon": "icon.png",
   "launch": "launch.sh",
   "description": "Install and update ports from their authors' GitHub releases"

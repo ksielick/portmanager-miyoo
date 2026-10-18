@@ -43,7 +43,40 @@ int pm_update(Port *p);
  * are kept; 0, or -1 with pm_error */
 int pm_uninstall(Port *p, int keep_data);
 
+/* release notes / changelog (from GitHub release body) for a checked port */
+const char *pm_release_notes(const Port *p);
+
 /* a port's details and how to add its game files */
 void pm_info(const Port *p, char *buf, int size);
+
+/* backup management */
+typedef struct {
+	char path[800];
+	char display[192];
+	char tag[64];
+	char date[64];
+	long size;
+	int is_archive;
+} BackupItem;
+
+int pm_list_backups(const Port *p, BackupItem **items, int *n);
+void pm_free_backups(BackupItem *items, int n);
+int pm_restore_backup(Port *p, const BackupItem *b);
+
+/* remote releases */
+typedef struct {
+	char tag[64];
+	char name[128];
+	char asset_name[128];
+	long asset_size;
+	char download_url[512];
+	char api_url[512];
+	char digest[128];
+	char *body;
+} RemoteRelease;
+
+int pm_list_remote_releases(const Port *p, RemoteRelease **items, int *n);
+void pm_free_remote_releases(RemoteRelease *items, int n);
+int pm_install_release(Port *p, const RemoteRelease *rel);
 
 #endif

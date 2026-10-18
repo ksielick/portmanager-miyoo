@@ -37,14 +37,19 @@ if ((Test-Path $BackupTar) -and (Get-Item $BackupTar).Length -gt 1024) {
 Write-Host "[3/5] Updating Roms shortcuts and images..."
 $SmbRoms = "\\$MiyooIP\Roms"
 if (Test-Path $SmbRoms) {
-    Copy-Item -Force "$RepoRoot\onion\Roms\PORTS\Shortcuts\~Port manager.miyoocmd" "$SmbRoms\PORTS\Shortcuts\~Port manager.miyoocmd"
-    Copy-Item -Force "$RepoRoot\onion\Roms\PORTS\Imgs\~Port manager.png" "$SmbRoms\PORTS\Imgs\~Port manager.png"
+    Remove-Item -Force -ErrorAction SilentlyContinue "$SmbRoms\PORTS\Shortcuts\~Port manager.miyoocmd"
+    Remove-Item -Force -ErrorAction SilentlyContinue "$SmbRoms\PORTS\Imgs\~Port manager.png"
+    Copy-Item -Force "$RepoRoot\onion\Roms\PORTS\Shortcuts\~Port Manager.miyoocmd" "$SmbRoms\PORTS\Shortcuts\~Port Manager.miyoocmd"
+    Copy-Item -Force "$RepoRoot\onion\Roms\PORTS\Imgs\~Port Manager.png" "$SmbRoms\PORTS\Imgs\~Port Manager.png"
     Write-Host "      Copied to SMB share: Shortcuts and Imgs." -ForegroundColor Green
 } else {
     Write-Host "      SMB share not accessible, falling back to SSH..."
-    $ScCmd = "SSH_ASKPASS='$AskPass' SSH_ASKPASS_REQUIRE=force DISPLAY=:0 ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 -o LogLevel=ERROR root@$MiyooIP 'cat > `"/mnt/SDCARD/Roms/PORTS/Shortcuts/~Port manager.miyoocmd`"' < '$($RepoRoot.Replace('\', '/'))/onion/Roms/PORTS/Shortcuts/~Port manager.miyoocmd'"
+    $RemoteSc = "/mnt/SDCARD/Roms/PORTS/Shortcuts"
+    $RemoteImgs = "/mnt/SDCARD/Roms/PORTS/Imgs"
+    $RepoUnix = $RepoRoot.Replace('\', '/')
+    $ScCmd = "SSH_ASKPASS='$AskPass' SSH_ASKPASS_REQUIRE=force DISPLAY=:0 ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 -o LogLevel=ERROR root@$MiyooIP `"rm -f '$RemoteSc/~Port manager.miyoocmd' && cat > '$RemoteSc/~Port Manager.miyoocmd'`" < '$RepoUnix/onion/Roms/PORTS/Shortcuts/~Port Manager.miyoocmd'"
     & $GitSh -c $ScCmd
-    $ImgCmd = "SSH_ASKPASS='$AskPass' SSH_ASKPASS_REQUIRE=force DISPLAY=:0 ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 -o LogLevel=ERROR root@$MiyooIP 'cat > `"/mnt/SDCARD/Roms/PORTS/Imgs/~Port manager.png`"' < '$($RepoRoot.Replace('\', '/'))/onion/Roms/PORTS/Imgs/~Port manager.png'"
+    $ImgCmd = "SSH_ASKPASS='$AskPass' SSH_ASKPASS_REQUIRE=force DISPLAY=:0 ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 -o LogLevel=ERROR root@$MiyooIP `"rm -f '$RemoteImgs/~Port manager.png' && cat > '$RemoteImgs/~Port Manager.png'`" < '$RepoUnix/onion/Roms/PORTS/Imgs/~Port Manager.png'"
     & $GitSh -c $ImgCmd
 }
 

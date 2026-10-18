@@ -43,6 +43,7 @@ if [ "$EMU" = "1" ]; then
 	"$CC" $CFLAGS -Wl,--wrap=open,--wrap=open64,--wrap=ioctl,--wrap=read \
 		-o "$OUT" $SRCS ../miyoo/emu/emu_shim.c -lm -lpthread &&
 	cp -f ../catalog.json "$(dirname "$OUT")/catalog.json" &&
+	[ -f ../onion/App/PortManager/cacert.pem ] && cp -f ../onion/App/PortManager/cacert.pem "$(dirname "$OUT")/cacert.pem"
 	ls -l "$OUT"
 else
 	OUT=${OUT:-../onion/App/PortManager/portmanager}

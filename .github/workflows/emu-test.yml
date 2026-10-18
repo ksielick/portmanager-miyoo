@@ -45,7 +45,8 @@ jobs:
       - name: Test in emulator
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 miyoo/emu/miyoo-emu.py run ${{ github.event.inputs.scenarios }} --bin build/miyoo_emu/portmanager_emu
+          SCENARIOS: ${{ github.event.inputs.scenarios }}
+        run: python3 miyoo/emu/miyoo-emu.py run $SCENARIOS --bin build/miyoo_emu/portmanager_emu
 
       - name: Upload results and device binary
         if: always()

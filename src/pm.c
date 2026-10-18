@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <regex.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +30,74 @@ char pm_error[512];
 
 static char SD[256], HERE[512], CAT[600], WORK[300], SC[300], STAMP[32];
 static int shortcuts_changed;
+
+typedef struct {
+	char pattern[128];
+	char token[256];
+} TokenEntry;
+
+static TokenEntry tokens[32];
+static int ntokens;
+
+static void tokens_load(const char *path)
+{
+	char *t = read_file(path, NULL);
+	if (!t)
+		return;
+	for (char *line = strtok(t, "\r\n"); line; line = strtok(NULL, "\r\n")) {
+		while (*line == ' ' || *line == '\t')
+			line++;
+		if (!*line || *line == '#')
+			continue;
+		char *eq = strchr(line, '=');
+		if (eq) {
+			*eq = 0;
+			char *pat = line;
+			char *val = eq + 1;
+			while (*pat && (pat[strlen(pat) - 1] == ' ' || pat[strlen(pat) - 1] == '\t'))
+				pat[strlen(pat) - 1] = 0;
+			while (*val == ' ' || *val == '\t')
+				val++;
+			while (*val && (val[strlen(val) - 1] == ' ' || val[strlen(val) - 1] == '\t'))
+				val[strlen(val) - 1] = 0;
+			if (*pat && *val && ntokens < 32) {
+				snprintf(tokens[ntokens].pattern, sizeof tokens[ntokens].pattern, "%s", pat);
+				snprintf(tokens[ntokens].token, sizeof tokens[ntokens].token, "%s", val);
+				ntokens++;
+			}
+		} else if (ntokens < 32) {
+			/* Single line with token = default wildcard */
+			snprintf(tokens[ntokens].pattern, sizeof tokens[ntokens].pattern, "*");
+			snprintf(tokens[ntokens].token, sizeof tokens[ntokens].token, "%s", line);
+			ntokens++;
+		}
+	}
+	free(t);
+}
+
+static const char *token_for_repo(const char *repo)
+{
+	if (!repo || !*repo || ntokens == 0)
+		return NULL;
+	/* 1. Exact repo match: "owner/repo" */
+	for (int i = 0; i < ntokens; i++)
+		if (!strcasecmp(tokens[i].pattern, repo))
+			return tokens[i].token;
+	/* 2. Owner match: owner wildcard */
+	const char *slash = strchr(repo, '/');
+	if (slash) {
+		char owner_wild[128];
+		snprintf(owner_wild, sizeof owner_wild, "%.*s/*", (int)(slash - repo), repo);
+		for (int i = 0; i < ntokens; i++)
+			if (!strcasecmp(tokens[i].pattern, owner_wild))
+				return tokens[i].token;
+	}
+	/* 3. Global wildcard "*" */
+	for (int i = 0; i < ntokens; i++)
+		if (!strcmp(tokens[i].pattern, "*"))
+			return tokens[i].token;
+	return NULL;
+}
 
 /* --- the catalog --- */
 
@@ -56,6 +125,55 @@ static char **strs(const cJSON *o, const char *key, int *n)
 	return r;
 }
 
+static int is_safe_name(const char *s)
+{
+	if (!s || !*s)
+		return 0;
+	if (strstr(s, "..") || strchr(s, '/') || strchr(s, '\\') || strchr(s, '\r') || strchr(s, '\n'))
+		return 0;
+	return 1;
+}
+
+static int is_safe_rel_path(const char *s)
+{
+	if (!s || !*s)
+		return 0;
+	if (s[0] == '/' || s[0] == '\\' || strstr(s, "..") || strchr(s, '\\') || strchr(s, '\r') || strchr(s, '\n'))
+		return 0;
+	return 1;
+}
+
+static int validate_port(const Port *p)
+{
+	if (!is_safe_name(p->id) || !p->name || !*p->name)
+		return 0;
+	if (strstr(p->name, "..") || strchr(p->name, '/') || strchr(p->name, '\\'))
+		return 0;
+	if (*p->category && (!is_safe_name(p->category)))
+		return 0;
+	if (strncmp(p->dir, "Roms/PORTS/Games/", 17) != 0)
+		return 0;
+	if (strstr(p->dir, "..") || strchr(p->dir, '\\') || strlen(p->dir) <= 17)
+		return 0;
+	if (*p->rom && !is_safe_rel_path(p->rom))
+		return 0;
+	if (*p->sc_run && !is_safe_rel_path(p->sc_run))
+		return 0;
+	for (int i = 0; i < p->nbackup; i++)
+		if (!is_safe_rel_path(p->backup[i]))
+			return 0;
+	for (int i = 0; i < p->nrequired; i++)
+		if (!is_safe_rel_path(p->required[i]))
+			return 0;
+	for (int i = 0; i < p->nrequired_any; i++)
+		if (!is_safe_rel_path(p->required_any[i]))
+			return 0;
+	for (int i = 0; i < p->nbuilt; i++)
+		if (!is_safe_rel_path(p->built[i]))
+			return 0;
+	return 1;
+}
+
 static int load_catalog(const char *path)
 {
 	char *text = read_file(path, NULL);
@@ -69,7 +187,7 @@ static int load_catalog(const char *path)
 	ports = calloc(cJSON_GetArraySize(list), sizeof *ports);
 	nports = 0;
 	cJSON_ArrayForEach(e, list) {
-		Port *p = &ports[nports++];
+		Port *p = &ports[nports];
 		const cJSON *data = cJSON_GetObjectItemCaseSensitive(e, "data");
 		const cJSON *rom = cJSON_GetObjectItemCaseSensitive(data, "rom");
 		const cJSON *sc = cJSON_GetObjectItemCaseSensitive(e, "shortcut");
@@ -90,8 +208,18 @@ static int load_catalog(const char *path)
 		p->required = strs(data, "required", &p->nrequired);
 		p->required_any = strs(data, "required_any", &p->nrequired_any);
 		p->built = strs(data, "built", &p->nbuilt);
+		if (!validate_port(p)) {
+			say("catalog: rejected invalid/unsafe port entry %s", p->id ? p->id : "(unnamed)");
+			continue;
+		}
+		nports++;
 	}
 	cJSON_Delete(root);
+	if (nports == 0) {
+		free(ports);
+		ports = NULL;
+		return -1;
+	}
 	return 0;
 }
 
@@ -169,9 +297,6 @@ static int is_code_file(const char *path)
 	if (n >= 4 && magic[0] == 0x7f && magic[1] == 'E' && magic[2] == 'L' && magic[3] == 'F')
 		return 1;
 	if (n >= 2 && magic[0] == '#' && magic[1] == '!')
-		return 1;
-	struct stat st;
-	if (stat(path, &st) == 0 && (st.st_mode & 0111))
 		return 1;
 	return 0;
 }
@@ -254,7 +379,7 @@ static int is_data_file(const Port *p, const char *rel)
 	for (int i = 0; i < p->nrequired; i++) {
 		const char *req = p->required[i];
 		size_t reqlen = strlen(req);
-		if (req[reqlen - 1] == '/' && !strncasecmp(rel, req, reqlen))
+		if (reqlen > 0 && req[reqlen - 1] == '/' && !strncasecmp(rel, req, reqlen))
 			return 1;
 		if (!fnmatch(req, rel, FNM_CASEFOLD) || !fnmatch(req, base_name(rel), FNM_CASEFOLD))
 			return 1;
@@ -264,7 +389,7 @@ static int is_data_file(const Port *p, const char *rel)
 	for (int i = 0; i < p->nrequired_any; i++) {
 		const char *req = p->required_any[i];
 		size_t reqlen = strlen(req);
-		if (req[reqlen - 1] == '/' && !strncasecmp(rel, req, reqlen))
+		if (reqlen > 0 && req[reqlen - 1] == '/' && !strncasecmp(rel, req, reqlen))
 			return 1;
 		if (!fnmatch(req, rel, FNM_CASEFOLD) || !fnmatch(req, base_name(rel), FNM_CASEFOLD))
 			return 1;
@@ -274,7 +399,7 @@ static int is_data_file(const Port *p, const char *rel)
 	for (int i = 0; i < p->nbackup; i++) {
 		const char *bk = p->backup[i];
 		size_t bklen = strlen(bk);
-		if (bk[bklen - 1] == '/' && !strncasecmp(rel, bk, bklen))
+		if (bklen > 0 && bk[bklen - 1] == '/' && !strncasecmp(rel, bk, bklen))
 			return 1;
 		if (!fnmatch(bk, rel, FNM_CASEFOLD) || !fnmatch(bk, base_name(rel), FNM_CASEFOLD))
 			return 1;
@@ -284,7 +409,7 @@ static int is_data_file(const Port *p, const char *rel)
 	for (int i = 0; i < p->nbuilt; i++) {
 		const char *bk = p->built[i];
 		size_t bklen = strlen(bk);
-		if (bk[bklen - 1] == '/' && !strncasecmp(rel, bk, bklen))
+		if (bklen > 0 && bk[bklen - 1] == '/' && !strncasecmp(rel, bk, bklen))
 			return 1;
 		if (!fnmatch(bk, rel, FNM_CASEFOLD) || !fnmatch(bk, base_name(rel), FNM_CASEFOLD))
 			return 1;
@@ -298,12 +423,6 @@ static int is_data_file(const Port *p, const char *rel)
 	    !strncasecmp(rel, "sounds/", 7) || !strncasecmp(rel, "movies/", 7) ||
 	    !strncasecmp(rel, "fmv/", 4))
 		return 1;
-
-	/* 7. Documentation and text files are program/release files unless required above */
-	if (ends_with(rel, ".txt") || ends_with(rel, ".md") || ends_with(rel, ".pdf") || ends_with(rel, ".doc") ||
-	    !strncasecmp(base_name(rel), "readme", 6) || !strncasecmp(base_name(rel), "license", 7) ||
-	    !strncasecmp(base_name(rel), "changelog", 9) || !strncasecmp(base_name(rel), "copying", 7))
-		return 0;
 
 	return 0;
 }
@@ -413,7 +532,7 @@ void pm_scan(void)
 		}
 		else
 			p->missing[0] = 0;
-		p->update = p->installed && p->checked && *p->version && strcmp(p->version, p->latest);
+		p->update = p->installed && p->checked && p->asset_name[0] && *p->version && strcmp(p->version, p->latest);
 	}
 	say("--- scan: %d/%d ports installed", ninst, nports);
 }
@@ -440,6 +559,26 @@ int pm_init(void)
 	snprintf(log, sizeof log, "%s/log.txt", HERE);
 	log_open(log);
 	say("init: SD=%s", SD);
+	char cert[600];
+	snprintf(cert, sizeof cert, "%s/cacert.pem", HERE);
+	if (file_exists(cert)) {
+		set_ca_cert(cert);
+		say("tls: using CA bundle %s", cert);
+	} else {
+		snprintf(cert, sizeof cert, "%s/App/PortManager/cacert.pem", SD);
+		if (file_exists(cert)) {
+			set_ca_cert(cert);
+			say("tls: using CA bundle %s", cert);
+		}
+	}
+	char tokfile[600];
+	snprintf(tokfile, sizeof tokfile, "%s/tokens.txt", HERE);
+	if (!file_exists(tokfile))
+		snprintf(tokfile, sizeof tokfile, "%s/App/PortManager/tokens.txt", SD);
+	if (file_exists(tokfile)) {
+		tokens_load(tokfile);
+		say("auth: loaded %d token(s) from %s", ntokens, tokfile);
+	}
 	if (load_catalog(CAT))
 		return -1;
 	pm_scan();
@@ -552,7 +691,11 @@ static void rel_path(const char *repo, char *out, size_t n)
 static void fetch_releases(char **repos, int n)
 {
 	int pids[64];
-	char f[64][512], part[64][520];
+	char f[64][512], part[64][600];
+	const char *ca = wget_ca_cert();
+	char ca_arg[700];
+	if (ca)
+		snprintf(ca_arg, sizeof ca_arg, "--ca-certificate=%s", ca);
 	for (int i = 0; i < n && i < 64; i++) {
 		char url[300];
 		rel_path(repos[i], f[i], sizeof f[i]);
@@ -560,14 +703,48 @@ static void fetch_releases(char **repos, int n)
 		snprintf(url, sizeof url, API "%s/releases/latest", repos[i]);
 		unlink(f[i]);
 		unlink(part[i]);
-		const char *argv[] = {wget_bin(), "-q", "-T", "15", "-O", part[i], url, NULL};
+		const char *tok = token_for_repo(repos[i]);
+		const char *argv[16];
+		int argc = 0;
+		char auth_hdr[300];
+		if (tok) {
+			snprintf(auth_hdr, sizeof auth_hdr, "Authorization: Bearer %s", tok);
+			argv[argc++] = curl_bin();
+			argv[argc++] = "-s";
+			argv[argc++] = "-S";
+			argv[argc++] = "-L";
+			argv[argc++] = "-m";
+			argv[argc++] = "15";
+			if (ca) {
+				argv[argc++] = "--cacert";
+				argv[argc++] = ca;
+			}
+			argv[argc++] = "-H";
+			argv[argc++] = auth_hdr;
+			argv[argc++] = "-o";
+			argv[argc++] = part[i];
+			argv[argc++] = url;
+			argv[argc] = NULL;
+		} else {
+			argv[argc++] = wget_bin();
+			argv[argc++] = "-q";
+			argv[argc++] = "-T";
+			argv[argc++] = "15";
+			if (ca)
+				argv[argc++] = ca_arg;
+			argv[argc++] = "-O";
+			argv[argc++] = part[i];
+			argv[argc++] = url;
+			argv[argc] = NULL;
+		}
 		pids[i] = run_bg(argv, NULL);
 	}
 	for (int i = 0; i < n && i < 64; i++) {
 		char url[300];
 		snprintf(url, sizeof url, API "%s/releases/latest", repos[i]);
+		const char *tok = token_for_repo(repos[i]);
 		if (!(run_wait(pids[i]) == 0 && file_size(part[i]) > 0 && rename(part[i], f[i]) == 0))
-			fetch(url, f[i], 0);
+			fetch_auth(url, f[i], 0, tok, NULL);
 		unlink(part[i]);
 		char *text = read_file(f[i], NULL);
 		cJSON *j = text ? cJSON_Parse(text) : NULL;
@@ -575,6 +752,26 @@ static void fetch_releases(char **repos, int n)
 		if (!cJSON_IsString(cJSON_GetObjectItemCaseSensitive(j, "tag_name"))) {
 			cJSON_Delete(j);
 			j = NULL;
+			/* If releases/latest failed (e.g. repo only has prereleases), try releases?per_page=5 */
+			char url_all[300];
+			snprintf(url_all, sizeof url_all, API "%s/releases?per_page=5", repos[i]);
+			if (fetch_auth(url_all, f[i], 0, tok, NULL) == 0) {
+				text = read_file(f[i], NULL);
+				cJSON *arr = text ? cJSON_Parse(text) : NULL;
+				free(text);
+				if (cJSON_IsArray(arr)) {
+					const cJSON *elem;
+					cJSON_ArrayForEach(elem, arr) {
+						const cJSON *draft = cJSON_GetObjectItemCaseSensitive(elem, "draft");
+						const cJSON *tag = cJSON_GetObjectItemCaseSensitive(elem, "tag_name");
+						if ((!draft || !cJSON_IsTrue(draft)) && cJSON_IsString(tag)) {
+							j = cJSON_Duplicate(elem, 1);
+							break;
+						}
+					}
+				}
+				cJSON_Delete(arr);
+			}
 		}
 		Release *r = release_of(repos[i]);
 		if (!r && nrels < 64) {
@@ -630,12 +827,6 @@ static const cJSON *find_asset(const Port *p, const cJSON *rel_json)
 	return asset;
 }
 
-/* checks `only`'s repo (any port, installed or not), or every installed port's */
-static int checks(const Port *p, const Port *only)
-{
-	return *p->asset && (only ? !strcmp(p->repo, only->repo) : p->installed);
-}
-
 int pm_check(const Port *only)
 {
 	pm_error[0] = 0;
@@ -645,15 +836,20 @@ int pm_check(const Port *only)
 	pm_scan();
 	char *repos[64];
 	int n = 0;
-	for (int i = 0; i < nports; i++) {
-		Port *p = &ports[i];
-		if (!checks(p, only))
-			continue;
-		int seen = 0;
-		for (int j = 0; j < n; j++)
-			seen |= !strcmp(repos[j], p->repo);
-		if (!seen && n < 64)
-			repos[n++] = p->repo;
+	if (only) {
+		if (*only->asset && *only->repo)
+			repos[n++] = only->repo;
+	} else {
+		for (int i = 0; i < nports; i++) {
+			Port *p = &ports[i];
+			if (!p->installed || !*p->asset || !*p->repo)
+				continue;
+			int seen = 0;
+			for (int j = 0; j < n; j++)
+				seen |= !strcmp(repos[j], p->repo);
+			if (!seen && n < 64)
+				repos[n++] = p->repo;
+		}
 	}
 	if (net_check(n)) {
 		say("NONET %s", pm_error);
@@ -663,34 +859,48 @@ int pm_check(const Port *only)
 	int failed = 0;
 	for (int i = 0; i < nports; i++) {
 		Port *p = &ports[i];
+		if (only ? (p != only) : (!p->installed || !*p->asset || !*p->repo))
+			continue;
 		Release *r = release_of(p->repo);
-		p->checked = r && r->json;
+		const cJSON *tag = (r && r->json) ? cJSON_GetObjectItemCaseSensitive(r->json, "tag_name") : NULL;
+		const cJSON *ast = (r && r->json) ? find_asset(p, r->json) : NULL;
 		p->asset_size = 0;
 		p->asset_name[0] = 0;
-		if (p->checked) {
-			const cJSON *tag = cJSON_GetObjectItemCaseSensitive(r->json, "tag_name");
-			if (cJSON_IsString(tag))
-				snprintf(p->latest, sizeof p->latest, "%s", tag->valuestring);
-			const cJSON *ast = find_asset(p, r->json);
-			if (ast) {
-				const cJSON *sz = cJSON_GetObjectItemCaseSensitive(ast, "size");
-				const cJSON *nm = cJSON_GetObjectItemCaseSensitive(ast, "name");
-				p->asset_size = cJSON_IsNumber(sz) ? (long)sz->valuedouble : 0;
-				if (cJSON_IsString(nm))
-					snprintf(p->asset_name, sizeof p->asset_name, "%s", nm->valuestring);
-			}
-		}
-		else if (checks(p, only)) {
+		if (ast && cJSON_IsString(tag)) {
+			p->checked = 1;
+			snprintf(p->latest, sizeof p->latest, "%s", tag->valuestring);
+			const cJSON *sz = cJSON_GetObjectItemCaseSensitive(ast, "size");
+			const cJSON *nm = cJSON_GetObjectItemCaseSensitive(ast, "name");
+			p->asset_size = cJSON_IsNumber(sz) ? (long)sz->valuedouble : 0;
+			if (cJSON_IsString(nm))
+				snprintf(p->asset_name, sizeof p->asset_name, "%s", nm->valuestring);
+		} else if (r && r->json) {
+			/* Repo checked, but this release has no matching asset for this port */
+			p->checked = 1;
+			p->latest[0] = 0;
+		} else {
 			say("ERROR %s: no release info", p->name);
 			failed++;
 		}
 	}
 	pm_scan();
 	if (failed) {
-		snprintf(pm_error, sizeof pm_error, "No release info for %d port(s): the connection broke off. Try again.", failed);
+		if (!pm_error[0])
+			snprintf(pm_error, sizeof pm_error, "No release info for %d port(s): the connection broke off. Try again.", failed);
 		return -1;
 	}
 	return 0;
+}
+
+const char *pm_release_notes(const Port *p)
+{
+	if (!p || !p->repo)
+		return NULL;
+	Release *r = release_of(p->repo);
+	if (!r || !r->json)
+		return NULL;
+	const cJSON *b = cJSON_GetObjectItemCaseSensitive(r->json, "body");
+	return (cJSON_IsString(b) && *b->valuestring) ? b->valuestring : NULL;
 }
 
 /* --- installing a release --- */
@@ -755,8 +965,14 @@ static void map_cb(const char *rel, void *ctx)
 			map_add(m, M_SHORTCUT, src, f.found);
 		}
 	}
-	else if (!app && !strncmp(rel, "Roms/PORTS/Games/", 17))
-		map_add(m, M_GAME, src, rel);
+	else if (!app && !strncmp(rel, "Roms/PORTS/Games/", 17)) {
+		char expected_prefix[700];
+		snprintf(expected_prefix, sizeof expected_prefix, "%s/", p->dir);
+		if (!strncmp(rel, expected_prefix, strlen(expected_prefix)))
+			map_add(m, M_GAME, src, rel);
+		else
+			say("%s: skipped foreign release file %s", p->name, rel);
+	}
 }
 
 /* our shortcut from the release's: its settings (GameName, FullResolution, ...) without its
@@ -773,8 +989,12 @@ static int shortcut_from(const Port *p, const char *tpl, const char *out)
 	char *dot = strstr(name, ".port");
 	if (dot)
 		*dot = 0;
-	int n = snprintf(text, sizeof text, "#!/bin/sh\n# %s: runs %s/%s. Written by Port manager (portmanager-miyoo).\n",
+	int n = snprintf(text, sizeof text, "#!/bin/sh\n# %s: runs %s/%s. Written by Port Manager (portmanager-miyoo).\n",
 		name, p->dir, p->sc_run);
+	if (n < 0 || n >= (int)sizeof text) {
+		free(t);
+		return -1;
+	}
 	for (char *line = strtok(t, "\n"); line; line = strtok(NULL, "\n")) {
 		size_t k = 0;
 		while ((line[k] >= 'A' && line[k] <= 'Z') || (line[k] >= 'a' && line[k] <= 'z') || line[k] == '_' ||
@@ -783,24 +1003,37 @@ static int shortcut_from(const Port *p, const char *tpl, const char *out)
 		if (!k || line[k] != '=' || strstr(line, "App/") || !strncmp(line, "APP=", 4) ||
 			!strncmp(line, "GameDir=", 8) || !strncmp(line, "GameDataFile=", 13))
 			continue;
-		n += snprintf(text + n, sizeof text - n, "%s\n", line);
+		/* Reject control characters or backticks in lines copied from template */
+		if (strpbrk(line, "`$;|"))
+			continue;
+		int w = snprintf(text + n, sizeof text - n, "%s\n", line);
+		if (w < 0 || w >= (int)(sizeof text - n)) {
+			free(t);
+			return -1;
+		}
+		n += w;
 	}
 	free(t);
-	n += snprintf(text + n, sizeof text - n, "GameDir=\"%s\"\nGameDataFile=\"%s\"\ncd \"%s\" || exit 1\nexec sh \"%s/%s\"\n",
+	int w = snprintf(text + n, sizeof text - n, "GameDir=\"%s\"\nGameDataFile=\"%s\"\ncd \"%s\" || exit 1\nexec sh \"%s/%s\"\n",
 		base_name(p->dir), p->sc_gdf, g, g, p->sc_run);
+	if (w < 0 || w >= (int)(sizeof text - n))
+		return -1;
+	n += w;
 	return write_file(out, text, n);
 }
 
 static int unpack(const char *file, const char *to)
 {
 	mkdirs(to);
-	if (strstr(file, ".zip")) {
+	if (ends_with(file, ".zip")) {
 		mz_zip_archive z;
 		memset(&z, 0, sizeof z);
 		if (!mz_zip_reader_init_file(&z, file, 0))
 			return -1;
 		int ok = 1;
-		for (mz_uint i = 0; i < mz_zip_reader_get_num_files(&z); i++) {
+		mz_uint total_zip = mz_zip_reader_get_num_files(&z);
+		mz_uint extracted = 0;
+		for (mz_uint i = 0; i < total_zip; i++) {
 			mz_zip_archive_file_stat st;
 			if (!mz_zip_reader_file_stat(&z, i, &st) || mz_zip_reader_is_file_a_directory(&z, i))
 				continue;
@@ -811,6 +1044,9 @@ static int unpack(const char *file, const char *to)
 			mkdirs_for(out);
 			if (!mz_zip_reader_extract_to_file(&z, i, out, 0))
 				ok = 0;
+			extracted++;
+			if (on_extract_progress)
+				on_extract_progress(extracted, total_zip);
 		}
 		mz_zip_reader_end(&z);
 		return ok ? 0 : -1;
@@ -820,11 +1056,11 @@ static int unpack(const char *file, const char *to)
 	const char *x7[] = {"7z", "x", "-y", o, file, NULL};
 	const char *tgz[] = {"tar", "-xzf", file, "-C", to, NULL};
 	const char *tar[] = {"tar", "-xf", file, "-C", to, NULL};
-	if (strstr(file, ".7z"))
+	if (ends_with(file, ".7z"))
 		return run(x7, NULL) ? -1 : 0;
-	if (strstr(file, ".tar.gz") || strstr(file, ".tgz"))
+	if (ends_with(file, ".tar.gz") || ends_with(file, ".tgz"))
 		return run(tgz, NULL) ? -1 : 0;
-	if (strstr(file, ".tar"))
+	if (ends_with(file, ".tar"))
 		return run(tar, NULL) ? -1 : 0;
 	return -1;
 }
@@ -843,43 +1079,23 @@ static int fail(const char *fmt, const char *a)
 	return -1;
 }
 
-int pm_update(Port *p)
+static int apply_release(Port *p, const char *tag, const char *aname, const char *url_str,
+	const char *api_url_str, const char *digest_str, long total_bytes)
 {
 	pm_error[0] = 0;
 	shortcuts_changed = 0;
-	if (!*p->asset)
-		return fail("%s: no releases yet", p->name);
-	Release *r = release_of(p->repo);
-	if (!r || !r->json) {
-		char *repo[] = {p->repo};
-		if (net_check(1))
-			return -1;
-		fetch_releases(repo, 1);
-		r = release_of(p->repo);
-		if (!r || !r->json)
-			return fail("%s: no release info (no connection?)", p->name);
-	}
-	const char *tag = cJSON_GetObjectItemCaseSensitive(r->json, "tag_name")->valuestring;
-
-	/* the release's file */
-	const cJSON *asset = find_asset(p, r->json);
-	if (!asset)
-		return fail("%s: the release has no matching file", p->name);
-	const char *aname = cJSON_GetObjectItemCaseSensitive(asset, "name")->valuestring;
-	const cJSON *url = cJSON_GetObjectItemCaseSensitive(asset, "browser_download_url");
-	const cJSON *digest = cJSON_GetObjectItemCaseSensitive(asset, "digest");
-	const cJSON *size = cJSON_GetObjectItemCaseSensitive(asset, "size");
-	char zip[600], stage[400], g[600], bk[800];
+	char zip[600], stage[400], g[600], bk_stage[700];
 	snprintf(zip, sizeof zip, "%s/%s", WORK, aname);
 	snprintf(stage, sizeof stage, "%s/stage", WORK);
 	snprintf(g, sizeof g, "%s", gdir(p));
-	snprintf(bk, sizeof bk, "%s/Backups/PortManager/%s-%s-before-%s", SD, STAMP, p->id, tag);
+	snprintf(bk_stage, sizeof bk_stage, "%s/bk_stage", WORK);
+	remove_tree(bk_stage);
+
 	const char *base = base_name(p->dir);
 	char basebuf[256];
 	snprintf(basebuf, sizeof basebuf, "%s", base);
 	base = basebuf;
 
-	long total_bytes = cJSON_IsNumber(size) ? (long)size->valuedouble : 0;
 	if (total_bytes >= 1024 * 1024)
 		say("%s: %s -> %s, downloading %s (%.1f MB)", p->name, *p->version ? p->version : "?", tag, aname,
 			(double)total_bytes / (1024.0 * 1024.0));
@@ -888,24 +1104,40 @@ int pm_update(Port *p)
 			(total_bytes + 1023) / 1024);
 	else
 		say("%s: %s -> %s, downloading %s", p->name, *p->version ? p->version : "?", tag, aname);
-	if (!cJSON_IsString(url) || fetch(url->valuestring, zip, total_bytes))
+	const char *tok = token_for_repo(p->repo);
+	int dl_ok = 0;
+	if (tok) {
+		const char *target_url = (api_url_str && *api_url_str) ? api_url_str : ((url_str && *url_str) ? url_str : NULL);
+		if (target_url && fetch_auth(target_url, zip, total_bytes, tok, "Accept: application/octet-stream") == 0)
+			dl_ok = 1;
+	}
+	if (!dl_ok) {
+		if (url_str && *url_str && fetch(url_str, zip, total_bytes) == 0)
+			dl_ok = 1;
+	}
+	if (!dl_ok)
 		return fail("%s: download failed", p->name);
-	if (cJSON_IsString(digest) && !strncmp(digest->valuestring, "sha256:", 7)) {
+	if (digest_str && !strncmp(digest_str, "sha256:", 7)) {
 		char h[65];
-		if (sha256_file(zip, h) || strcmp(h, digest->valuestring + 7)) {
+		if (sha256_file(zip, h) || strcmp(h, digest_str + 7)) {
 			unlink(zip);
 			return fail("%s: the download's sha256 is wrong", p->name);
 		}
 	}
-	else if (cJSON_IsNumber(size) && file_size(zip) != (long)size->valuedouble) {
+	else if (total_bytes > 0 && file_size(zip) != total_bytes) {
 		unlink(zip);
 		return fail("%s: the download's size is wrong", p->name);
 	}
 	remove_tree(stage);
+	say("%s: extracting files...", p->name);
+	if (on_extract_progress)
+		on_extract_progress(0, 1);
 	if (unpack(zip, stage)) {
 		unlink(zip);
 		return fail("%s: can't unpack the download", p->name);
 	}
+	if (on_extract_progress)
+		on_extract_progress(1, 1);
 	unlink(zip);
 
 	/* an older install in App/ (miyoo64's own layout): moved to the Ports folder first */
@@ -917,7 +1149,7 @@ int pm_update(Port *p)
 		if (rename(app, g))
 			return fail("%s: can't move it out of App/", p->name);
 		snprintf(cfg, sizeof cfg, "%s/config.json", g);
-		snprintf(bcfg, sizeof bcfg, "%s/App/%s/config.json", bk, base);
+		snprintf(bcfg, sizeof bcfg, "%s/App/%s/config.json", bk_stage, base);
 		if (file_exists(cfg) && !mkdirs_for(bcfg))
 			rename(cfg, bcfg);
 		say("%s: moved App/%s -> %s", p->name, base, p->dir);
@@ -947,6 +1179,15 @@ int pm_update(Port *p)
 	size_t mcap = 4096, mlen = 0;
 	char *newman = malloc(mcap);
 	newman[0] = 0;
+	int total_to_copy = 0;
+	for (int i = 0; i < m.n; i++)
+		if (m.e[i].kind != M_TEMPLATE)
+			total_to_copy++;
+	if (total_to_copy > 0) {
+		say("%s: copying files...", p->name);
+		if (on_copy_progress)
+			on_copy_progress(0, total_to_copy);
+	}
 	int n = 0, saved = 0, failed = 0;
 	for (int i = 0; i < m.n && !failed; i++) {
 		MapEntry *e = &m.e[i];
@@ -954,7 +1195,8 @@ int pm_update(Port *p)
 			continue;
 		char d[1000], h[65];
 		snprintf(d, sizeof d, "%s/%s", SD, e->dst);
-		sha256_file(e->src, h);
+		if (sha256_file(e->src, h))
+			h[0] = 0;
 		if (mlen + strlen(e->dst) + 80 > mcap)
 			newman = realloc(newman, mcap *= 2);
 		if (file_exists(d)) {
@@ -964,26 +1206,33 @@ int pm_update(Port *p)
 			}
 			if (e->kind != M_GAME) {
 				char oh[65];
-				sha256_file(d, oh);
-				int ours = manifest_has(oldman, oh, e->dst);
-				if (e->kind == M_SHORTCUT) {
-					char *t = read_file(d, NULL);
-					ours |= t && (strstr(t, "Written by update_miyoo64.sh") || strstr(t, "Written by Port manager"));
-					free(t);
-				}
-				if (!ours) {
-					say("%s: kept your %s", p->name, e->dst);
-					continue;
+				if (sha256_file(d, oh) == 0) {
+					int ours = manifest_has(oldman, oh, e->dst);
+					if (e->kind == M_SHORTCUT) {
+						char *t = read_file(d, NULL);
+						ours |= t && (strstr(t, "Written by update_miyoo64.sh") || strstr(t, "Written by Port Manager") || strstr(t, "Written by Port manager"));
+						free(t);
+					}
+					if (!ours) {
+						say("%s: kept your %s", p->name, e->dst);
+						continue;
+					}
 				}
 			}
 		}
-		/* before the first replaced file: the port's backup folders */
+		/* before the first replaced file: the port's backup folders and version */
 		if (!saved) {
 			saved = 1;
+			mkdirs(bk_stage);
+			char old_vf[700], bk_vf[1100];
+			snprintf(old_vf, sizeof old_vf, "%s/.pm_version", g);
+			snprintf(bk_vf, sizeof bk_vf, "%s/%s/.pm_version", bk_stage, p->dir);
+			if (file_exists(old_vf) && !mkdirs_for(bk_vf))
+				copy_file(old_vf, bk_vf);
 			for (int b = 0; b < p->nbackup; b++) {
 				char from[800], to[1100];
 				snprintf(from, sizeof from, "%s/%s", g, p->backup[b]);
-				snprintf(to, sizeof to, "%s/%s/%s", bk, p->dir, p->backup[b]);
+				snprintf(to, sizeof to, "%s/%s/%s", bk_stage, p->dir, p->backup[b]);
 				if (to[strlen(to) - 1] == '/')
 					to[strlen(to) - 1] = 0;
 				if (is_dir(from) && copy_tree(from, to) == 0)
@@ -992,8 +1241,9 @@ int pm_update(Port *p)
 		}
 		if (file_exists(d)) {
 			char b[1100];
-			snprintf(b, sizeof b, "%s/%s", bk, e->dst);
-			copy_file(d, b);
+			snprintf(b, sizeof b, "%s/%s", bk_stage, e->dst);
+			if (copy_file(d, b))
+				say("%s: warning: could not back up %s before overwrite", p->name, e->dst);
 		}
 		if (copy_file(e->src, d)) {
 			fail("%s: can't write a file", p->name);
@@ -1005,14 +1255,20 @@ int pm_update(Port *p)
 		if (e->kind == M_SHORTCUT)
 			shortcuts_changed = 1;
 		mlen += sprintf(newman + mlen, "%s %s\n", h, e->dst);
-		say("%s: updated %s", p->name, e->dst);
+		if (on_file_installed)
+			on_file_installed(e->dst);
 		n++;
+		if (on_copy_progress)
+			on_copy_progress(n, total_to_copy);
 	}
+	if (on_copy_progress && total_to_copy > 0)
+		on_copy_progress(total_to_copy, total_to_copy);
 	free(oldman);
 	free(m.e);
 	remove_tree(stage);
 	if (failed) {
 		free(newman);
+		remove_tree(bk_stage);
 		return -1;
 	}
 	write_file(manf, newman, mlen);
@@ -1039,10 +1295,312 @@ int pm_update(Port *p)
 			closedir(d);
 	}
 	say("%s: %s -> %s, %d file(s) replaced", p->name, *p->version ? p->version : "?", tag, n);
-	if (saved)
-		say("backup: %s", bk + strlen(SD) + 1);
+	if (saved) {
+		char bk_tar[800];
+		snprintf(bk_tar, sizeof bk_tar, "%s/Backups/PortManager/%s-%s-before-%s.tar", SD, STAMP, p->id, tag);
+		mkdirs_for(bk_tar);
+		say("%s: archiving backup...", p->name);
+		const char *tar_cmd[] = {"tar", "-cf", bk_tar, "-C", bk_stage, ".", NULL};
+		if (run(tar_cmd, NULL) == 0)
+			say("backup: %s", bk_tar + strlen(SD) + 1);
+		else
+			say("%s: warning: could not create backup archive", p->name);
+		remove_tree(bk_stage);
+	}
 	pm_scan();
 	return 0;
+}
+
+int pm_update(Port *p)
+{
+	pm_error[0] = 0;
+	if (!*p->asset)
+		return fail("%s: no releases yet", p->name);
+	Release *r = release_of(p->repo);
+	if (!r || !r->json) {
+		char *repo[] = {p->repo};
+		if (net_check(1))
+			return -1;
+		fetch_releases(repo, 1);
+		r = release_of(p->repo);
+		if (!r || !r->json)
+			return fail("%s: no release info (no connection?)", p->name);
+	}
+	const char *tag = cJSON_GetObjectItemCaseSensitive(r->json, "tag_name")->valuestring;
+	const cJSON *asset = find_asset(p, r->json);
+	if (!asset)
+		return fail("%s: the release has no matching file", p->name);
+	const char *aname = cJSON_GetObjectItemCaseSensitive(asset, "name")->valuestring;
+	const cJSON *url = cJSON_GetObjectItemCaseSensitive(asset, "browser_download_url");
+	const cJSON *api_url = cJSON_GetObjectItemCaseSensitive(asset, "url");
+	const cJSON *digest = cJSON_GetObjectItemCaseSensitive(asset, "digest");
+	const cJSON *size = cJSON_GetObjectItemCaseSensitive(asset, "size");
+	long total_bytes = cJSON_IsNumber(size) ? (long)size->valuedouble : 0;
+	const char *url_str = (cJSON_IsString(url) && *url->valuestring) ? url->valuestring : NULL;
+	const char *api_url_str = (cJSON_IsString(api_url) && *api_url->valuestring) ? api_url->valuestring : NULL;
+	const char *digest_str = (cJSON_IsString(digest) && *digest->valuestring) ? digest->valuestring : NULL;
+
+	return apply_release(p, tag, aname, url_str, api_url_str, digest_str, total_bytes);
+}
+
+int pm_install_release(Port *p, const RemoteRelease *rel)
+{
+	pm_error[0] = 0;
+	if (!rel)
+		return fail("%s: invalid release", p->name);
+	return apply_release(p, rel->tag, rel->asset_name, rel->download_url, rel->api_url, rel->digest, rel->asset_size);
+}
+
+int pm_list_backups(const Port *p, BackupItem **items, int *n)
+{
+	*items = NULL;
+	*n = 0;
+	char bdir[600];
+	snprintf(bdir, sizeof bdir, "%s/Backups/PortManager", SD);
+	DIR *d = opendir(bdir);
+	if (!d)
+		return 0;
+
+	int cap = 16, count = 0;
+	BackupItem *list = malloc(cap * sizeof *list);
+
+	struct dirent *e;
+	while ((e = readdir(d))) {
+		if (e->d_name[0] == '.')
+			continue;
+		const char *match = strstr(e->d_name, p->id);
+		if (!match)
+			continue;
+		if (match > e->d_name && match[-1] != '-')
+			continue;
+		size_t idlen = strlen(p->id);
+		if (match[idlen] != '-' && match[idlen] != '.' && match[idlen] != '\0')
+			continue;
+
+		char full[800];
+		snprintf(full, sizeof full, "%s/%s", bdir, e->d_name);
+
+		int is_tar = ends_with(e->d_name, ".tar") || ends_with(e->d_name, ".tar.gz") || ends_with(e->d_name, ".tgz");
+		int is_zip = ends_with(e->d_name, ".zip");
+		int is_dir_entry = is_dir(full);
+		if (!is_tar && !is_zip && !is_dir_entry)
+			continue;
+
+		if (count == cap) {
+			cap *= 2;
+			list = realloc(list, cap * sizeof *list);
+		}
+		BackupItem *b = &list[count++];
+		memset(b, 0, sizeof *b);
+		snprintf(b->path, sizeof b->path, "%s", full);
+		b->is_archive = is_tar || is_zip;
+		b->size = is_dir_entry ? 0 : file_size(full);
+
+		if (strlen(e->d_name) >= 15 && e->d_name[8] == '-') {
+			snprintf(b->date, sizeof b->date, "%.4s-%.2s-%.2s %.2s:%.2s",
+				e->d_name, e->d_name + 4, e->d_name + 6, e->d_name + 9, e->d_name + 11);
+		} else {
+			snprintf(b->date, sizeof b->date, "%.63s", e->d_name);
+		}
+
+		const char *bef = strstr(e->d_name, "-before-");
+		if (bef) {
+			snprintf(b->tag, sizeof b->tag, "%s", bef + 8);
+			char *dot = strstr(b->tag, ".tar");
+			if (dot) *dot = 0;
+			dot = strstr(b->tag, ".zip");
+			if (dot) *dot = 0;
+			dot = strstr(b->tag, ".tgz");
+			if (dot) *dot = 0;
+		}
+
+		if (b->size >= 1024 * 1024)
+			snprintf(b->display, sizeof b->display, "%s  before %s (%.1f MB)", b->date, *b->tag ? b->tag : "?", (double)b->size / (1024.0 * 1024.0));
+		else if (b->size > 0)
+			snprintf(b->display, sizeof b->display, "%s  before %s (%ld KB)", b->date, *b->tag ? b->tag : "?", (b->size + 1023) / 1024);
+		else
+			snprintf(b->display, sizeof b->display, "%s  before %s (folder)", b->date, *b->tag ? b->tag : "?");
+	}
+	closedir(d);
+
+	for (int i = 0; i < count - 1; i++) {
+		for (int j = i + 1; j < count; j++) {
+			if (strcmp(list[i].path, list[j].path) < 0) {
+				BackupItem tmp = list[i];
+				list[i] = list[j];
+				list[j] = tmp;
+			}
+		}
+	}
+
+	*items = list;
+	*n = count;
+	return 0;
+}
+
+void pm_free_backups(BackupItem *items, int n)
+{
+	(void)n;
+	free(items);
+}
+
+int pm_restore_backup(Port *p, const BackupItem *b)
+{
+	pm_error[0] = 0;
+	if (!b || !*b->path)
+		return fail("%s: invalid backup", p->name);
+
+	say("%s: restoring from backup...", p->name);
+	char rstage[600];
+	snprintf(rstage, sizeof rstage, "%s/restore_stage", WORK);
+	remove_tree(rstage);
+	mkdirs(rstage);
+
+	const char *src_dir = NULL;
+	if (b->is_archive) {
+		if (unpack(b->path, rstage)) {
+			remove_tree(rstage);
+			return fail("%s: cannot unpack backup archive", p->name);
+		}
+		src_dir = rstage;
+	} else if (is_dir(b->path)) {
+		src_dir = b->path;
+	} else {
+		remove_tree(rstage);
+		return fail("%s: backup not found on card", p->name);
+	}
+
+	if (copy_tree(src_dir, SD)) {
+		remove_tree(rstage);
+		return fail("%s: failed to copy backup files to SD card", p->name);
+	}
+	remove_tree(rstage);
+
+	char g[600];
+	snprintf(g, sizeof g, "%s/%s", SD, p->dir);
+	if (*p->sc_run) {
+		char exe[700];
+		snprintf(exe, sizeof exe, "%s/%s", g, p->sc_run);
+		chmod(exe, 0777);
+	}
+
+	DIR *d = opendir(SC);
+	struct dirent *e;
+	while (d && (e = readdir(d)))
+		if (strstr(e->d_name, "_cache") && strstr(e->d_name, ".db")) {
+			char f[600];
+			snprintf(f, sizeof f, "%s/%s", SC, e->d_name);
+			unlink(f);
+		}
+	if (d)
+		closedir(d);
+
+	pm_scan();
+	say("%s: restored from backup (%s)", p->name, *b->tag ? b->tag : b->date);
+	return 0;
+}
+
+int pm_list_remote_releases(const Port *p, RemoteRelease **items, int *n)
+{
+	*items = NULL;
+	*n = 0;
+	pm_error[0] = 0;
+	if (!*p->asset || !*p->repo)
+		return fail("%s: no repo/releases configured", p->name);
+
+	if (net_check(1))
+		return -1;
+
+	char url[400], f[500];
+	snprintf(url, sizeof url, API "%s/releases?per_page=30", p->repo);
+	rel_path(p->repo, f, sizeof f);
+	snprintf(f + strlen(f), sizeof f - strlen(f), "_all.json");
+	unlink(f);
+
+	const char *tok = token_for_repo(p->repo);
+	if (fetch_auth(url, f, 0, tok, NULL))
+		return fail("%s: cannot fetch releases list from GitHub", p->name);
+
+	char *text = read_file(f, NULL);
+	unlink(f);
+	if (!text)
+		return fail("%s: cannot read releases response", p->name);
+
+	cJSON *root = cJSON_Parse(text);
+	free(text);
+	if (!cJSON_IsArray(root)) {
+		cJSON_Delete(root);
+		return fail("%s: invalid releases list from GitHub", p->name);
+	}
+
+	int cap = 16, count = 0;
+	RemoteRelease *list = malloc(cap * sizeof *list);
+
+	const cJSON *elem;
+	cJSON_ArrayForEach(elem, root) {
+		const cJSON *ast = find_asset(p, elem);
+		if (!ast)
+			continue;
+		const cJSON *tag = cJSON_GetObjectItemCaseSensitive(elem, "tag_name");
+		if (!cJSON_IsString(tag) || !*tag->valuestring)
+			continue;
+
+		if (count == cap) {
+			cap *= 2;
+			list = realloc(list, cap * sizeof *list);
+		}
+		RemoteRelease *rel = &list[count++];
+		memset(rel, 0, sizeof *rel);
+		snprintf(rel->tag, sizeof rel->tag, "%s", tag->valuestring);
+
+		const cJSON *rname = cJSON_GetObjectItemCaseSensitive(elem, "name");
+		if (cJSON_IsString(rname) && *rname->valuestring)
+			snprintf(rel->name, sizeof rel->name, "%s", rname->valuestring);
+		else
+			snprintf(rel->name, sizeof rel->name, "%s", tag->valuestring);
+
+		const cJSON *aname = cJSON_GetObjectItemCaseSensitive(ast, "name");
+		if (cJSON_IsString(aname))
+			snprintf(rel->asset_name, sizeof rel->asset_name, "%s", aname->valuestring);
+
+		const cJSON *asz = cJSON_GetObjectItemCaseSensitive(ast, "size");
+		rel->asset_size = cJSON_IsNumber(asz) ? (long)asz->valuedouble : 0;
+
+		const cJSON *aurl = cJSON_GetObjectItemCaseSensitive(ast, "browser_download_url");
+		if (cJSON_IsString(aurl))
+			snprintf(rel->download_url, sizeof rel->download_url, "%s", aurl->valuestring);
+
+		const cJSON *api_url = cJSON_GetObjectItemCaseSensitive(ast, "url");
+		if (cJSON_IsString(api_url))
+			snprintf(rel->api_url, sizeof rel->api_url, "%s", api_url->valuestring);
+
+		const cJSON *digest = cJSON_GetObjectItemCaseSensitive(ast, "digest");
+		if (cJSON_IsString(digest))
+			snprintf(rel->digest, sizeof rel->digest, "%s", digest->valuestring);
+
+		const cJSON *body = cJSON_GetObjectItemCaseSensitive(elem, "body");
+		if (cJSON_IsString(body) && *body->valuestring)
+			rel->body = strdup(body->valuestring);
+	}
+	cJSON_Delete(root);
+
+	if (count == 0) {
+		free(list);
+		return fail("%s: no releases found with matching game files", p->name);
+	}
+
+	*items = list;
+	*n = count;
+	return 0;
+}
+
+void pm_free_remote_releases(RemoteRelease *items, int n)
+{
+	if (!items)
+		return;
+	for (int i = 0; i < n; i++)
+		free(items[i].body);
+	free(items);
 }
 
 typedef struct {
@@ -1183,59 +1741,77 @@ int pm_uninstall(Port *p, int keep_data)
 	return 0;
 }
 
+static void append_info(char *buf, int size, int *n, const char *fmt, ...)
+{
+	if (*n >= size - 1)
+		return;
+	va_list ap;
+	va_start(ap, fmt);
+	int written = vsnprintf(buf + *n, size - *n, fmt, ap);
+	va_end(ap);
+	if (written > 0) {
+		*n += written;
+		if (*n >= size)
+			*n = size - 1;
+	}
+}
+
 void pm_info(const Port *p, char *buf, int size)
 {
 	int n = 0;
+	if (size <= 0)
+		return;
+	buf[0] = 0;
 
 	/* 1. Installed */
 	if (p->installed) {
 		if (*p->version)
-			n += snprintf(buf + n, size - n, CLR_DIM "Installed: " CLR_TEXT "%s\n", p->version);
+			append_info(buf, size, &n, CLR_DIM "Installed: " CLR_TEXT "%s\n", p->version);
 		else
-			n += snprintf(buf + n, size - n, CLR_DIM "Installed: " CLR_WARN "version unknown\n");
+			append_info(buf, size, &n, CLR_DIM "Installed: " CLR_WARN "version unknown\n");
 	} else {
-		n += snprintf(buf + n, size - n, CLR_DIM "Installed: " CLR_DIM "not installed\n");
+		append_info(buf, size, &n, CLR_DIM "Installed: " CLR_DIM "not installed\n");
 	}
 
 	/* 2. Latest */
 	if (!p->checked) {
-		n += snprintf(buf + n, size - n, CLR_DIM "Latest:    " CLR_WARN "not checked (A:check)\n");
-	} else if (*p->asset) {
+		append_info(buf, size, &n, CLR_DIM "Latest:    " CLR_WARN "not checked (A:check)\n");
+	} else if (*p->latest) {
 		if (p->installed) {
 			if (!*p->version)
-				n += snprintf(buf + n, size - n, CLR_DIM "Latest:    " CLR_WARN "%s (yours unknown)\n", p->latest);
+				append_info(buf, size, &n, CLR_DIM "Latest:    " CLR_WARN "%s (yours unknown)\n", p->latest);
 			else if (p->update)
-				n += snprintf(buf + n, size - n, CLR_DIM "Latest:    " CLR_WARN "%s (update available)\n", p->latest);
+				append_info(buf, size, &n, CLR_DIM "Latest:    " CLR_WARN "%s (update available)\n", p->latest);
 			else
-				n += snprintf(buf + n, size - n, CLR_DIM "Latest:    " CLR_GOOD "%s (up to date)\n", p->latest);
+				append_info(buf, size, &n, CLR_DIM "Latest:    " CLR_GOOD "%s (up to date)\n", p->latest);
 		} else {
-			n += snprintf(buf + n, size - n, CLR_DIM "Latest:    " CLR_GOOD "%s\n", p->latest);
+			append_info(buf, size, &n, CLR_DIM "Latest:    " CLR_GOOD "%s\n", p->latest);
 		}
 	} else {
-		n += snprintf(buf + n, size - n, CLR_DIM "Latest:    " CLR_DIM "no releases yet\n");
+		append_info(buf, size, &n, CLR_DIM "Latest:    " CLR_DIM "no releases yet\n");
 	}
 
 	/* 3. Location on card */
-	n += snprintf(buf + n, size - n, CLR_DIM "Location:  " CLR_TEXT "%s\n", p->dir);
+	append_info(buf, size, &n, CLR_DIM "Location:  " CLR_TEXT "%s\n", p->dir);
 
 	/* 4. ROM / Game files / Source */
 	if (p->rom_name && *p->rom_name)
-		n += snprintf(buf + n, size - n, CLR_DIM "ROM:       " CLR_TEXT "%s\n", p->rom_name);
+		append_info(buf, size, &n, CLR_DIM "ROM:       " CLR_TEXT "%s\n", p->rom_name);
 
 	if (*p->missing) {
-		n += snprintf(buf + n, size - n, CLR_DIM "Files:     " CLR_WARN "missing (%s)\n", p->missing);
+		append_info(buf, size, &n, CLR_DIM "Files:     " CLR_WARN "missing (%s)\n", p->missing);
 	} else if (p->installed || dir_has_files(gdir(p))) {
-		n += snprintf(buf + n, size - n, CLR_DIM "Files:     " CLR_GOOD "OK\n");
+		append_info(buf, size, &n, CLR_DIM "Files:     " CLR_GOOD "OK\n");
 	} else if (p->nrequired == 0 && (!p->rom || !*p->rom)) {
-		n += snprintf(buf + n, size - n, CLR_DIM "Files:     " CLR_GOOD "OK (none required)\n");
+		append_info(buf, size, &n, CLR_DIM "Files:     " CLR_GOOD "OK (none required)\n");
 	} else {
-		n += snprintf(buf + n, size - n, CLR_DIM "Files:     " CLR_DIM "not found yet\n");
+		append_info(buf, size, &n, CLR_DIM "Files:     " CLR_DIM "not found yet\n");
 	}
 
-	n += snprintf(buf + n, size - n, CLR_DIM "Source:    " CLR_TEXT "github.com/%s%s\n",
+	append_info(buf, size, &n, CLR_DIM "Source:    " CLR_TEXT "github.com/%s%s\n",
 		p->repo, *p->asset ? "" : " (no releases yet)");
 
 	/* 5. Instructions */
 	if (p->get && *p->get)
-		n += snprintf(buf + n, size - n, "\n" CLR_DIM "Instructions:\n" CLR_TEXT "%s\n", p->get);
+		append_info(buf, size, &n, "\n" CLR_DIM "Instructions:\n" CLR_TEXT "%s\n", p->get);
 }

@@ -15,7 +15,7 @@ powershell -ExecutionPolicy Bypass -File tools/deploy_to_miyoo.ps1
 This automated script:
 1. Verifies connectivity to the Miyoo Mini Plus at `192.168.0.246`.
 2. Creates an automatic verified PC backup in `backup/<timestamp>-before-deploy/portmanager-backup.tar`.
-3. Copies `~Port manager.miyoocmd` and `~Port manager.png` to `\\192.168.0.246\Roms` (or SSH fallback).
+3. Copies `~Port Manager.miyoocmd` and `~Port Manager.png` to `\\192.168.0.246\Roms` (or SSH fallback).
 4. Streams `onion/App/PortManager/` tar over SSH into `/mnt/SDCARD/App/PortManager/`, sets `chmod +x` on binaries and scripts, and deletes any old `portmaster` binary.
 5. Clears OnionOS list cache (`/mnt/SDCARD/Roms/PORTS/Shortcuts/*cache*.db`).
 

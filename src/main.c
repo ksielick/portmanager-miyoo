@@ -1,4 +1,4 @@
-/* Port manager for OnionOS on the Miyoo Mini (portmanager-miyoo): lists the installed ports
+/* Port Manager for OnionOS on the Miyoo Mini (portmanager-miyoo): lists the installed ports
  * and the whole catalog, shows a port's details and how to add its game files, checks the
  * authors' GitHub releases and installs updates. https://github.com/ksielick/portmanager-miyoo
  * Buttons: Up/Down choose, L1/R1 a page, A details, X all ports, Y check for updates,
@@ -30,7 +30,7 @@ static void header(const char *title, const char *right)
 	if (max_left < 10) max_left = 10;
 	gfx_text(16, (TOPH - CW) / 2, title, max_left, C_TEXT);
 	if (right && *right)
-		gfx_text(SCR_W - 16 - (int)strlen(right) * CW, (TOPH - CW) / 2, right, 12, C_DIM);
+		gfx_text(SCR_W - 16 - (int)strlen(right) * CW, (TOPH - CW) / 2, right, (int)strlen(right), C_DIM);
 }
 
 static void footer(const char *hints)
@@ -175,8 +175,9 @@ static int view(const char *title, const char *right, const Lines *t, const char
 /* --- the progress page: pm's log lines appear as they come --- */
 
 static Lines progress;
+static Lines installed_files;
 static const char *progress_title;
-static int dl_line_idx = -1;
+static int bar_line_idx = -1;
 
 static void make_ascii_bar(char *buf, size_t size, long cur, long total)
 {
@@ -218,6 +219,39 @@ static void make_ascii_bar(char *buf, size_t size, long cur, long total)
 	}
 }
 
+static void make_ascii_count_bar(char *buf, size_t size, long cur, long total, const char *unit)
+{
+	int bar_width = 14;
+	char bar[32];
+	int pct = 0;
+	if (total > 0) {
+		pct = (int)((double)cur / total * 100.0);
+		if (pct > 100) pct = 100;
+		if (pct < 0) pct = 0;
+		int fill = (int)((double)cur / total * bar_width);
+		if (fill > bar_width) fill = bar_width;
+
+		bar[0] = '[';
+		for (int i = 0; i < bar_width; i++) {
+			if (i < fill - 1)
+				bar[1 + i] = '=';
+			else if (i == fill - 1 && fill < bar_width)
+				bar[1 + i] = '>';
+			else if (i == fill - 1)
+				bar[1 + i] = '=';
+			else
+				bar[1 + i] = ' ';
+		}
+		bar[1 + bar_width] = ']';
+		bar[2 + bar_width] = 0;
+
+		snprintf(buf, size, CLR_GOOD "%s" CLR_TEXT " %3d%%  %ld/%ld %s",
+			bar, pct, cur, total, unit ? unit : "files");
+	} else {
+		snprintf(buf, size, CLR_GOOD "[===>          ]" CLR_TEXT "  %ld %s", cur, unit ? unit : "files");
+	}
+}
+
 static void progress_draw(const char *hints)
 {
 	int top = progress.n > TEXT_ROWS ? progress.n - TEXT_ROWS : 0;
@@ -227,12 +261,26 @@ static void progress_draw(const char *hints)
 	gfx_flip();
 }
 
+static void update_progress_bar(const char *s, int is_done)
+{
+	if (bar_line_idx >= 0 && bar_line_idx < progress.n) {
+		free(progress.l[bar_line_idx]);
+		progress.l[bar_line_idx] = strdup(s);
+	} else {
+		bar_line_idx = progress.n;
+		lines_push(&progress, s, strlen(s));
+	}
+	progress_draw("Please wait...");
+	if (is_done)
+		bar_line_idx = -1;
+}
+
 static void progress_sink(const char *line)
 {
 	/* lines meant for the log only */
 	if (!strncmp(line, "NONET ", 6) || !strncmp(line, "ERROR ", 6) || !strncmp(line, "--- ", 4))
 		return;
-	dl_line_idx = -1;
+	bar_line_idx = -1;
 	lines_add(&progress, line);
 	progress_draw("Please wait...");
 }
@@ -240,42 +288,103 @@ static void progress_sink(const char *line)
 static void download_progress(long current, long total)
 {
 	if (total <= 0) {
-		dl_line_idx = -1;
+		bar_line_idx = -1;
 		return;
 	}
 	char s[80];
 	make_ascii_bar(s, sizeof s, current, total);
-	if (dl_line_idx >= 0 && dl_line_idx < progress.n) {
-		free(progress.l[dl_line_idx]);
-		progress.l[dl_line_idx] = strdup(s);
-	} else {
-		dl_line_idx = progress.n;
-		lines_push(&progress, s, strlen(s));
+	update_progress_bar(s, current >= total);
+}
+
+static void extract_progress(long current, long total)
+{
+	if (total <= 0) {
+		bar_line_idx = -1;
+		return;
 	}
-	progress_draw("Please wait...");
-	if (current >= total)
-		dl_line_idx = -1;
+	if (current > 0 && current < total && total > 20 && (current % 5 != 0))
+		return;
+	char s[80];
+	make_ascii_count_bar(s, sizeof s, current, total, "files");
+	update_progress_bar(s, current >= total);
+}
+
+static void copy_progress(long current, long total)
+{
+	if (total <= 0) {
+		bar_line_idx = -1;
+		return;
+	}
+	if (current > 0 && current < total && total > 20 && (current % 5 != 0))
+		return;
+	char s[80];
+	make_ascii_count_bar(s, sizeof s, current, total, "files");
+	update_progress_bar(s, current >= total);
+}
+
+static void file_installed(const char *path)
+{
+	lines_add(&installed_files, path);
 }
 
 static void progress_begin(const char *title)
 {
 	lines_free(&progress);
+	lines_free(&installed_files);
 	progress_title = title;
-	dl_line_idx = -1;
+	bar_line_idx = -1;
 	log_sink = progress_sink;
 	on_download_progress = download_progress;
+	on_extract_progress = extract_progress;
+	on_copy_progress = copy_progress;
+	on_file_installed = file_installed;
 	progress_draw("Please wait...");
 }
 
 /* shows the result; returns the key that closed it (B, or one of `keys`) */
-static int progress_end(const char *hints, const int *keys)
+static int progress_end_at(const char *hints, const int *keys, int start_top)
 {
 	log_sink = NULL;
 	on_download_progress = NULL;
-	dl_line_idx = -1;
-	int k = view_at(progress_title, NULL, &progress, hints ? hints : "Up/Down  B: back", keys, -1);
-	lines_free(&progress);
-	return k;
+	on_extract_progress = NULL;
+	on_copy_progress = NULL;
+	on_file_installed = NULL;
+	bar_line_idx = -1;
+
+	char custom_hints[80];
+	if (!hints) {
+		if (installed_files.n > 0)
+			snprintf(custom_hints, sizeof custom_hints, "Select: files   Up/Down   B: back");
+		else
+			snprintf(custom_hints, sizeof custom_hints, "Up/Down   B: back");
+		hints = custom_hints;
+	}
+
+	int handled_keys[8];
+	int nhk = 0;
+	if (keys) {
+		for (const int *k = keys; *k; k++)
+			handled_keys[nhk++] = *k;
+	}
+	if (installed_files.n > 0)
+		handled_keys[nhk++] = K_SELECT;
+	handled_keys[nhk] = 0;
+
+	for (;;) {
+		int k = view_at(progress_title, NULL, &progress, hints, handled_keys, start_top);
+		if (k == K_SELECT && installed_files.n > 0) {
+			view_at("Installed files", NULL, &installed_files, "Up/Down   B: back", NULL, 0);
+			continue;
+		}
+		lines_free(&progress);
+		lines_free(&installed_files);
+		return k;
+	}
+}
+
+static int progress_end(const char *hints, const int *keys)
+{
+	return progress_end_at(hints, keys, -1);
 }
 
 /* --- actions --- */
@@ -336,6 +445,16 @@ static int do_check(const Port *only)
 		}
 		lines_add(&progress, "");
 		lines_add(&progress, s);
+		const char *notes = pm_release_notes(only);
+		if (notes) {
+			while (*notes == ' ' || *notes == '\t' || *notes == '\r' || *notes == '\n')
+				notes++;
+			if (*notes) {
+				lines_add(&progress, "");
+				lines_add(&progress, CLR_DIM "-------------------------------------");
+				lines_add(&progress, notes);
+			}
+		}
 	}
 	else {
 		int n = count_updates();
@@ -365,12 +484,12 @@ static int do_check(const Port *only)
 		else
 			lines_add(&progress, "All installed ports are up to date.");
 	}
-	return progress_end(hints, keys);
+	return progress_end_at(hints, keys, 0);
 }
 
 static int confirm_choice(const char *question, const char *hints)
 {
-	header("Port manager", NULL);
+	header("Port Manager", NULL);
 	Lines t = {0};
 	lines_add(&t, question);
 	for (int r = 0; r < t.n; r++)
@@ -434,6 +553,233 @@ static void do_update(Port *only)
 	progress_end(NULL, NULL);
 }
 
+typedef struct {
+	char label[128];
+	char right[96];
+	uint32_t right_clr;
+} MenuItem;
+
+static int choose_menu_key(const char *title, const char *right_hdr, const MenuItem *items, int n, const char *hints, int initial_sel, int *out_key)
+{
+	if (n <= 0)
+		return -1;
+	int sel = initial_sel >= 0 && initial_sel < n ? initial_sel : 0;
+	int top = 0;
+	for (;;) {
+		header(title, right_hdr);
+		if (sel < top)
+			top = sel;
+		if (sel >= top + LIST_ROWS)
+			top = sel - LIST_ROWS + 1;
+		for (int r = 0; r < LIST_ROWS && top + r < n; r++) {
+			const MenuItem *item = &items[top + r];
+			int y = LIST_Y + r * ROWH;
+			if (top + r == sel)
+				gfx_fill(8, y, SCR_W - 28, ROWH, C_SEL);
+			int sl = item->right[0] ? (int)strlen(item->right) : 0;
+			int max_len = COLS - sl - 2;
+			if (max_len < 10) max_len = 10;
+			gfx_text(16, y + (ROWH - CW) / 2, item->label, max_len, C_TEXT);
+			if (sl > 0)
+				gfx_text(SCR_W - 28 - sl * CW, y + (ROWH - CW) / 2, item->right, sl, item->right_clr);
+		}
+		scrollbar(top, LIST_ROWS, n, LIST_Y, LIST_ROWS * ROWH);
+		footer(hints ? hints : "A: select   B: cancel");
+		gfx_flip();
+
+		int k = input_key(NULL);
+		if (k < 0 || k == K_B || k == K_MENU) {
+			if (out_key) *out_key = k;
+			return -1;
+		}
+		if (k == K_A || k == K_START) {
+			if (out_key) *out_key = k;
+			return sel;
+		}
+		if (out_key && k == K_X) {
+			*out_key = k;
+			return sel;
+		}
+		if (k == K_UP && sel > 0) sel--;
+		if (k == K_DOWN && sel < n - 1) sel++;
+		if (k == K_L1 || k == K_LEFT) {
+			sel -= LIST_ROWS - 1;
+			if (sel < 0) sel = 0;
+		}
+		if (k == K_R1 || k == K_RIGHT) {
+			sel += LIST_ROWS - 1;
+			if (sel >= n) sel = n - 1;
+		}
+	}
+}
+
+static int choose_menu(const char *title, const char *right_hdr, const MenuItem *items, int n, const char *hints, int initial_sel)
+{
+	return choose_menu_key(title, right_hdr, items, n, hints, initial_sel, NULL);
+}
+
+static void alert_box(const char *msg)
+{
+	header("Port Manager", NULL);
+	Lines t = {0};
+	lines_add(&t, msg);
+	for (int r = 0; r < t.n; r++)
+		gfx_text(16, 180 + r * (CW + 6), t.l[r], COLS, C_TEXT);
+	lines_free(&t);
+	footer("B: back");
+	gfx_flip();
+	for (;;) {
+		int k = input_key(NULL);
+		if (k < 0 || k == K_B || k == K_A || k == K_MENU)
+			break;
+	}
+}
+
+static void do_restore(Port *p)
+{
+	MenuItem options[2] = {
+		{"Restore from local backup", "Backups/", C_DIM},
+		{"Install older release (GitHub)", "GitHub", C_DIM}
+	};
+	int choice = choose_menu("Restore / Rollback", p->name, options, 2, "A: select   B: cancel", 0);
+	if (choice < 0)
+		return;
+
+	if (choice == 0) {
+		/* 1. Local backup */
+		int sel_idx = 0;
+		for (;;) {
+			BackupItem *backups = NULL;
+			int nb = 0;
+			if (pm_list_backups(p, &backups, &nb) != 0 || nb == 0) {
+				char msg[300];
+				snprintf(msg, sizeof msg, "No backups found for %s\nin Backups/PortManager/.", p->name);
+				alert_box(msg);
+				pm_free_backups(backups, nb);
+				return;
+			}
+
+			if (sel_idx >= nb)
+				sel_idx = nb - 1;
+
+			MenuItem *items = malloc(nb * sizeof *items);
+			for (int i = 0; i < nb; i++) {
+				snprintf(items[i].label, sizeof items[i].label, "%s", backups[i].date);
+				if (backups[i].size >= 1024 * 1024)
+					snprintf(items[i].right, sizeof items[i].right, "%s (%.1f MB)",
+						*backups[i].tag ? backups[i].tag : "bak", (double)backups[i].size / (1024.0 * 1024.0));
+				else if (backups[i].size > 0)
+					snprintf(items[i].right, sizeof items[i].right, "%s (%ld KB)",
+						*backups[i].tag ? backups[i].tag : "bak", (backups[i].size + 1023) / 1024);
+				else
+					snprintf(items[i].right, sizeof items[i].right, "%s (folder)",
+						*backups[i].tag ? backups[i].tag : "bak");
+				items[i].right_clr = C_ACCENT;
+			}
+
+			int key_pressed = 0;
+			int b_sel = choose_menu_key("Local backups", p->name, items, nb, "A: restore   X: delete   B: cancel", sel_idx, &key_pressed);
+			free(items);
+			if (b_sel < 0) {
+				pm_free_backups(backups, nb);
+				return;
+			}
+			sel_idx = b_sel;
+
+			if (key_pressed == K_X) {
+				char q[512];
+				snprintf(q, sizeof q, "Delete backup from %s?\n\nThis will permanently delete this backup.",
+					backups[b_sel].display);
+				if (confirm_choice(q, "A: delete   B: cancel") == 1) {
+					remove_tree(backups[b_sel].path);
+				}
+				pm_free_backups(backups, nb);
+				continue;
+			}
+
+			if (key_pressed == K_A || key_pressed == K_START) {
+				char q[512];
+				snprintf(q, sizeof q, "Restore backup from %s?\n\nThis will restore previous binaries and saved game data.",
+					backups[b_sel].display);
+				if (confirm(q)) {
+					progress_begin("Restoring backup");
+					say("--- restore %s", p->id);
+					if (pm_restore_backup(p, &backups[b_sel])) {
+						lines_add(&progress, "");
+						lines_add(&progress, "Can't restore backup:");
+						lines_add(&progress, pm_error);
+					} else {
+						lines_add(&progress, "");
+						lines_add(&progress, "Restore completed successfully.");
+					}
+					progress_end(NULL, NULL);
+				}
+				pm_free_backups(backups, nb);
+				return;
+			}
+
+			pm_free_backups(backups, nb);
+			return;
+		}
+	} else if (choice == 1) {
+		/* 2. Older release from GitHub */
+		progress_begin("GitHub releases");
+		say("--- fetch releases %s", p->repo);
+		RemoteRelease *releases = NULL;
+		int nr = 0;
+		if (pm_list_remote_releases(p, &releases, &nr) != 0 || nr == 0) {
+			lines_add(&progress, "");
+			lines_add(&progress, "Can't fetch releases:");
+			lines_add(&progress, pm_error[0] ? pm_error : "No releases found");
+			progress_end(NULL, NULL);
+			pm_free_remote_releases(releases, nr);
+			return;
+		}
+		lines_free(&progress);
+		log_sink = NULL;
+
+		MenuItem *items = malloc(nr * sizeof *items);
+		for (int i = 0; i < nr; i++) {
+			snprintf(items[i].label, sizeof items[i].label, "%s", releases[i].tag);
+			if (p->installed && *p->version && !strcmp(p->version, releases[i].tag)) {
+				snprintf(items[i].right, sizeof items[i].right, "[installed]");
+				items[i].right_clr = C_GOOD;
+			} else if (releases[i].asset_size >= 1024 * 1024) {
+				snprintf(items[i].right, sizeof items[i].right, "%.1f MB", (double)releases[i].asset_size / (1024.0 * 1024.0));
+				items[i].right_clr = C_DIM;
+			} else if (releases[i].asset_size > 0) {
+				snprintf(items[i].right, sizeof items[i].right, "%ld KB", (releases[i].asset_size + 1023) / 1024);
+				items[i].right_clr = C_DIM;
+			} else {
+				items[i].right[0] = 0;
+				items[i].right_clr = C_DIM;
+			}
+		}
+
+		int r_sel = choose_menu("GitHub releases", p->name, items, nr, "A: install   B: cancel", 0);
+		free(items);
+		if (r_sel >= 0) {
+			char q[512];
+			snprintf(q, sizeof q, "Install %s release %s?\n\nBefore installing, current files will be backed up into Backups/PortManager/.",
+				p->name, releases[r_sel].tag);
+			if (confirm(q)) {
+				progress_begin("Installing release");
+				say("--- install %s -> %s", p->id, releases[r_sel].tag);
+				if (pm_install_release(p, &releases[r_sel])) {
+					lines_add(&progress, "");
+					lines_add(&progress, "Can't install release:");
+					lines_add(&progress, pm_error);
+				} else {
+					lines_add(&progress, "");
+					lines_add(&progress, "Installation completed.");
+				}
+				progress_end(NULL, NULL);
+			}
+		}
+		pm_free_remote_releases(releases, nr);
+	}
+}
+
 static void details(Port *p)
 {
 	static char buf[8192];
@@ -442,24 +788,23 @@ static void details(Port *p)
 		Lines t = {0};
 		lines_add(&t, buf);
 		/* A performs the primary action: check if unchecked/up to date, or update/install;
-		 * Y also checks; X removes */
+		 * Y opens restore/rollback; X removes */
 		int unknown = p->installed && p->checked && !*p->version;
 		int installable = !p->installed && p->checked && *p->latest;
 		int has_action = (p->update || unknown || installable);
 		int keys[4] = {0}, nk = 0;
 		if (*p->asset || has_action)
 			keys[nk++] = K_A;
-		if (*p->asset)
+		if (p->installed || *p->asset)
 			keys[nk++] = K_Y;
 		if (p->installed)
 			keys[nk++] = K_X;
 		const char *hints =
-			p->installed && p->update ? "A:update  Y:check  X:delete  B:back" :
-			p->installed && unknown   ? "A:install  Y:check  X:delete  B:back" :
-			installable               ? "A:install  Y:check  B:back" :
-			p->installed && *p->asset ? "A:check  X:delete  B:back" :
-			*p->asset                 ? "A:check  B:back" :
-			p->installed              ? "X:delete  B:back" : "B:back";
+			p->installed && p->update ? "A:update  Y:restore  X:delete  B:back" :
+			p->installed && unknown   ? "A:install  Y:restore  X:delete  B:back" :
+			installable               ? "A:install  Y:restore  B:back" :
+			p->installed              ? "A:check  Y:restore  X:delete  B:back" :
+			*p->asset                 ? "A:check  Y:restore  B:back" : "B:back";
 		int k = view(p->name, p->category, &t, hints, keys);
 		lines_free(&t);
 		if (k == K_A) {
@@ -470,9 +815,8 @@ static void details(Port *p)
 					do_update(p);
 			}
 		}
-		else if (k == K_Y && *p->asset) {
-			if (do_check(p) == K_A)
-				do_update(p);
+		else if (k == K_Y && (p->installed || *p->asset)) {
+			do_restore(p);
 		}
 		else if (k == K_X && p->installed) {
 			char q1[256];
@@ -481,9 +825,38 @@ static void details(Port *p)
 				continue;
 			char q2[512];
 			snprintf(q2, sizeof q2, "Keep game data in the folder?\n(%s)\n\ne.g. ROMs, saves, game data files.", p->dir);
-			int choice = confirm_choice(q2, "A: keep   B: delete all");
+			header("Port Manager", NULL);
+			Lines t = {0};
+			lines_add(&t, q2);
+			for (int r = 0; r < t.n; r++)
+				gfx_text(16, 180 + r * (CW + 6), t.l[r], COLS, C_TEXT);
+			lines_free(&t);
+			footer("A: keep data   Y: delete all   B: cancel");
+			gfx_flip();
+			int choice = -1;
+			for (;;) {
+				int chk = input_key(NULL);
+				if (chk == K_A) {
+					choice = 1;
+					break;
+				}
+				if (chk == K_Y) {
+					choice = 0;
+					break;
+				}
+				if (chk == K_B || chk == K_MENU || chk < 0) {
+					choice = -1;
+					break;
+				}
+			}
 			if (choice < 0)
 				continue;
+			if (choice == 0) {
+				char q3[256];
+				snprintf(q3, sizeof q3, "Are you SURE you want to delete ALL files in %s including ROMs and saves?", p->name);
+				if (!confirm(q3))
+					continue;
+			}
 			int keep_data = (choice == 1);
 			progress_begin("Removing port");
 			say("--- remove %s", p->id);
@@ -534,6 +907,8 @@ static const char *status(const Port *p, int all, uint32_t *c)
 	if (p->update) {
 		*c = C_ACCENT;
 		snprintf(s, sizeof s, "%s>%s", p->version, p->latest);
+		if (strlen(s) > 16)
+			snprintf(s, sizeof s, "update");
 	}
 	else if (*p->missing) {
 		*c = C_WARN;
@@ -569,30 +944,35 @@ static int run_list(int all)
 		int nup = count_updates();
 		char right[32];
 		snprintf(right, sizeof right, all ? "%d ports" : "%d installed", n);
-		header(all ? "All ports" : "Port manager", right);
+		header(all ? "All ports" : "Port Manager", right);
 		if (sel < top)
 			top = sel;
 		if (sel >= top + LIST_ROWS)
 			top = sel - LIST_ROWS + 1;
 		if (top > 0 && rows[top - 1].port < 0 && sel - (top - 1) < LIST_ROWS)
 			top--; /* keep a heading with its first port */
-		for (int r = 0; r < LIST_ROWS && top + r < nr; r++) {
-			const Row *row = &rows[top + r];
-			int y = LIST_Y + r * ROWH;
-			if (row->port < 0) {
-				gfx_text(16, y + (ROWH - CW) / 2, row->heading, COLS, C_ACCENT);
-				continue;
+		if (nr == 0 && !all) {
+			gfx_text(16, 200, "No ports installed yet.", COLS, C_TEXT);
+			gfx_text(16, 200 + ROWH, "Press X to browse all available ports.", COLS, C_DIM);
+		} else {
+			for (int r = 0; r < LIST_ROWS && top + r < nr; r++) {
+				const Row *row = &rows[top + r];
+				int y = LIST_Y + r * ROWH;
+				if (row->port < 0) {
+					gfx_text(16, y + (ROWH - CW) / 2, row->heading, COLS, C_ACCENT);
+					continue;
+				}
+				const Port *p = &ports[row->port];
+				uint32_t c;
+				const char *s = status(p, all, &c);
+				int sl = strlen(s);
+				if (top + r == sel)
+					gfx_fill(8, y, SCR_W - 28, ROWH, C_SEL);
+				gfx_text(all ? 32 : 16, y + (ROWH - CW) / 2, p->name, COLS - sl - 2 - (all ? 1 : 0), C_TEXT);
+				gfx_text(SCR_W - 28 - sl * CW, y + (ROWH - CW) / 2, s, sl, c);
 			}
-			const Port *p = &ports[row->port];
-			uint32_t c;
-			const char *s = status(p, all, &c);
-			int sl = strlen(s);
-			if (top + r == sel)
-				gfx_fill(8, y, SCR_W - 28, ROWH, C_SEL);
-			gfx_text(all ? 32 : 16, y + (ROWH - CW) / 2, p->name, COLS - sl - 2 - (all ? 1 : 0), C_TEXT);
-			gfx_text(SCR_W - 28 - sl * CW, y + (ROWH - CW) / 2, s, sl, c);
+			scrollbar(top, LIST_ROWS, nr, LIST_Y, LIST_ROWS * ROWH);
 		}
-		scrollbar(top, LIST_ROWS, nr, LIST_Y, LIST_ROWS * ROWH);
 		if (all)
 			footer("A: details  B: back");
 		else
@@ -638,14 +1018,14 @@ int main(void)
 	if (pm_init()) {
 		Lines t = {0};
 		lines_add(&t, "The catalog (catalog.json next to this program) is missing or broken.");
-		view("Port manager", NULL, &t, "B: exit", 0);
+		view("Port Manager", NULL, &t, "B: exit", 0);
 		lines_free(&t);
 		r = 1;
 	}
 	else if (pm_lock()) {
 		Lines t = {0};
-		lines_add(&t, "The port manager is already running.");
-		view("Port manager", NULL, &t, "B: exit", 0);
+		lines_add(&t, "The Port Manager is already running.");
+		view("Port Manager", NULL, &t, "B: exit", 0);
 		lines_free(&t);
 		r = 1;
 	}

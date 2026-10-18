@@ -467,44 +467,6 @@
       }
     },
     {
-      "id": "carmageddon",
-      "name": "Carmageddon",
-      "category": "Racing",
-      "repo": "ksielick/dethrace-miyoo",
-      "asset": null,
-      "layout": "sdcard-root",
-      "dir": "Roms/PORTS/Games/Carmageddon",
-      "data": {
-        "required": [
-          "DATA/"
-        ],
-        "optional": [
-          "MUSIC/",
-          "DATA/CUTSCENE/"
-        ]
-      },
-      "get": "Carmageddon Max Pack, GOG version: run miyoo\\install\\install_gog.bat from the port's repository on a Windows PC with the GOG offline installer, then copy build\\sdcard\\Roms to the card with a card reader (thousands of small files). Or the free demo: its DATA folder into Roms/PORTS/Games/Carmageddon/."
-    },
-    {
-      "id": "carmageddon-splatpack",
-      "name": "Carmageddon Splat Pack",
-      "category": "Racing",
-      "repo": "ksielick/dethrace-miyoo",
-      "asset": null,
-      "layout": "sdcard-root",
-      "dir": "Roms/PORTS/Games/SplatPack",
-      "data": {
-        "required": [
-          "DATA/"
-        ],
-        "optional": [
-          "MUSIC/",
-          "DATA/CUTSCENE/"
-        ]
-      },
-      "get": "Carmageddon Max Pack, GOG version (it has the Splat Pack): run miyoo\\install\\install_gog.bat from the port's repository on a Windows PC with the GOG offline installer, then copy build\\sdcard\\Roms to the card with a card reader."
-    },
-    {
       "id": "redriver2",
       "name": "REDRIVER2 (Driver 2)",
       "category": "Racing",
@@ -565,6 +527,60 @@
         "userdata/"
       ],
       "get": "Zuma Deluxe PC version (Steam, EA App, or PopCap CD). Use Launcher.py from the port repo (github.com/Fnava1/zuma-deluxe-miyoo) on your PC to convert music and pack assets into dist/Zuma_Deluxe_MiyooMini.zip, then extract it to your SD card. Alternatively, copy main.pak or loose asset folders into Roms/PORTS/Games/Zuma Deluxe/."
+    },
+    {
+      "id": "carmageddon",
+      "name": "Carmageddon",
+      "category": "Racing",
+      "repo": "ksielick/dethrace-miyoo",
+      "asset": "^Carmageddon-Miyoo-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Carmageddon",
+      "shortcut": {
+        "run": "run.sh",
+        "GameDataFile": "run.sh"
+      },
+      "backup": [
+        "DATA/SAVEGAME",
+        "dethrace.ini"
+      ],
+      "data": {
+        "required": [
+          "DATA/"
+        ],
+        "optional": [
+          "MUSIC/",
+          "DATA/CUTSCENE/"
+        ]
+      },
+      "get": "Carmageddon PC (DOS / GOG / Steam). Copy the DATA folder (and optional MUSIC folder) from your PC game installation directly into Roms/PORTS/Games/Carmageddon/."
+    },
+    {
+      "id": "carmageddon-splatpack",
+      "name": "Carmageddon Splat Pack",
+      "category": "Racing",
+      "repo": "ksielick/dethrace-miyoo",
+      "asset": "^Carmageddon-SplatPack-Miyoo-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/SplatPack",
+      "shortcut": {
+        "run": "run.sh",
+        "GameDataFile": "run.sh"
+      },
+      "backup": [
+        "DATA/SAVEGAME",
+        "dethrace.ini"
+      ],
+      "data": {
+        "required": [
+          "DATA/"
+        ],
+        "optional": [
+          "MUSIC/",
+          "DATA/CUTSCENE/"
+        ]
+      },
+      "get": "Carmageddon Splat Pack PC. Copy the DATA folder (and optional MUSIC folder) from your PC game installation directly into Roms/PORTS/Games/SplatPack/."
     }
   ]
 }

@@ -28,15 +28,25 @@ int run(const char *const argv[], const char *out);
 int run_bg(const char *const argv[], const char *out);
 int run_wait(int pid);
 
-/* Onion's wget, or PM_SD/.tmp_update/bin/wget, or "wget" from PATH */
+/* Onion's wget/curl, or PM_SD/.tmp_update/bin/, or from PATH */
 const char *wget_bin(void);
+const char *curl_bin(void);
+void set_ca_cert(const char *path);
+const char *wget_ca_cert(void);
 
-/* fetch <url> to <file> with Onion's wget (HTTPS); nothing left behind on failure.
- * If total_bytes > 0, download progress is reported to on_download_progress */
+/* fetch <url> to <file> with Onion's wget or curl (HTTPS); nothing left behind on failure.
+ * If total_bytes > 0, download progress is reported to on_download_progress.
+ * auth_token is optional: if provided, curl is used with Bearer authorization.
+ * extra_header is optional: e.g. "Accept: application/octet-stream" for GitHub asset download */
 int fetch(const char *url, const char *file, long total_bytes);
+int fetch_auth(const char *url, const char *file, long total_bytes, const char *auth_token, const char *extra_header);
 
 typedef void (*progress_cb)(long current_bytes, long total_bytes);
 extern progress_cb on_download_progress;
+extern progress_cb on_extract_progress;
+extern progress_cb on_copy_progress;
+typedef void (*file_cb)(const char *path);
+extern file_cb on_file_installed;
 
 /* "a/b/c" -> "c" (static buffer) */
 const char *base_name(const char *path);

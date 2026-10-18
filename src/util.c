@@ -273,17 +273,99 @@ const char *wget_bin(void)
 	return "wget";
 }
 
-progress_cb on_download_progress = NULL;
+static char g_ca_cert[600];
 
-int fetch(const char *url, const char *file, long total_bytes)
+void set_ca_cert(const char *path)
+{
+	if (path && *path)
+		snprintf(g_ca_cert, sizeof g_ca_cert, "%s", path);
+	else
+		g_ca_cert[0] = 0;
+}
+
+const char *wget_ca_cert(void)
+{
+	if (*g_ca_cert && file_exists(g_ca_cert))
+		return g_ca_cert;
+	return NULL;
+}
+
+progress_cb on_download_progress = NULL;
+progress_cb on_extract_progress = NULL;
+progress_cb on_copy_progress = NULL;
+file_cb on_file_installed = NULL;
+
+const char *curl_bin(void)
+{
+	static char path[512];
+	const char *sd = getenv("PM_SD");
+	if (sd && *sd) {
+		snprintf(path, sizeof path, "%s/.tmp_update/bin/curl", sd);
+		if (access(path, X_OK) == 0)
+			return path;
+	}
+	if (access("/mnt/SDCARD/.tmp_update/bin/curl", X_OK) == 0)
+		return "/mnt/SDCARD/.tmp_update/bin/curl";
+	return "curl";
+}
+
+int fetch_auth(const char *url, const char *file, long total_bytes, const char *auth_token, const char *extra_header)
 {
 	char part[1100], errlog[1100];
 	snprintf(part, sizeof part, "%s.part", file);
 	snprintf(errlog, sizeof errlog, "%s.err", file);
 	const char *to = total_bytes > 0 ? "60" : "15";
+	const char *ca = wget_ca_cert();
+
+	/* If auth or custom headers are needed, use curl */
+	int use_curl = (auth_token && *auth_token) || (extra_header && *extra_header);
+
+	char auth_hdr[300], ca_arg[700];
+	if (auth_token && *auth_token)
+		snprintf(auth_hdr, sizeof auth_hdr, "Authorization: Bearer %s", auth_token);
+	if (ca)
+		snprintf(ca_arg, sizeof ca_arg, use_curl ? "%s" : "--ca-certificate=%s", ca);
+
 	for (int attempt = 0; attempt < 2; attempt++) {
 		unlink(part);
-		const char *argv[] = {wget_bin(), "-q", "-T", to, "-O", part, url, NULL};
+		const char *argv[16];
+		int argc = 0;
+		if (use_curl) {
+			argv[argc++] = curl_bin();
+			argv[argc++] = "-s";
+			argv[argc++] = "-S";
+			argv[argc++] = "-L";
+			argv[argc++] = "-m";
+			argv[argc++] = to;
+			if (ca) {
+				argv[argc++] = "--cacert";
+				argv[argc++] = ca_arg;
+			}
+			if (auth_token && *auth_token) {
+				argv[argc++] = "-H";
+				argv[argc++] = auth_hdr;
+			}
+			if (extra_header && *extra_header) {
+				argv[argc++] = "-H";
+				argv[argc++] = extra_header;
+			}
+			argv[argc++] = "-o";
+			argv[argc++] = part;
+			argv[argc++] = url;
+			argv[argc] = NULL;
+		} else {
+			argv[argc++] = wget_bin();
+			argv[argc++] = "-q";
+			argv[argc++] = "-T";
+			argv[argc++] = to;
+			if (ca)
+				argv[argc++] = ca_arg;
+			argv[argc++] = "-O";
+			argv[argc++] = part;
+			argv[argc++] = url;
+			argv[argc] = NULL;
+		}
+
 		int pid = run_bg(argv, errlog);
 		if (pid < 0)
 			continue;
@@ -323,6 +405,11 @@ int fetch(const char *url, const char *file, long total_bytes)
 	return -1;
 }
 
+int fetch(const char *url, const char *file, long total_bytes)
+{
+	return fetch_auth(url, file, total_bytes, NULL, NULL);
+}
+
 const char *base_name(const char *path)
 {
 	static char b[256];
@@ -345,9 +432,12 @@ static void walk(const char *root, const char *rel, walk_fn fn, void *ctx)
 		char r[1024], full[2048];
 		snprintf(r, sizeof r, "%s%s%s", rel, *rel ? "/" : "", e->d_name);
 		snprintf(full, sizeof full, "%s/%s", root, r);
-		if (is_dir(full))
+		struct stat st;
+		if (lstat(full, &st) != 0)
+			continue;
+		if (S_ISDIR(st.st_mode))
 			walk(root, r, fn, ctx);
-		else
+		else if (S_ISREG(st.st_mode))
 			fn(r, ctx);
 	}
 	closedir(d);
