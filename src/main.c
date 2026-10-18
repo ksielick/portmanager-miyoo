@@ -7,10 +7,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <unistd.h>
 
 #include "gfx.h"
 #include "pm.h"
 #include "util.h"
+
+static char **g_argv = NULL;
+static char g_self_bin[512] = {0};
+
 
 #define TOPH 48
 #define FOOTH 40
@@ -401,7 +406,8 @@ static int count_updates(void)
  * result: A (install `only`'s release) or Start (update all) when offered there, else B */
 static int do_check(const Port *only)
 {
-	static const int key_a[] = {K_A, 0}, key_start[] = {K_START, 0};
+	static const int key_a[] = {K_A, 0}, key_start[] = {K_START, 0},
+		key_both[] = {K_START, K_SELECT, 0}, key_sel[] = {K_SELECT, 0};
 	const char *hints = NULL;
 	const int *keys = NULL;
 	progress_begin("Checking for updates");
@@ -478,14 +484,30 @@ static int do_check(const Port *only)
 							ports[i].name, ports[i].version, ports[i].latest);
 					lines_add(&progress, s);
 				}
+		} else {
+			lines_add(&progress, "All installed ports are up to date.");
+		}
+		if (pm_self_update_available) {
+			char s[256];
+			snprintf(s, sizeof s, CLR_GOOD "New Port Manager %s is available!" CLR_TEXT, pm_self_latest_version);
+			lines_add(&progress, "");
+			lines_add(&progress, s);
+			lines_add(&progress, "Select: update Port Manager now");
+		}
+		if (n && pm_self_update_available) {
+			hints = "Up/Down  Start: update all  Sel: update PM  B: back";
+			keys = key_both;
+		} else if (n) {
 			hints = "Up/Down  Start: update all  B: back";
 			keys = key_start;
+		} else if (pm_self_update_available) {
+			hints = "Up/Down  Sel: update PM  B: back";
+			keys = key_sel;
 		}
-		else
-			lines_add(&progress, "All installed ports are up to date.");
 	}
 	return progress_end_at(hints, keys, 0);
 }
+
 
 static int confirm_choice(const char *question, const char *hints)
 {
@@ -513,7 +535,42 @@ static int confirm(const char *question)
 	return confirm_choice(question, "A: yes   B: no") == 1;
 }
 
+static void do_pm_self_update(void)
+{
+	char q[300];
+	snprintf(q, sizeof q, "Update Port Manager to %s?\n\n(Current version: %s)",
+		pm_self_latest_version, pm_version());
+	if (!confirm(q))
+		return;
+
+	progress_begin("Updating Port Manager");
+	say("--- updating Port Manager to %s", pm_self_latest_version);
+
+	int err = pm_self_update();
+	if (err) {
+		lines_add(&progress, "");
+		lines_add(&progress, CLR_BAD "Update failed:" CLR_TEXT);
+		lines_add(&progress, pm_error);
+		progress_end(NULL, NULL);
+		return;
+	}
+
+	say("Port Manager updated successfully!");
+	say(CLR_GOOD "Restarting..." CLR_TEXT);
+	progress_draw("Restarting...");
+
+	if (!g_self_bin[0])
+		snprintf(g_self_bin, sizeof g_self_bin, "%s/portmanager", pm_here());
+
+	gfx_close();
+	pm_unlock();
+	char *restart_argv[] = {g_self_bin, NULL};
+	execv(g_self_bin, g_argv ? g_argv : restart_argv);
+	exit(0);
+}
+
 static void do_update(Port *only)
+
 {
 	int n = only ? 1 : count_updates();
 	char q[300];
@@ -942,8 +999,11 @@ static int run_list(int all)
 			sel = 0;
 
 		int nup = count_updates();
-		char right[32];
-		snprintf(right, sizeof right, all ? "%d ports" : "%d installed", n);
+		char right[64];
+		if (!all && pm_self_update_available)
+			snprintf(right, sizeof right, "%d inst [Update!]", n);
+		else
+			snprintf(right, sizeof right, all ? "%d ports" : "%d installed", n);
 		header(all ? "All ports" : "Port Manager", right);
 		if (sel < top)
 			top = sel;
@@ -975,6 +1035,8 @@ static int run_list(int all)
 		}
 		if (all)
 			footer("A: details  B: back");
+		else if (pm_self_update_available)
+			footer(nup ? "A:Info X:All Y:Chk Sel:UpdPM St:Upd" : "A:Info X:All Y:Check Sel:Update PM B:Exit");
 		else
 			footer(nup ? "A:Info X:All Y:Check St:Update B:Exit" : "A: info  X: all  Y: check  B: exit");
 		gfx_flip();
@@ -1001,16 +1063,29 @@ static int run_list(int all)
 			details(&ports[rows[sel].port]);
 		if (!all && k == K_X)
 			run_list(1);
-		if (!all && k == K_Y && do_check(NULL) == K_START)
-			do_update(NULL);
+		if (!all && k == K_Y) {
+			int chk_res = do_check(NULL);
+			if (chk_res == K_START)
+				do_update(NULL);
+			else if (chk_res == K_SELECT && pm_self_update_available)
+				do_pm_self_update();
+		}
+		if (!all && k == K_SELECT && pm_self_update_available)
+			do_pm_self_update();
 		if (!all && k == K_START && nup)
 			do_update(NULL);
 	}
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
+	(void)argc;
+	g_argv = argv;
+	ssize_t n = readlink("/proc/self/exe", g_self_bin, sizeof(g_self_bin) - 1);
+	if (n > 0)
+		g_self_bin[n] = 0;
 	if (gfx_open()) {
+
 		fprintf(stderr, "can't open the screen or the buttons\n");
 		return 1;
 	}

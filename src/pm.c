@@ -28,7 +28,14 @@ Port *ports;
 int nports;
 char pm_error[512];
 
+int pm_self_update_available = 0;
+char pm_self_latest_version[64] = {0};
+char pm_self_asset_url[512] = {0};
+char pm_self_asset_name[128] = {0};
+long pm_self_asset_size = 0;
+
 static char SD[256], HERE[512], CAT[600], WORK[300], SC[300], STAMP[32];
+
 static int shortcuts_changed;
 
 typedef struct {
@@ -585,7 +592,36 @@ int pm_init(void)
 	return 0;
 }
 
+const char *pm_here(void)
+{
+	return HERE;
+}
+
+const char *pm_version(void)
+{
+	static char v[64];
+	char f[600];
+	snprintf(f, sizeof f, "%s/.pm_version", HERE);
+	char *text = read_file(f, NULL);
+	if (text) {
+		char *p = text;
+		while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
+			p++;
+		char *end = p + strlen(p) - 1;
+		while (end >= p && (*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n'))
+			*end-- = 0;
+		if (*p) {
+			snprintf(v, sizeof v, "%s", p);
+			free(text);
+			return v;
+		}
+		free(text);
+	}
+	return PM_VERSION;
+}
+
 int pm_lock(void)
+
 {
 	char lock[400], pidf[450];
 	snprintf(lock, sizeof lock, "%s/lock", WORK);
@@ -850,14 +886,59 @@ int pm_check(const Port *only)
 			if (!seen && n < 64)
 				repos[n++] = p->repo;
 		}
+		int seen_pm = 0;
+		for (int j = 0; j < n; j++)
+			if (!strcmp(repos[j], PM_REPO))
+				seen_pm = 1;
+		if (!seen_pm && n < 64)
+			repos[n++] = PM_REPO;
 	}
 	if (net_check(n)) {
 		say("NONET %s", pm_error);
 		return -1;
 	}
 	fetch_releases(repos, n);
+
+	pm_self_update_available = 0;
+	pm_self_latest_version[0] = 0;
+	pm_self_asset_url[0] = 0;
+	pm_self_asset_name[0] = 0;
+	pm_self_asset_size = 0;
+	if (!only) {
+		Release *r = release_of(PM_REPO);
+		const cJSON *tag = (r && r->json) ? cJSON_GetObjectItemCaseSensitive(r->json, "tag_name") : NULL;
+		if (cJSON_IsString(tag) && *tag->valuestring) {
+			const char *cur = pm_version();
+			const char *cur_v = (*cur == 'v' || *cur == 'V') ? cur + 1 : cur;
+			const char *tag_v = (*tag->valuestring == 'v' || *tag->valuestring == 'V') ? tag->valuestring + 1 : tag->valuestring;
+			if (strcmp(cur_v, tag_v) != 0) {
+				const cJSON *assets = cJSON_GetObjectItemCaseSensitive(r->json, "assets");
+				const cJSON *a;
+				cJSON_ArrayForEach(a, assets) {
+					const cJSON *nm = cJSON_GetObjectItemCaseSensitive(a, "name");
+					const cJSON *url = cJSON_GetObjectItemCaseSensitive(a, "browser_download_url");
+					const cJSON *sz = cJSON_GetObjectItemCaseSensitive(a, "size");
+					if (cJSON_IsString(nm) && strstr(nm->valuestring, ".zip") && strstr(nm->valuestring, "PortManager")) {
+						pm_self_update_available = 1;
+						snprintf(pm_self_latest_version, sizeof pm_self_latest_version, "%s", tag->valuestring);
+						if (cJSON_IsString(url))
+							snprintf(pm_self_asset_url, sizeof pm_self_asset_url, "%s", url->valuestring);
+						if (cJSON_IsString(nm))
+							snprintf(pm_self_asset_name, sizeof pm_self_asset_name, "%s", nm->valuestring);
+						if (cJSON_IsNumber(sz))
+							pm_self_asset_size = (long)sz->valuedouble;
+						say("pm: self-update available %s -> %s (asset %s, %ld bytes)",
+							cur, pm_self_latest_version, pm_self_asset_name, pm_self_asset_size);
+						break;
+					}
+				}
+			}
+		}
+	}
+
 	int failed = 0;
 	for (int i = 0; i < nports; i++) {
+
 		Port *p = &ports[i];
 		if (only ? (p != only) : (!p->installed || !*p->asset || !*p->repo))
 			continue;
@@ -1815,3 +1896,116 @@ void pm_info(const Port *p, char *buf, int size)
 	if (p->get && *p->get)
 		append_info(buf, size, &n, "\n" CLR_DIM "Instructions:\n" CLR_TEXT "%s\n", p->get);
 }
+
+int pm_self_update(void)
+{
+	pm_error[0] = 0;
+	if (!pm_self_asset_url[0])
+		return fail("%s: no release download URL found", "Port Manager");
+
+	/* 1. Archive current Port Manager installation to Backups/PortManager/ */
+	char bk_tar[800];
+	const char *cur_ver = pm_version();
+	snprintf(bk_tar, sizeof bk_tar, "%s/Backups/PortManager/%s-PortManager-before-%s.tar",
+		SD, STAMP, cur_ver);
+	mkdirs_for(bk_tar);
+	say("Port Manager: creating backup %s...", base_name(bk_tar));
+	const char *tar_cmd[] = {"tar", "-cf", bk_tar, "-C", HERE, ".", NULL};
+	if (run(tar_cmd, NULL) == 0)
+		say("backup: %s", bk_tar + strlen(SD) + 1);
+	else
+		say("Port Manager: warning: could not create backup archive");
+
+	/* 2. Download release archive */
+	char zip[600];
+	snprintf(zip, sizeof zip, "%s/portmanager_update.zip", WORK);
+	unlink(zip);
+	say("Port Manager: downloading %s...", pm_self_latest_version);
+	if (pm_self_asset_size > 0) {
+		if (pm_self_asset_size >= 1024 * 1024)
+			say("download size: %.1f MB", (double)pm_self_asset_size / (1024.0 * 1024.0));
+		else
+			say("download size: %ld KB", (pm_self_asset_size + 1023) / 1024);
+	}
+
+	const char *tok = token_for_repo(PM_REPO);
+	if (fetch_auth(pm_self_asset_url, zip, pm_self_asset_size, tok, NULL) != 0) {
+		unlink(zip);
+		return fail("%s: download failed", "Port Manager");
+	}
+
+	if (pm_self_asset_size > 0 && file_size(zip) != pm_self_asset_size) {
+		unlink(zip);
+		return fail("%s: download size mismatch", "Port Manager");
+	}
+
+	/* 3. Extract to stage folder */
+	char stage[600];
+	snprintf(stage, sizeof stage, "%s/pm_self_stage", WORK);
+	remove_tree(stage);
+	mkdirs(stage);
+	say("Port Manager: extracting files...");
+	if (on_extract_progress)
+		on_extract_progress(0, 1);
+	if (unpack(zip, stage) != 0) {
+		unlink(zip);
+		remove_tree(stage);
+		return fail("%s: could not unpack update archive", "Port Manager");
+	}
+	if (on_extract_progress)
+		on_extract_progress(1, 1);
+	unlink(zip);
+
+
+	/* 4. Copy files to SD */
+	say("Port Manager: applying update...");
+	char stage_app[700], stage_roms[700];
+	snprintf(stage_app, sizeof stage_app, "%s/App", stage);
+	snprintf(stage_roms, sizeof stage_roms, "%s/Roms", stage);
+
+	if (is_dir(stage_app)) {
+		char dst_app[600];
+		snprintf(dst_app, sizeof dst_app, "%s/App", SD);
+		copy_tree(stage_app, dst_app);
+	} else {
+		copy_tree(stage, HERE);
+	}
+
+	if (is_dir(stage_roms)) {
+		char dst_roms[600];
+		snprintf(dst_roms, sizeof dst_roms, "%s/Roms", SD);
+		copy_tree(stage_roms, dst_roms);
+	}
+
+	/* 5. Set executable permissions */
+	char bin[700], launch[700];
+	snprintf(bin, sizeof bin, "%s/portmanager", HERE);
+	snprintf(launch, sizeof launch, "%s/launch.sh", HERE);
+	chmod(bin, 0777);
+	chmod(launch, 0777);
+
+	/* 6. Record version in .pm_version */
+	char vf[700];
+	snprintf(vf, sizeof vf, "%s/.pm_version", HERE);
+	char v[80];
+	int vl = snprintf(v, sizeof v, "%s\n", pm_self_latest_version);
+	write_file(vf, v, vl);
+
+	/* 7. Clear OnionOS Ports list cache */
+	DIR *d = opendir(SC);
+	struct dirent *e;
+	while (d && (e = readdir(d))) {
+		if (strstr(e->d_name, "_cache") && strstr(e->d_name, ".db")) {
+			char f[600];
+			snprintf(f, sizeof f, "%s/%s", SC, e->d_name);
+			unlink(f);
+		}
+	}
+	if (d)
+		closedir(d);
+
+	remove_tree(stage);
+	say("Port Manager: updated to %s successfully!", pm_self_latest_version);
+	return 0;
+}
+
