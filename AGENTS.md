@@ -46,7 +46,7 @@ This dumps `/dev/fb0`, queries the pan offset, and converts to PNG using `ffmpeg
 5. **Lessons (2026-10-19)**:
    - The card is FAT: every file is `rwxrwxrwx`. Never use the exec bit to tell program from data. That once deleted F-Zero X's ROM and saves on "remove, keep data". In `is_data_file()` the catalog's data rules come before any guess about code.
    - Progress output: details go to the log only (`say_log`), and the screen shows one status line (`on_stage` + one bar). Nothing may draw after `gfx_close()`, so call `progress_stop()` first.
-   - Releases: bump `PM_VERSION` (`src/pm.h`) and `onion/App/PortManager/.pm_version` by 0.0.1, then tag. The release workflow checks that the tag matches.
+   - Releases (from v1.2.0, +0.0.1 each): bump `PM_VERSION` (`src/pm.h`) and `onion/App/PortManager/.pm_version`, write `docs/releases/<tag>.md` in plain language for players, then tag. The release workflow checks the tag and publishes that file as the notes.
    - Every feature has an emulator scenario (`miyoo/emu/scenarios/`). Add or extend one with each change. Setup and assertion directives are listed in `docs/NOTES.md`. The emulator runs only in CI here (no local Python/qemu), so read `contact.png` from the run's artifacts.
 
 ## Commit Guidelines
