@@ -1,0 +1,8 @@
+#!/bin/sh
+# EMU_OFFLINE=1 (scenario "offline"): no network, as with Wi-Fi off
+[ -n "$EMU_OFFLINE" ] && exit 6
+# GitHub API calls carry the CI token (60 requests an hour without it)
+if [ -n "$GITHUB_TOKEN" ] && echo "$*" | grep -q "api.github.com" && ! echo "$*" | grep -q "Authorization:"; then
+	exec /usr/bin/curl -H "Authorization: Bearer $GITHUB_TOKEN" "$@"
+fi
+exec /usr/bin/curl "$@"

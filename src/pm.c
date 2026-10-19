@@ -15,6 +15,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -738,68 +739,100 @@ static void set_stage(const char *label)
  * with `names` (a port of each repo), shows which one it is waiting for */
 static void fetch_releases(char **repos, const char **names, int n)
 {
-	int pids[64];
-	char f[64][512], part[64][600];
-	const char *ca = wget_ca_cert();
-	char ca_arg[700];
-	if (ca)
-		snprintf(ca_arg, sizeof ca_arg, "--ca-certificate=%s", ca);
-	for (int i = 0; i < n && i < 64; i++) {
-		char url[300];
+	if (n > 64)
+		n = 64;
+	char f[64][512], part[64][600], url[64][300];
+	const char *tok[64];
+	for (int i = 0; i < n; i++) {
 		rel_path(repos[i], f[i], sizeof f[i]);
 		snprintf(part[i], sizeof part[i], "%s.part", f[i]);
-		snprintf(url, sizeof url, API "%s/releases/latest", repos[i]);
+		snprintf(url[i], sizeof url[i], API "%s/releases/latest", repos[i]);
 		unlink(f[i]);
 		unlink(part[i]);
-		const char *tok = token_for_repo(repos[i]);
-		const char *argv[16];
+		tok[i] = token_for_repo(repos[i]);
+	}
+
+	/* One curl per token, all its repos over one connection: a TLS handshake takes ~2 s of the
+	 * Miyoo's CPU, so 8 parallel wgets took 6.5 s and one curl 2.4 s (owner's Mini Plus, 2026-10-19).
+	 * curl writes the files in order, so the newest one is the repo being fetched. */
+	const char *ca = wget_ca_cert();
+	int group[64], pids[64], ngroups = 0;
+	for (int i = 0; i < n; i++) {
+		group[i] = -1;
+		for (int j = 0; j < i && group[i] < 0; j++)
+			if (tok[j] == tok[i])
+				group[i] = group[j];
+		if (group[i] >= 0)
+			continue;
+		group[i] = ngroups;
+		const char *argv[16 + 2 * 64];
 		int argc = 0;
 		char auth_hdr[300];
-		if (tok) {
-			snprintf(auth_hdr, sizeof auth_hdr, "Authorization: Bearer %s", tok);
-			argv[argc++] = curl_bin();
-			argv[argc++] = "-s";
-			argv[argc++] = "-S";
-			argv[argc++] = "-L";
-			argv[argc++] = "-m";
-			argv[argc++] = "15";
-			if (ca) {
-				argv[argc++] = "--cacert";
-				argv[argc++] = ca;
-			}
+		argv[argc++] = curl_bin();
+		argv[argc++] = "-s";
+		argv[argc++] = "-L";
+		argv[argc++] = "--connect-timeout";
+		argv[argc++] = "10";
+		argv[argc++] = "-m";
+		argv[argc++] = "15";
+		if (ca) {
+			argv[argc++] = "--cacert";
+			argv[argc++] = ca;
+		}
+		if (tok[i]) {
+			snprintf(auth_hdr, sizeof auth_hdr, "Authorization: Bearer %s", tok[i]);
 			argv[argc++] = "-H";
 			argv[argc++] = auth_hdr;
-			argv[argc++] = "-o";
-			argv[argc++] = part[i];
-			argv[argc++] = url;
-			argv[argc] = NULL;
-		} else {
-			argv[argc++] = wget_bin();
-			argv[argc++] = "-q";
-			argv[argc++] = "-T";
-			argv[argc++] = "15";
-			if (ca)
-				argv[argc++] = ca_arg;
-			argv[argc++] = "-O";
-			argv[argc++] = part[i];
-			argv[argc++] = url;
-			argv[argc] = NULL;
 		}
-		pids[i] = run_bg(argv, NULL);
+		for (int k = i; k < n; k++)
+			if (tok[k] == tok[i]) {
+				argv[argc++] = "-o";
+				argv[argc++] = part[k];
+				argv[argc++] = url[k];
+			}
+		argv[argc] = NULL;
+		pids[ngroups++] = run_bg(argv, NULL);
 	}
-	for (int i = 0; i < n && i < 64; i++) {
+	int shown = -1, shown_done = -1;
+	for (int left = ngroups; left > 0;) {
+		left = 0;
+		for (int g = 0; g < ngroups; g++)
+			if (pids[g] > 0) {
+				int st;
+				if (waitpid(pids[g], &st, WNOHANG) == 0)
+					left++;
+				else
+					pids[g] = -1;
+			}
 		if (names) {
-			char label[80];
-			snprintf(label, sizeof label, "Checking %s", names[i]);
-			set_stage(label);
-			if (on_check_progress)
-				on_check_progress(i, n);
+			/* a repo is done when its curl ended or the next file of the same curl began */
+			int done = 0, now = -1;
+			for (int i = 0; i < n; i++) {
+				int later = 0;
+				for (int k = i + 1; k < n && !later; k++)
+					later = group[k] == group[i] && file_exists(part[k]);
+				if (pids[group[i]] < 0 || later)
+					done++;
+				else if (now < 0)
+					now = i;
+			}
+			if (now >= 0 && now != shown) {
+				char label[80];
+				snprintf(label, sizeof label, "Checking %s", names[now]);
+				set_stage(label);
+				shown = now;
+				shown_done = -1; /* a new label clears the bar */
+			}
+			if (on_check_progress && done != shown_done)
+				on_check_progress(shown_done = done, n);
 		}
-		char url[300];
-		snprintf(url, sizeof url, API "%s/releases/latest", repos[i]);
-		const char *tok = token_for_repo(repos[i]);
-		if (!(run_wait(pids[i]) == 0 && file_size(part[i]) > 0 && rename(part[i], f[i]) == 0))
-			fetch_auth(url, f[i], 0, tok, NULL);
+		if (left)
+			usleep(100000);
+	}
+	for (int i = 0; i < n; i++) {
+		/* what didn't come: once more on its own (wget or curl, as fetch_auth chooses) */
+		if (!(file_size(part[i]) > 0 && rename(part[i], f[i]) == 0))
+			fetch_auth(url[i], f[i], 0, tok[i], NULL);
 		unlink(part[i]);
 		char *text = read_file(f[i], NULL);
 		cJSON *j = text ? cJSON_Parse(text) : NULL;
@@ -810,7 +843,7 @@ static void fetch_releases(char **repos, const char **names, int n)
 			/* If releases/latest failed (e.g. repo only has prereleases), try releases?per_page=5 */
 			char url_all[300];
 			snprintf(url_all, sizeof url_all, API "%s/releases?per_page=5", repos[i]);
-			if (fetch_auth(url_all, f[i], 0, tok, NULL) == 0) {
+			if (fetch_auth(url_all, f[i], 0, tok[i], NULL) == 0) {
 				text = read_file(f[i], NULL);
 				cJSON *arr = text ? cJSON_Parse(text) : NULL;
 				free(text);
