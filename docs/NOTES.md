@@ -216,6 +216,14 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 - Check for updates: the status line shows the port whose release it is waiting for
   ("Checking Diddy Kong Racing", bar "2/5 ports"; "Updating the catalog" before). Releases
   go up by 0.0.1 (owner, 2026-10-19).
+- Owner's decisions, 2026-10-19 (afternoon):
+  - **Releases:** v1.2.0 is the fresh start (v1.1.x releases and tags deleted); next v1.2.1, v1.2.2, ...
+    An old release is deleted only after the new one is out.
+  - **Release notes in plain language for players:** `docs/releases/<tag>.md`, which the release
+    workflow publishes instead of the commit list. Changes are also reported to the owner in
+    player terms.
+  - **GitHub page:** README for players (install, making games appear, the copyright line).
+    Developer notes are in `CATALOG.md`. Old workflow runs deleted; the two workflows stay.
 - Self-update tested on the device by the owner, 2026-10-19: 1.0.0 -> v1.1.0 -> v1.1.1 over
   Wi-Fi, "works very well".
 - F-Zero X ROM and saves lost (owner, 2026-10-19): the build on the card on 2026-10-17
