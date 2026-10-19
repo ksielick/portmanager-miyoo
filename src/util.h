@@ -22,6 +22,16 @@ int mkdirs_for(const char *file); /* mkdir -p of the file's folder */
 int copy_file(const char *src, const char *dst); /* via dst.new, then renamed */
 int copy_tree(const char *src, const char *dst); /* cp -r */
 int remove_tree(const char *path); /* rm -rf */
+int del_file(const char *path); /* unlink, within the guard */
+
+/* The guard: once folders are allowed, files are written or deleted only strictly inside
+ * them (the path resolved, ".." and symlinks included); anything else is refused, logged
+ * and fails with EPERM. No folder allowed = no guard (before pm_init). */
+void guard_allow(const char *dir);
+int guard_ok(const char *path);
+
+long long free_bytes(const char *path); /* on the path's filesystem; -1 if unknown */
+long long tree_bytes(const char *path); /* the files' sizes under a folder (or one file) */
 int same_file(const char *a, const char *b); /* same contents */
 int sha256_file(const char *path, char hex[65]);
 

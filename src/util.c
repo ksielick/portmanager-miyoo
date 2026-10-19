@@ -7,7 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -84,8 +86,100 @@ char *read_file(const char *path, size_t *len)
 	return d;
 }
 
+static char guard_roots[8][600];
+static int nguard;
+
+/* the absolute path with links and ".." resolved, also for a file not there yet */
+static int canon(const char *path, char *out, size_t size)
+{
+	char p[1024], tail[1024] = "";
+	snprintf(p, sizeof p, "%s", path);
+	for (;;) {
+		char r[PATH_MAX];
+		if (realpath(p, r)) {
+			snprintf(out, size, "%s%s", r, tail);
+			return 0;
+		}
+		char *s = strrchr(p, '/');
+		if (!s || s == p)
+			return -1;
+		/* what isn't there yet may not climb back out */
+		if (!strcmp(s, "/..") || !strcmp(s, "/."))
+			return -1;
+		char t[1024];
+		snprintf(t, sizeof t, "%s%s", s, tail);
+		snprintf(tail, sizeof tail, "%s", t);
+		*s = 0;
+	}
+}
+
+void guard_allow(const char *dir)
+{
+	mkdirs(dir);
+	if (nguard < 8 && canon(dir, guard_roots[nguard], sizeof guard_roots[nguard]) == 0)
+		nguard++;
+}
+
+int guard_ok(const char *path)
+{
+	if (!nguard)
+		return 1;
+	char c[1100];
+	if (canon(path, c, sizeof c) == 0)
+		for (int i = 0; i < nguard; i++) {
+			size_t n = strlen(guard_roots[i]);
+			if (!strncmp(c, guard_roots[i], n) && c[n] == '/' && c[n + 1])
+				return 1;
+		}
+	say("BLOCKED %s: outside Port Manager's folders, left as it is", path);
+	errno = EPERM;
+	return 0;
+}
+
+int del_file(const char *path)
+{
+	return guard_ok(path) ? unlink(path) : -1;
+}
+
+long long free_bytes(const char *path)
+{
+	/* the emulator's scenarios can make the card nearly full */
+	const char *emu = getenv("MIYOO_EMU_DIR") ? getenv("MIYOO_EMU_FREE_MB") : NULL;
+	if (emu)
+		return atoll(emu) * 1024 * 1024;
+	struct statvfs v;
+	if (statvfs(path, &v) != 0)
+		return -1;
+	return (long long)v.f_bavail * v.f_frsize;
+}
+
+static void add_size(const char *rel, void *ctx)
+{
+	long long *sum = ((long long **)ctx)[0];
+	const char *root = ((const char **)ctx)[1];
+	char full[2048];
+	snprintf(full, sizeof full, "%s/%s", root, rel);
+	long s = file_size(full);
+	if (s > 0)
+		*sum += s;
+}
+
+long long tree_bytes(const char *path)
+{
+	if (!is_dir(path)) {
+		long s = file_size(path);
+		return s > 0 ? s : 0;
+	}
+	long long sum = 0;
+	void *ctx[2] = {&sum, (void *)path};
+	walk_files(path, add_size, ctx);
+	return sum;
+}
+
 int write_file(const char *path, const char *data, size_t len)
 {
+	if (!guard_ok(path))
+		return -1;
 	FILE *f = fopen(path, "wb");
 	if (!f)
 		return -1;
@@ -139,6 +233,8 @@ int copy_file(const char *src, const char *dst)
 {
 	char tmp[1100];
 	snprintf(tmp, sizeof tmp, "%s.new", dst);
+	if (!guard_ok(dst))
+		return -1;
 	FILE *in = fopen(src, "rb");
 	if (!in)
 		return -1;
@@ -190,7 +286,20 @@ int copy_tree(const char *src, const char *dst)
 	return r;
 }
 
+static int remove_inside(const char *path);
+
 int remove_tree(const char *path)
+{
+	struct stat st;
+	if (lstat(path, &st) != 0)
+		return 0;
+	if (!guard_ok(path))
+		return -1;
+	return remove_inside(path);
+}
+
+/* below a path the guard let through: links are removed, never followed */
+static int remove_inside(const char *path)
 {
 	struct stat st;
 	if (lstat(path, &st) != 0)
@@ -203,7 +312,7 @@ int remove_tree(const char *path)
 				continue;
 			char s[1024];
 			snprintf(s, sizeof s, "%s/%s", path, e->d_name);
-			remove_tree(s);
+			remove_inside(s);
 		}
 		if (d)
 			closedir(d);

@@ -1,0 +1,20 @@
+# A backup holding a file outside the Ports folders (here Saves/): nothing is restored, the file outside stays
+file Saves/precious.sav "original"
+file Backups/PortManager/20260101-000000-skifree-before-1.0.0/Saves/precious.sav "overwritten"
+file Backups/PortManager/20260101-000000-skifree-before-1.0.0/Roms/PORTS/Games/SkiFree/SkiFree.sh "restored"
+press 1 DOWN
+press 2 DOWN
+press 3 A        # details: SkiFree
+press 4 Y        # restore / rollback
+press 5 A        # local backup
+press 6 A        # the backup
+press 7 A        # yes
+press 8 B        # result
+press 9 B        # details
+press 10 B       # exit
+shots every:1
+min_frames 8
+assert_contains Saves/precious.sav original
+assert_not_contains Roms/PORTS/Games/SkiFree/SkiFree.sh restored
+assert_log "BLOCKED"
+assert_log "nothing restored"

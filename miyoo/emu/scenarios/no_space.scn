@@ -1,0 +1,15 @@
+# A nearly full card (5 MB free): the update stops before anything is written, and says why
+env MIYOO_EMU_FREE_MB=5
+press 1 A        # details: Diddy Kong Racing
+press 2 A        # check
+press 3 A        # update
+press 4 A        # yes
+press 5 B        # result
+press 6 B        # details
+press 7 B        # exit
+shots every:1
+min_frames 5
+assert_log "not enough free space on the SD card"
+assert_not_contains Roms/PORTS/Games/DiddyKongRacing/launch.sh miyoo_pack
+assert_not_exists Backups/PortManager/*-miyoo64-diddykongracing-*
+assert_log_not "Diddy Kong Racing: downloading"

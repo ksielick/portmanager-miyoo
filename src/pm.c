@@ -578,6 +578,16 @@ int pm_init(void)
 	time_t t = time(NULL);
 	strftime(STAMP, sizeof STAMP, "%Y%m%d-%H%M%S", localtime(&t));
 	mkdirs(WORK);
+	/* the only places Port Manager writes or deletes in: the Ports list, its backups, its
+	 * work folder and its own folder (self-update); anything else is refused (owner, 2026-10-19) */
+	const char *allowed[] = {"Roms/PORTS/Games", "Roms/PORTS/Shortcuts", "Roms/PORTS/Imgs", "Backups/PortManager"};
+	for (size_t i = 0; i < sizeof allowed / sizeof *allowed; i++) {
+		char d[600];
+		snprintf(d, sizeof d, "%s/%s", SD, allowed[i]);
+		guard_allow(d);
+	}
+	guard_allow(WORK);
+	guard_allow(HERE);
 	char log[600];
 	snprintf(log, sizeof log, "%s/log.txt", HERE);
 	log_open(log);
@@ -739,6 +749,19 @@ static void rel_path(const char *repo, char *out, size_t n)
 			*c = '_';
 }
 
+/* -1 with pm_error when the SD card can't take `need` bytes and 8 MB to spare; nothing was
+ * written yet when this is asked */
+static int no_space(const char *who, long long need)
+{
+	long long have = free_bytes(SD), mb = 1024 * 1024;
+	if (have < 0 || have >= need + 8 * mb)
+		return 0;
+	snprintf(pm_error, sizeof pm_error, "%s: not enough free space on the SD card (needs %lld MB, %lld MB free): nothing was changed",
+		who, (need + 8 * mb + mb - 1) / mb, have / mb);
+	say("ERROR %s", pm_error);
+	return -1;
+}
+
 static void set_stage(const char *label)
 {
 	if (on_stage)
@@ -757,8 +780,8 @@ static void fetch_releases(char **repos, const char **names, int n)
 		rel_path(repos[i], f[i], sizeof f[i]);
 		snprintf(part[i], sizeof part[i], "%s.part", f[i]);
 		snprintf(url[i], sizeof url[i], API "%s/releases/latest", repos[i]);
-		unlink(f[i]);
-		unlink(part[i]);
+		del_file(f[i]);
+		del_file(part[i]);
 		tok[i] = token_for_repo(repos[i]);
 	}
 
@@ -843,7 +866,7 @@ static void fetch_releases(char **repos, const char **names, int n)
 		/* what didn't come: once more on its own (wget or curl, as fetch_auth chooses) */
 		if (!(file_size(part[i]) > 0 && rename(part[i], f[i]) == 0))
 			fetch_auth(url[i], f[i], 0, tok[i], NULL);
-		unlink(part[i]);
+		del_file(part[i]);
 		char *text = read_file(f[i], NULL);
 		cJSON *j = text ? cJSON_Parse(text) : NULL;
 		free(text);
@@ -1206,6 +1229,9 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 	snprintf(basebuf, sizeof basebuf, "%s", base);
 	base = basebuf;
 
+	/* the zip, its unpacked files and the copy on the card, with room to spare */
+	if (no_space(p->name, total_bytes > 0 ? 3LL * total_bytes : 0))
+		return -1;
 	set_stage("1/4 Downloading");
 	if (total_bytes >= 1024 * 1024)
 		say_log("%s: %s -> %s, downloading %s (%.1f MB)", p->name, *p->version ? p->version : "?", tag, aname,
@@ -1231,12 +1257,12 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 	if (digest_str && !strncmp(digest_str, "sha256:", 7)) {
 		char h[65];
 		if (sha256_file(zip, h) || strcmp(h, digest_str + 7)) {
-			unlink(zip);
+			del_file(zip);
 			return fail("%s: the download's sha256 is wrong", p->name);
 		}
 	}
 	else if (total_bytes > 0 && file_size(zip) != total_bytes) {
-		unlink(zip);
+		del_file(zip);
 		return fail("%s: the download's size is wrong", p->name);
 	}
 	remove_tree(stage);
@@ -1245,12 +1271,12 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 	if (on_extract_progress)
 		on_extract_progress(0, 1);
 	if (unpack(zip, stage)) {
-		unlink(zip);
+		del_file(zip);
 		return fail("%s: can't unpack the download", p->name);
 	}
 	if (on_extract_progress)
 		on_extract_progress(1, 1);
-	unlink(zip);
+	del_file(zip);
 
 	/* an older install in App/ (miyoo64's own layout): moved to the Ports folder first */
 	if (legacy_app(p)) {
@@ -1346,6 +1372,30 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 		snprintf(d, sizeof d, "%s/%s", SD, m.e[i].dst);
 		anything_old = replace[i] && file_exists(d);
 	}
+	/* now exactly: the new files, and the backup twice (its folder, then the tar) */
+	{
+		long long need = 0;
+		for (int i = 0; i < m.n; i++)
+			if (replace[i]) {
+				char d[1000];
+				snprintf(d, sizeof d, "%s/%s", SD, m.e[i].dst);
+				need += tree_bytes(m.e[i].src) + (anything_old ? 2 * tree_bytes(d) : 0);
+			}
+		for (int b = 0; b < p->nbackup && anything_old; b++) {
+			char from[800];
+			snprintf(from, sizeof from, "%s/%s", g, p->backup[b]);
+			need += 2 * tree_bytes(from);
+		}
+		if (no_space(p->name, need)) {
+			free(replace);
+			free(oldman);
+			free(newman);
+			free(m.e);
+			remove_tree(stage);
+			remove_tree(bk_stage);
+			return -1;
+		}
+	}
 	if (is_dir(bk_stage) || (total_to_copy > 0 && anything_old)) {
 		set_stage("3/4 Backup");
 		say_log("%s: backing up...", p->name);
@@ -1381,7 +1431,7 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 		int tar_failed = run(tar_cmd, NULL);
 		remove_tree(bk_stage);
 		if (tar_failed) {
-			unlink(bk_tar);
+			del_file(bk_tar);
 			free(replace);
 			free(oldman);
 			free(newman);
@@ -1451,7 +1501,7 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 			if (strstr(e->d_name, "_cache") && strstr(e->d_name, ".db")) {
 				char f[600];
 				snprintf(f, sizeof f, "%s/%s", SC, e->d_name);
-				unlink(f);
+				del_file(f);
 			}
 		if (d)
 			closedir(d);
@@ -1597,6 +1647,14 @@ void pm_free_backups(BackupItem *items, int n)
 	free(items);
 }
 
+static void restore_check_cb(const char *rel, void *ctx)
+{
+	char full[1200];
+	snprintf(full, sizeof full, "%s/%s", SD, rel);
+	if (!guard_ok(full))
+		((int *)ctx)[0] = 1;
+}
+
 int pm_restore_backup(Port *p, const BackupItem *b)
 {
 	pm_error[0] = 0;
@@ -1623,6 +1681,13 @@ int pm_restore_backup(Port *p, const BackupItem *b)
 		return fail("%s: backup not found on card", p->name);
 	}
 
+	/* every file of the backup must land in Port Manager's folders, or nothing is restored */
+	struct { int bad; } chk = {0};
+	walk_files(src_dir, restore_check_cb, &chk);
+	if (chk.bad) {
+		remove_tree(rstage);
+		return fail("%s: the backup has files outside the Ports folders: nothing restored", p->name);
+	}
 	if (copy_tree(src_dir, SD)) {
 		remove_tree(rstage);
 		return fail("%s: failed to copy backup files to SD card", p->name);
@@ -1637,7 +1702,7 @@ int pm_restore_backup(Port *p, const BackupItem *b)
 		snprintf(in_bk, sizeof in_bk, "%s/%s/%s", src_dir, p->dir, vname);
 		snprintf(vf, sizeof vf, "%s/%s", g, vname);
 		if (!file_exists(in_bk))
-			unlink(vf);
+			del_file(vf);
 	}
 	remove_tree(rstage);
 	if (*p->sc_run) {
@@ -1652,7 +1717,7 @@ int pm_restore_backup(Port *p, const BackupItem *b)
 		if (strstr(e->d_name, "_cache") && strstr(e->d_name, ".db")) {
 			char f[600];
 			snprintf(f, sizeof f, "%s/%s", SC, e->d_name);
-			unlink(f);
+			del_file(f);
 		}
 	if (d)
 		closedir(d);
@@ -1677,14 +1742,14 @@ int pm_list_remote_releases(const Port *p, RemoteRelease **items, int *n)
 	snprintf(url, sizeof url, API "%s/releases?per_page=30", p->repo);
 	rel_path(p->repo, f, sizeof f);
 	snprintf(f + strlen(f), sizeof f - strlen(f), "_all.json");
-	unlink(f);
+	del_file(f);
 
 	const char *tok = token_for_repo(p->repo);
 	if (fetch_auth(url, f, 0, tok, NULL))
 		return fail("%s: cannot fetch releases list from GitHub", p->name);
 
 	char *text = read_file(f, NULL);
-	unlink(f);
+	del_file(f);
 	if (!text)
 		return fail("%s: cannot read releases response", p->name);
 
@@ -1811,18 +1876,18 @@ static void clean_port_files(const Port *p)
 	snprintf(g, sizeof g, "%s/%s", SD, p->dir);
 	char f[700];
 	snprintf(f, sizeof f, "%s/.pm_version", g);
-	unlink(f);
+	del_file(f);
 	snprintf(f, sizeof f, "%s/.miyoo64_version", g);
-	unlink(f);
+	del_file(f);
 	snprintf(f, sizeof f, "%s/.pm_manifest", g);
-	unlink(f);
+	del_file(f);
 
 	CleanCtx ctx = {0};
 	ctx.p = p;
 	snprintf(ctx.gdir, sizeof ctx.gdir, "%s", g);
 	walk_files(g, clean_cb, &ctx);
 	for (int i = 0; i < ctx.n; i++) {
-		unlink(ctx.to_delete[i]);
+		del_file(ctx.to_delete[i]);
 		free(ctx.to_delete[i]);
 	}
 	say("%s: %d program file(s) removed", p->name, ctx.n);
@@ -1847,7 +1912,7 @@ int pm_uninstall(Port *p, int keep_data)
 		char sc_path[1000];
 		snprintf(sc_path, sizeof sc_path, "%s/%s", SD, sc);
 		say("%s: removing shortcut %s", p->name, sc);
-		unlink(sc_path);
+		del_file(sc_path);
 
 		/* Try removing empty category folder, e.g. Roms/PORTS/Shortcuts/RPG */
 		char *slash = strrchr(sc_path, '/');
@@ -1860,10 +1925,10 @@ int pm_uninstall(Port *p, int keep_data)
 	/* 2. Remove box art image in Roms/PORTS/Imgs/ if any */
 	char img[700];
 	snprintf(img, sizeof img, "%s/Roms/PORTS/Imgs/%s.png", SD, p->name);
-	unlink(img);
+	del_file(img);
 	if (*p->category) {
 		snprintf(img, sizeof img, "%s/Roms/PORTS/Imgs/%s/%s.png", SD, p->category, p->name);
-		unlink(img);
+		del_file(img);
 	}
 
 	/* 3. Invalidate Onion's cached Ports list */
@@ -1873,7 +1938,7 @@ int pm_uninstall(Port *p, int keep_data)
 		if (strstr(e->d_name, "_cache") && strstr(e->d_name, ".db")) {
 			char cf[600];
 			snprintf(cf, sizeof cf, "%s/%s", SC, e->d_name);
-			unlink(cf);
+			del_file(cf);
 		}
 	if (d)
 		closedir(d);
@@ -2103,6 +2168,10 @@ int pm_self_update(void)
 	if (!pm_self_asset_url[0])
 		return fail("%s: no release download URL found", "Port Manager");
 
+	/* its backup, the zip, the unpacked files and the copy */
+	if (no_space("Port Manager", tree_bytes(HERE) + 3LL * (pm_self_asset_size > 0 ? pm_self_asset_size : 1024 * 1024)))
+		return -1;
+
 	/* 1. Archive current Port Manager installation to Backups/PortManager/ */
 	char bk_tar[800];
 	const char *cur_ver = pm_version();
@@ -2119,7 +2188,7 @@ int pm_self_update(void)
 	/* 2. Download release archive */
 	char zip[600];
 	snprintf(zip, sizeof zip, "%s/portmanager_update.zip", WORK);
-	unlink(zip);
+	del_file(zip);
 	say("Port Manager: downloading %s...", pm_self_latest_version);
 	if (pm_self_asset_size > 0) {
 		if (pm_self_asset_size >= 1024 * 1024)
@@ -2130,12 +2199,12 @@ int pm_self_update(void)
 
 	const char *tok = token_for_repo(PM_REPO);
 	if (fetch_auth(pm_self_asset_url, zip, pm_self_asset_size, tok, NULL) != 0) {
-		unlink(zip);
+		del_file(zip);
 		return fail("%s: download failed", "Port Manager");
 	}
 
 	if (pm_self_asset_size > 0 && file_size(zip) != pm_self_asset_size) {
-		unlink(zip);
+		del_file(zip);
 		return fail("%s: download size mismatch", "Port Manager");
 	}
 
@@ -2148,13 +2217,13 @@ int pm_self_update(void)
 	if (on_extract_progress)
 		on_extract_progress(0, 1);
 	if (unpack(zip, stage) != 0) {
-		unlink(zip);
+		del_file(zip);
 		remove_tree(stage);
 		return fail("%s: could not unpack update archive", "Port Manager");
 	}
 	if (on_extract_progress)
 		on_extract_progress(1, 1);
-	unlink(zip);
+	del_file(zip);
 
 
 	/* 4. Copy files to SD */
@@ -2199,7 +2268,7 @@ int pm_self_update(void)
 		if (strstr(e->d_name, "_cache") && strstr(e->d_name, ".db")) {
 			char f[600];
 			snprintf(f, sizeof f, "%s/%s", SC, e->d_name);
-			unlink(f);
+			del_file(f);
 		}
 	}
 	if (d)
