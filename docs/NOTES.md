@@ -216,6 +216,20 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 - Check for updates: the status line shows the port whose release it is waiting for
   ("Checking Diddy Kong Racing", bar "2/5 ports"; "Updating the catalog" before). Releases
   go up by 0.0.1 (owner, 2026-10-19).
+- Safety (owner, 2026-10-19, for 1.2.1):
+  - **Free space** is checked before downloading (3x the download) and before the backup (the new
+    files and the backup, exactly), with 8 MB to spare. A full card stops the update with nothing
+    changed. Emulator: `env MIYOO_EMU_FREE_MB=<n>`.
+  - **The guard (`util.c`):** every write (`copy_file`, `write_file`) and delete (`remove_tree`,
+    `del_file`) is checked against the allowed folders, set in `pm_init`: `Roms/PORTS/Games`,
+    `Roms/PORTS/Shortcuts`, `Roms/PORTS/Imgs`, `Backups/PortManager`, `.pm_work` and Port
+    Manager's own folder.
+    - Paths are resolved first (`..`, links), and the allowed folders themselves can't be removed.
+    - A refused path is logged as `BLOCKED ...` and left untouched.
+    - A restore checks the whole backup first.
+    - The old miyoo64 `App/<game>` removal is now refused too: the owner's rule is the Ports
+      list only.
+  - Tests: `no_space`, `guard_restore` (28 scenarios in all).
 - Owner's decisions, 2026-10-19 (afternoon):
   - **Releases:** v1.2.0 is the fresh start (v1.1.x releases and tags deleted); next v1.2.1, v1.2.2, ...
     An old release is deleted only after the new one is out.
