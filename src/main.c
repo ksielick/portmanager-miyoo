@@ -688,7 +688,7 @@ static void do_update(Port *only)
 		return;
 	progress_begin("Updating");
 	say("--- update");
-	int ok = 0, bad = 0;
+	int ok = 0, bad = 0, installing = only && !only->installed;
 	for (int i = 0; i < nports; i++) {
 		Port *p = &ports[i];
 		if ((only && p != only) || (!only && !p->update))
@@ -705,7 +705,7 @@ static void do_update(Port *only)
 		port_end();
 	}
 	char s[80];
-	snprintf(s, sizeof s, "Done: %d %s%s", ok, only && !only->installed ? "installed" : "updated", bad ? "" : ".");
+	snprintf(s, sizeof s, "Done: %d %s%s", ok, installing ? "installed" : "updated", bad ? "" : ".");
 	lines_add(&progress, "");
 	lines_add(&progress, s);
 	if (bad) {

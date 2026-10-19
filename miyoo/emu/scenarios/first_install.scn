@@ -16,3 +16,4 @@ shots every:1
 min_frames 20
 assert_exists Roms/PORTS/Games/FZeroX/fzerox
 assert_exists "Roms/PORTS/Shortcuts/Racing/F-Zero X.port"
+assert_log "F-Zero X: installed "

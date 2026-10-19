@@ -1150,6 +1150,7 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 {
 	pm_error[0] = 0;
 	shortcuts_changed = 0;
+	int fresh = !p->installed;
 	char zip[600], stage[400], g[600], bk_stage[700];
 	snprintf(zip, sizeof zip, "%s/%s", WORK, aname);
 	snprintf(stage, sizeof stage, "%s/stage", WORK);
@@ -1412,7 +1413,10 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 		if (d)
 			closedir(d);
 	}
-	say("%s: %s -> %s, %d file(s) replaced", p->name, *p->version ? p->version : "?", tag, n);
+	if (fresh)
+		say("%s: installed %s, %d file(s)", p->name, tag, n);
+	else
+		say("%s: %s -> %s, %d file(s) replaced", p->name, *p->version ? p->version : "?", tag, n);
 	pm_scan();
 	return 0;
 }
