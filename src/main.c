@@ -15,6 +15,8 @@
 
 static char **g_argv = NULL;
 static char g_self_bin[512] = {0};
+/* --check: started again after a self-update, the ports are checked right away */
+static int g_check_at_start;
 
 
 #define TOPH 48
@@ -360,7 +362,7 @@ static void progress_begin(const char *title)
 }
 
 /* shows the result; returns the key that closed it (B, or one of `keys`) */
-static int progress_end_at(const char *hints, const int *keys, int start_top)
+static void progress_stop(void)
 {
 	log_sink = NULL;
 	on_download_progress = NULL;
@@ -370,6 +372,11 @@ static int progress_end_at(const char *hints, const int *keys, int start_top)
 	on_stage = NULL;
 	screen_prefix = NULL;
 	status_clear();
+}
+
+static int progress_end_at(const char *hints, const int *keys, int start_top)
+{
+	progress_stop();
 
 	char custom_hints[80];
 	if (!hints) {
@@ -576,12 +583,14 @@ static int confirm(const char *question)
 	return confirm_choice(question, "A: yes   B: no") == 1;
 }
 
-static void do_pm_self_update(void)
+/* asks first unless already asked; on success restarts, with --check when the ports are to be
+ * checked right after */
+static void do_pm_self_update(int ask, int then_check)
 {
 	char q[300];
 	snprintf(q, sizeof q, "Update Port Manager to %s?\n\n(Current version: %s)",
 		pm_self_latest_version, pm_version());
-	if (!confirm(q))
+	if (ask && !confirm(q))
 		return;
 
 	progress_begin("Updating Port Manager");
@@ -605,9 +614,38 @@ static void do_pm_self_update(void)
 
 	gfx_close();
 	pm_unlock();
-	char *restart_argv[] = {g_self_bin, NULL};
-	execv(g_self_bin, g_argv ? g_argv : restart_argv);
+	char *restart_argv[] = {g_argv ? g_argv[0] : g_self_bin, then_check ? "--check" : NULL, NULL};
+	execv(g_self_bin, restart_argv);
 	exit(0);
+}
+
+static void do_update(Port *only);
+
+/* Y on the list: Port Manager itself first, so a newer one checks and updates the ports */
+static void check_all(int self_first)
+{
+	if (self_first) {
+		progress_begin("Checking for updates");
+		say("--- check Port Manager");
+		say("Checking Port Manager...");
+		int err = pm_check_self();
+		progress_stop();
+		if (!err && pm_self_update_available) {
+			char q[300];
+			snprintf(q, sizeof q, "Port Manager %s is available (installed: %s).\n\n"
+				"It's updated first, then the ports are checked.", pm_self_latest_version, pm_version());
+			int c = confirm_choice(q, "A: update now   B: later");
+			if (c < 0)
+				return;
+			if (c == 1)
+				do_pm_self_update(0, 1); /* returns only if it failed */
+		}
+	}
+	int chk_res = do_check(NULL);
+	if (chk_res == K_START)
+		do_update(NULL);
+	else if (chk_res == K_SELECT && pm_self_update_available)
+		do_pm_self_update(1, 1);
 }
 
 static void do_update(Port *only)
@@ -1024,6 +1062,10 @@ static int run_list(int all)
 {
 	int sel = 0, top = 0;
 	for (;;) {
+		if (!all && g_check_at_start) {
+			g_check_at_start = 0;
+			check_all(0);
+		}
 		int idx[256], n = 0;
 		for (int i = 0; i < nports && n < 256; i++)
 			if (all || ports[i].installed)
@@ -1106,15 +1148,10 @@ static int run_list(int all)
 			details(&ports[rows[sel].port]);
 		if (!all && k == K_X)
 			run_list(1);
-		if (!all && k == K_Y) {
-			int chk_res = do_check(NULL);
-			if (chk_res == K_START)
-				do_update(NULL);
-			else if (chk_res == K_SELECT && pm_self_update_available)
-				do_pm_self_update();
-		}
+		if (!all && k == K_Y)
+			check_all(1);
 		if (!all && k == K_SELECT && pm_self_update_available)
-			do_pm_self_update();
+			do_pm_self_update(1, 0);
 		if (!all && k == K_START && nup)
 			do_update(NULL);
 	}
@@ -1122,8 +1159,8 @@ static int run_list(int all)
 
 int main(int argc, char **argv)
 {
-	(void)argc;
 	g_argv = argv;
+	g_check_at_start = argc > 1 && !strcmp(argv[1], "--check");
 	ssize_t n = readlink("/proc/self/exe", g_self_bin, sizeof(g_self_bin) - 1);
 	if (n > 0)
 		g_self_bin[n] = 0;

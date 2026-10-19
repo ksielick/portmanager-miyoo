@@ -191,6 +191,12 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   `App/PortManager/.pm_version` (fallback `PM_VERSION`); the release workflow now writes the
   tag into `.pm_version` in the zip. v1.1.0 is the first release (the card still says 1.0.0,
   so it should offer the update: the first real test of self-update).
+- Self-update first (2026-10-19, owner): Y checks Port Manager's own release alone
+  (`pm_check_self`) before the ports; a newer one -> "A: update now / B: later"; after the
+  update it restarts with `--check` and checks the ports at once. `pm_check` no longer
+  fetches Port Manager's release. Releasing: bump `PM_VERSION` in `src/pm.h` to the tag first
+  (the release workflow fails otherwise; with a mismatch the emulator scenarios would meet
+  the self-update question).
 - Emulator scenarios `remove_*`: fixed quit frames dropped (the removal page draws more
   frames now and was cut off); they end when the scripted keys run out.
 - The menu (owner, 2026-10-17: nothing checked at start, the installed ports listed, update

@@ -89,6 +89,9 @@ extern long pm_self_asset_size;
 
 const char *pm_version(void);
 const char *pm_here(void);
+/* network: Port Manager's own latest release only (done before the ports are checked);
+ * sets pm_self_update_available; 0, or -1 with pm_error */
+int pm_check_self(void);
 int pm_self_update(void);
 
 #endif

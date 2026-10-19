@@ -33,6 +33,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Tag matches PM_VERSION
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          grep -q "#define PM_VERSION \"${TAG#v}\"" src/pm.h || {
+            echo "::error::src/pm.h PM_VERSION is not ${TAG#v}: bump it before tagging"; exit 1; }
+
       - name: Toolchain and dependencies (cache)
         uses: actions/cache@v4
         with:

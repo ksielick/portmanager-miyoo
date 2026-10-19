@@ -886,55 +886,12 @@ int pm_check(const Port *only)
 			if (!seen && n < 64)
 				repos[n++] = p->repo;
 		}
-		int seen_pm = 0;
-		for (int j = 0; j < n; j++)
-			if (!strcmp(repos[j], PM_REPO))
-				seen_pm = 1;
-		if (!seen_pm && n < 64)
-			repos[n++] = PM_REPO;
 	}
 	if (net_check(n)) {
 		say("NONET %s", pm_error);
 		return -1;
 	}
 	fetch_releases(repos, n);
-
-	pm_self_update_available = 0;
-	pm_self_latest_version[0] = 0;
-	pm_self_asset_url[0] = 0;
-	pm_self_asset_name[0] = 0;
-	pm_self_asset_size = 0;
-	if (!only) {
-		Release *r = release_of(PM_REPO);
-		const cJSON *tag = (r && r->json) ? cJSON_GetObjectItemCaseSensitive(r->json, "tag_name") : NULL;
-		if (cJSON_IsString(tag) && *tag->valuestring) {
-			const char *cur = pm_version();
-			const char *cur_v = (*cur == 'v' || *cur == 'V') ? cur + 1 : cur;
-			const char *tag_v = (*tag->valuestring == 'v' || *tag->valuestring == 'V') ? tag->valuestring + 1 : tag->valuestring;
-			if (strcmp(cur_v, tag_v) != 0) {
-				const cJSON *assets = cJSON_GetObjectItemCaseSensitive(r->json, "assets");
-				const cJSON *a;
-				cJSON_ArrayForEach(a, assets) {
-					const cJSON *nm = cJSON_GetObjectItemCaseSensitive(a, "name");
-					const cJSON *url = cJSON_GetObjectItemCaseSensitive(a, "browser_download_url");
-					const cJSON *sz = cJSON_GetObjectItemCaseSensitive(a, "size");
-					if (cJSON_IsString(nm) && strstr(nm->valuestring, ".zip") && strstr(nm->valuestring, "PortManager")) {
-						pm_self_update_available = 1;
-						snprintf(pm_self_latest_version, sizeof pm_self_latest_version, "%s", tag->valuestring);
-						if (cJSON_IsString(url))
-							snprintf(pm_self_asset_url, sizeof pm_self_asset_url, "%s", url->valuestring);
-						if (cJSON_IsString(nm))
-							snprintf(pm_self_asset_name, sizeof pm_self_asset_name, "%s", nm->valuestring);
-						if (cJSON_IsNumber(sz))
-							pm_self_asset_size = (long)sz->valuedouble;
-						say_log("pm: self-update available %s -> %s (asset %s, %ld bytes)",
-							cur, pm_self_latest_version, pm_self_asset_name, pm_self_asset_size);
-						break;
-					}
-				}
-			}
-		}
-	}
 
 	int failed = 0;
 	for (int i = 0; i < nports; i++) {
@@ -1921,6 +1878,50 @@ void pm_info(const Port *p, char *buf, int size)
 	/* 5. Instructions */
 	if (p->get && *p->get)
 		append_info(buf, size, &n, "\n" CLR_DIM "Instructions:\n" CLR_TEXT "%s\n", p->get);
+}
+
+int pm_check_self(void)
+{
+	pm_error[0] = 0;
+	pm_self_update_available = 0;
+	pm_self_latest_version[0] = 0;
+	pm_self_asset_url[0] = 0;
+	pm_self_asset_name[0] = 0;
+	pm_self_asset_size = 0;
+	if (net_check(1)) {
+		say("NONET %s", pm_error);
+		return -1;
+	}
+	char *repos[] = {PM_REPO};
+	fetch_releases(repos, 1);
+	Release *r = release_of(PM_REPO);
+	const cJSON *tag = (r && r->json) ? cJSON_GetObjectItemCaseSensitive(r->json, "tag_name") : NULL;
+	if (!cJSON_IsString(tag) || !*tag->valuestring)
+		return 0;
+	const char *cur = pm_version();
+	const char *cur_v = (*cur == 'v' || *cur == 'V') ? cur + 1 : cur;
+	const char *tag_v = (*tag->valuestring == 'v' || *tag->valuestring == 'V') ? tag->valuestring + 1 : tag->valuestring;
+	if (!strcmp(cur_v, tag_v))
+		return 0;
+	const cJSON *a;
+	cJSON_ArrayForEach(a, cJSON_GetObjectItemCaseSensitive(r->json, "assets")) {
+		const cJSON *nm = cJSON_GetObjectItemCaseSensitive(a, "name");
+		const cJSON *url = cJSON_GetObjectItemCaseSensitive(a, "browser_download_url");
+		const cJSON *sz = cJSON_GetObjectItemCaseSensitive(a, "size");
+		if (cJSON_IsString(nm) && strstr(nm->valuestring, ".zip") && strstr(nm->valuestring, "PortManager")) {
+			pm_self_update_available = 1;
+			snprintf(pm_self_latest_version, sizeof pm_self_latest_version, "%s", tag->valuestring);
+			if (cJSON_IsString(url))
+				snprintf(pm_self_asset_url, sizeof pm_self_asset_url, "%s", url->valuestring);
+			snprintf(pm_self_asset_name, sizeof pm_self_asset_name, "%s", nm->valuestring);
+			if (cJSON_IsNumber(sz))
+				pm_self_asset_size = (long)sz->valuedouble;
+			say_log("pm: self-update available %s -> %s (asset %s, %ld bytes)",
+				cur, pm_self_latest_version, pm_self_asset_name, pm_self_asset_size);
+			break;
+		}
+	}
+	return 0;
 }
 
 int pm_self_update(void)
