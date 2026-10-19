@@ -43,6 +43,11 @@ This dumps `/dev/fb0`, queries the pan offset, and converts to PNG using `ffmpeg
    - Ports may define `built` in `data` (e.g. Mario Kart 64: `["dc_data/setup.ok", "dc_data/romdata.bin"]`).
    - If a port uncompresses/builds game assets and deletes `rom.z64` on first launch, `check_data()` checks if `built` files exist before reporting `p->rom` as missing.
    - Built folders (e.g. `dc_data/`) are protected as game data in `is_data_file()`.
+5. **Lessons (2026-10-19)**:
+   - The card is FAT: every file is `rwxrwxrwx`. Never use the exec bit to tell program from data. That once deleted F-Zero X's ROM and saves on "remove, keep data". In `is_data_file()` the catalog's data rules come before any guess about code.
+   - Progress output: details go to the log only (`say_log`), and the screen shows one status line (`on_stage` + one bar). Nothing may draw after `gfx_close()`, so call `progress_stop()` first.
+   - Releases: bump `PM_VERSION` (`src/pm.h`) and `onion/App/PortManager/.pm_version` by 0.0.1, then tag. The release workflow checks that the tag matches.
+   - Every feature has an emulator scenario (`miyoo/emu/scenarios/`). Add or extend one with each change. Setup and assertion directives are listed in `docs/NOTES.md`. The emulator runs only in CI here (no local Python/qemu), so read `contact.png` from the run's artifacts.
 
 ## Commit Guidelines
 - Commit as: `153522713+ksielick@users.noreply.github.com` (configured in repo config).
