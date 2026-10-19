@@ -52,6 +52,25 @@ updates.
 - Your saves and the files you added are never overwritten. Before an update, everything it
   replaces is backed up to `Backups/PortManager/`.
 - Removing a port can keep your game data and saves.
+- Port Manager only writes to and deletes from the Ports folders (`Roms/PORTS/Games`,
+  `Shortcuts`, `Imgs`), its backups and its own folder. Anything else on the card (other
+  ROMs, saves, BIOS, Onion, other apps) is off limits.
+- It checks free space before installing or updating, and stops without changing anything
+  if the card is too full.
+- **Secure downloads:** everything comes over HTTPS straight from GitHub. The server's
+  certificate is checked against the certificate list shipped with the app. Each download is
+  then checked against the SHA-256 checksum GitHub gives for it (or against its size where
+  GitHub gives no checksum).
+- **Keys for private repositories:** to install ports from a private GitHub repository, put
+  a GitHub token in `App/PortManager/tokens.txt`, one per line: `owner/repo=<token>` for one
+  repository, or `owner/*=<token>` for all of an owner's repositories:
+  ```
+  someone/their-port=github_pat_...
+  someone/*=github_pat_...
+  ```
+  A token is sent only to GitHub, and only for the repositories it matches. It is never
+  written to the log. Use a fine-grained token with read-only access to just those
+  repositories. Public ports need no token.
 
 ## Ports
 
