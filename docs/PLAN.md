@@ -1,9 +1,9 @@
 # Plan: a port manager for the Miyoo (like PortMaster, but per-author)
 
-Idea from the owner, 2026-10-17 (moved here from redriver2-miyoo's `miyoo/PORT_MANAGER.md`).
+Idea from the owner, 2026-10-17 (moved here from the owner's shared Miyoo tools).
 An app on the Miyoo that lists, installs and updates native ports, downloading each one
 straight from its author's GitHub releases instead of from one central repo of zips. Today
-only the miyoo64 games are handled, from the PC, by redriver2-miyoo's
+only the miyoo64 games are handled, from the PC, by the shared tools'
 `miyoo/tools/update_miyoo64.sh` + `miyoo64_apply.sh`; this grows that into a general tool.
 Findings, decisions and the card's state: `NOTES.md`. Catalog format: `CATALOG.md`.
 
@@ -77,10 +77,10 @@ Python.
   copies: the player adds them.** Every entry that needs them carries instructions (`get`),
   shown by the app when the files are missing:
   - where to get them legally (store links, like PortMaster's `store` + `availability`; a
-    free demo if there is one, e.g. Carmageddon's);
+    free demo if there is one);
   - which version is needed (region/revision, md5 — the app checks it and says what is wrong);
   - where to put them on the card (exact folder and file name);
-  - a PC step when one is needed (e.g. dethrace's `install_gog.bat` unpacking the GOG
+  - a PC step when one is needed (e.g. a script unpacking a GOG
     installer), with what to copy afterwards and how (card reader for thousands of files).
 - Data check: the entry's `data` list (Onion's own `GameDataFile` check isn't enough: many
   ports name their binary there). The shortcut we write should still name a real data file
@@ -100,10 +100,8 @@ Python.
 ## Steps
 
 1. PC: turn `update_miyoo64.sh` into a catalog-driven `miyoo_ports.sh` here (miyoo64 games,
-   cacuracaptors' ports, REDRIVER2, Carmageddon, Carmageddon Splat Pack) — same backups and
+   cacuracaptors' ports) — same backups and
    checks, more layouts and asset formats (zip first; 7z/tar later).
-   REDRIVER2 and dethrace-miyoo have no GitHub releases yet (they're installed from their
-   build folders): give them release workflows (binary + scripts zip, no game data) first.
 2. Miyoo: the same logic as a shell script (wget + jq + unzip) started from the Ports list
    (`~Port manager.miyoocmd`, like Onion's `~Import ports`), so even the manager isn't in
    Apps; first version shows a text report (check / update all).
@@ -116,7 +114,7 @@ Open questions:
 - where the catalog lives: this repo (public since 2026-10-17; the device fetches
   `catalog.json` from raw.githubusercontent.com), or
   contributing install data to MiyooMini-Ports instead;
-- our own ports' repos are private (redriver2-miyoo, dethrace-miyoo): their releases need a
+- ports from private repos: their releases need a
   token in the client's config until they go public;
 - licences of what the catalog points to (we only link, the player downloads from the author);
 - Wi-Fi is off by default on Onion: the app has to say so instead of hanging.

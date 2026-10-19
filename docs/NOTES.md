@@ -12,9 +12,7 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
   in `CATALOG.md`), confirmed and applied on the card.
 - **Copyrighted files** (ROMs, game data): never downloaded or hosted; each entry gives the
   player instructions for adding them.
-- **Carmageddon and Carmageddon Splat Pack are two separate games** (one repo, one binary,
-  either installable alone).
-- Ports to cover first: dethrace-miyoo (Carmageddon x2), REDRIVER2, miyoo64, all of
+- Ports to cover first: miyoo64, all of
   cacuracaptors' ports; use Producdevity/MiyooMini-Ports as a source.
 - Before changing the card: a **backup on the PC**.
 - **The whole port manager is one C program** (owner, 2026-10-17: "cały w C", not a UI in C
@@ -24,7 +22,7 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 
 ## Emulator tests (2026-10-17, CI via GitHub Actions)
 
-- **qemu-arm + emu_shim.c** ported from `dethrace-miyoo` into `miyoo/emu/`:
+- **qemu-arm + emu_shim.c** ported from another of the owner's Miyoo projects into `miyoo/emu/`:
   - `src/gfx.c`: `gfx_flip()` now issues `ioctl(fb, FBIOPAN_DISPLAY, &var)` so `emu_shim.c` counts frames and can capture screenshots / dispatch input.
   - `src/util.c` and `src/pm.c`: `wget_bin()` dynamically resolves `wget` from `$PM_SD/.tmp_update/bin/wget`, `/mnt/SDCARD/.tmp_update/bin/wget`, or system `PATH`; `net_check` accepts `eth0` or `$PM_SD` when `wlan0` is not present (CI / emulator).
   - `src/build.sh`: uses `-D_FILE_OFFSET_BITS=64` so `readdir()` handles 64-bit inodes from 64-bit Linux hosts under `qemu-arm` without failing with `EOVERFLOW`. Supports `EMU=1` to compile `build/miyoo_emu/portmanager_emu` with `emu_shim.c`, `-Wl,--wrap=open,--wrap=open64,--wrap=ioctl,--wrap=read`, `-lm -lpthread`.
@@ -138,8 +136,8 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
     A installs the release over it; files equal to the release stay, only the version
     (`v1.2.0`, the repo's tag) is written.
   - The result page of a check had only B, while its text said A: A/Start now work there.
-- Still unknown version (installed without the manager): Carmageddon, Hexen II, Tomb Raider,
-  REDRIVER2, Mario Kart 64 (Y then A on their pages; REDRIVER2 and dethrace have no releases).
+- Still unknown version (installed without the manager): Hexen II, Tomb Raider,
+  Mario Kart 64 (Y then A on their pages).
 - On the card: `App/PortManager/` (portmanager,
   launch.sh, config.json, catalog.json) and `Roms/PORTS/Shortcuts/~Port manager.miyoocmd`.
   The shell version is removed from the card (`Games/PortManager`, the `~Port manager/`
@@ -177,7 +175,7 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
   copy `onion/App/PortManager` (+ the root `catalog.json`) and the .miyoocmd over SSH
   (`mscp`, one file per call; App/ isn't on the SMB share), then clear
   `Shortcuts_cache*.db`.
-- Emulator tests: see "Emulator tests" above (from dethrace-miyoo's `miyoo/emu/`).
+- Emulator tests: see "Emulator tests" above.
 
 ## The shell version (first, 2026-10-17; replaced by the C program, removed from the card)
 
@@ -248,7 +246,7 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
   Restored: `rom.z64` from `G:\Emulacja\n64\F-Zero X (USA).zip` (SHA-1 checked), `data/` from
   `G:\Emulacja\redriver2-miyoo\backup\20261017-before-pm-1.1.3\miyoo-sdcard.tar` (saves of
   2026-10-16 20:35); the folder before that in `backup/20261019-before-fzerox-restore/`.
-  Hexen II, Carmageddon, Tomb Raider (also removed keeping data) still have their data.
+  Hexen II, Tomb Raider (also removed keeping data) still have their data.
 - Emulator scenarios `remove_*`: fixed quit frames dropped (the removal page draws more
   frames now and was cut off); they end when the scripted keys run out.
 - The menu (owner, 2026-10-17: nothing checked at start, the installed ports listed, update
@@ -269,11 +267,11 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
   out after 15 s. A run killed mid-way (e.g. its output cut by `head`) used to leave
   `.pm_work/lock`; the lock now holds the pid and a dead one is taken over.
 - Texts (port details, check/update results) show in **pmview** (`src/pmview.c`, built by
-  `src/build.sh` with redriver2-miyoo's Arm toolchain, static, 342 KB): one scrollable page
+  `src/build.sh` with the shared Arm toolchain, static, 342 KB): one scrollable page
   (owner: scroll up/down rather than separate panels), drawn straight to fb0's shown page
   (turned 180°) with font8x8 (public domain) at x2 = 38 columns, 17 lines; Up/Down a line,
   Left/Right or L1/R1 a page, A/B/Menu closes; scroll bar and "first-last/total". Tested on
-  the device with MainUI paused, keys from `sendkeys` and screenshots by redriver2-miyoo's
+  the device with MainUI paused, keys from `sendkeys` and screenshots by the shared tools'
   `miyoo/tools/mshot.sh`. menu.sh falls back to infoPanel panels (42 columns, 5 lines:
   infoPanel doesn't wrap and keeps 255 characters) when pmview is missing or fails.
 - Why not a list dialog: Onion's `prompt` on this card **always exits with 136 (signal 8,
@@ -298,8 +296,7 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 ## The owner's card (2026-10-17)
 
 - Ports list (`Roms/PORTS/Shortcuts/`), ours and the authors' ports:
-  - Racing: Diddy Kong Racing, F-Zero X (miyoo64), Mario Kart 64 (mk64-miyoomini),
-    Carmageddon, Carmageddon Splat Pack (dethrace-miyoo), REDRIVER2;
+  - Racing: Diddy Kong Racing, F-Zero X (miyoo64), Mario Kart 64 (mk64-miyoomini);
   - FPS: GoldenEye 007, Perfect Dark (miyoo64), Hexen II;
   - Platform: Super Mario 64 (miyoo64), Tomb Raider (OpenLara);
   - Action: Ocarina of Time, Star Fox 64, Super Smash Bros. (miyoo64);
@@ -310,7 +307,7 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
   (Gong)` exist as both `.port` and `.notfound`.
 - miyoo64 (all at 1.1.2): `Roms/PORTS/Games/<Name>/` for DiddyKongRacing, FZeroX, GoldenEye,
   OcarinaOfTime, PaperMario, PerfectDark, StarFox64, SuperMario64, SuperSmashBros; ROM as
-  `rom.z64`, saves in `data/`. Updated with redriver2-miyoo's `miyoo/tools/update_miyoo64.sh`,
+  `rom.z64`, saves in `data/`. Updated with the shared tools' `update_miyoo64.sh`,
   which since 2026-10-17 installs there (never `App/`), writes the shortcut into the category
   folder when the game has none, and moves any game still in `App/`.
 - `App/` now holds only Onion's own apps (240pSuite, AdvanceMENU, Clock, Tweaks, ...).
@@ -415,20 +412,12 @@ mostly zip, also 7z, tar, tar.gz, ipk, AppImage; many releases ship builds for o
 (spruce, Allium, CrossMix, PortMaster, Android) beside the Onion one, some with `.sha256`
 files. 34 entries are apps, not games (they install into Onion's Apps by nature).
 
-## Our own ports
+## Local catalog, schema, status and author (2026-10-19, released in v1.2.2)
 
-- REDRIVER2 (ksielick/redriver2-miyoo, private): `Roms/PORTS/Games/REDRIVER2/`, the discs
-  (Driver 2 USA, CHD or BIN/CUE) from `Roms/PS`; no GitHub releases yet.
-- dethrace-miyoo (ksielick/dethrace-miyoo, private, `G:\Emulacja\dethrace-miyoo`):
-  `Roms/PORTS/Games/Carmageddon/`, `Roms/PORTS/Games/SplatPack/`; data from the GOG Max Pack
-  via `miyoo/install/install_gog.bat` on the PC, or the Carmageddon demo; no releases yet.
-
-## Local catalog, schema, status and author (2026-10-19, local only, not pushed)
-
-- The owner asked to keep this local for now: nothing goes to GitHub.
+- Kept local at first, released in v1.2.2 with the five new ports moved into `catalog.json`.
 - `catalog.local.json` (repo root, git-ignored; `src/build.sh` copies it to
-  `App/PortManager/`) holds REDRIVER2, Carmageddon and Carmageddon Splat Pack. Those three were
-  taken out of `catalog.json`, since the repos aren't public.
+  `App/PortManager/`) holds the entries whose repos aren't public yet. They were
+  taken out of `catalog.json`.
   - Port Manager reads it after the catalog on every load. An entry with a catalog id replaces
     that entry.
   - The catalog refresh from GitHub and self-update never touch it.
@@ -458,7 +447,7 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
     nothing there) now reads "no releases yet" (no longer repeated after Source), and "Files: OK
     (none required)" ignored `required_any`, now "not found yet".
 
-## All ports: A-Z by default, Select for categories (2026-10-19, local only)
+## All ports: A-Z by default, Select for categories (2026-10-19, released in v1.2.2)
 
 - Owner: All ports (X) is now one A-Z list, no headings; Select switches to the old view by
   category and back. The selected port stays selected; the choice lasts until Port Manager
@@ -470,7 +459,7 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
   Onion's `sendkeys 97` needs the button held ~0.3 s: with 0.1 s Select is often lost (also
   on a game's page), the other buttons aren't.
 
-## Five new ports (local catalog), .notfound shortcuts, one-step install (2026-10-19, local only)
+## Five new ports (local catalog), .notfound shortcuts, one-step install (2026-10-19, released in v1.2.2)
 
 - From the MiyooMini-Ports list, checked against the clean-ports rule (source on GitHub,
   open licence, native) and added to `catalog.local.json` (not public yet), all `playable`:
@@ -506,7 +495,7 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
     scenario `update_single` expects the new line).
   - Seen, not changed: files a newer release no longer has stay in the folder (v0.9.2 left 76).
 
-## Removing a port: plain screen, colours, progress bar (2026-10-19, local only)
+## Removing a port: plain screen, colours, progress bar (2026-10-19, released in v1.2.2)
 
 - Owner: the removal screen showed log lines ("(keep_data=0)", full paths). Now, like an
   install: the game's name (accent), "Shortcut removed from the Ports list.", a

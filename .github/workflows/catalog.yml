@@ -22,5 +22,7 @@ jobs:
       - name: Asset regexes (POSIX extended, as Port Manager uses them)
         run: |
           jq -r '.ports[] | select(.asset != null) | .asset' catalog.json | while IFS= read -r re; do
-            echo | grep -E -- "$re" > /dev/null; [ $? -le 1 ] || { echo "bad regex: $re"; exit 1; }
+            # 0 match, 1 no match: both fine; 2 is a broken regex (bash -e: catch the code)
+            rc=0; echo | grep -E -- "$re" > /dev/null || rc=$?
+            [ $rc -le 1 ] || { echo "bad regex: $re"; exit 1; }
           done

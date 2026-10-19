@@ -22,7 +22,7 @@ done
 echo ""
 echo "=== CURRENT INSTALLED PORTS ESTIMATED BACKUP SIZES ==="
 # Check ports defined in catalog.json
-for p in Carmageddon SplatPack DiddyKongRacing GoldenEye Hexen2 MarioKart64 OcarinaOfTime OpenLara PaperMario PerfectDark REDRIVER2 StarFox64 SuperMario64 SuperSmashBros Fallout "Fallout 2" "Plants vs. Zombies" "Zuma Deluxe"; do
+for p in DiddyKongRacing GoldenEye Hexen2 MarioKart64 OcarinaOfTime OpenLara PaperMario PerfectDark StarFox64 SuperMario64 SuperSmashBros Fallout "Fallout 2" "Plants vs. Zombies" "Zuma Deluxe"; do
     d="/mnt/SDCARD/Roms/PORTS/Games/$p"
     if [ -d "$d" ]; then
         # Total size of binaries/executables and scripts in root
