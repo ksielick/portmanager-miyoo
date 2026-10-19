@@ -197,6 +197,9 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   fetches Port Manager's release. Releasing: bump `PM_VERSION` in `src/pm.h` to the tag first
   (the release workflow fails otherwise; with a mismatch the emulator scenarios would meet
   the self-update question).
+- Check for updates: the status line shows the port whose release it is waiting for
+  ("Checking Diddy Kong Racing", bar "2/5 ports"; "Updating the catalog" before). Releases
+  go up by 0.0.1 (owner, 2026-10-19).
 - Emulator scenarios `remove_*`: fixed quit frames dropped (the removal page draws more
   frames now and was cut off); they end when the scripted keys run out.
 - The menu (owner, 2026-10-17: nothing checked at start, the installed ports listed, update

@@ -314,6 +314,7 @@ const char *wget_ca_cert(void)
 progress_cb on_download_progress = NULL;
 progress_cb on_extract_progress = NULL;
 progress_cb on_copy_progress = NULL;
+progress_cb on_check_progress = NULL;
 file_cb on_file_installed = NULL;
 file_cb on_stage = NULL;
 

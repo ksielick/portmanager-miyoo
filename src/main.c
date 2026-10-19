@@ -339,6 +339,13 @@ static void count_progress(long current, long total)
 	set_bar(s);
 }
 
+static void check_progress(long current, long total)
+{
+	char s[80];
+	make_ascii_count_bar(s, sizeof s, current, total, "ports");
+	set_bar(s);
+}
+
 static void file_installed(const char *path)
 {
 	lines_add(&installed_files, path);
@@ -356,6 +363,7 @@ static void progress_begin(const char *title)
 	on_download_progress = download_progress;
 	on_extract_progress = count_progress;
 	on_copy_progress = count_progress;
+	on_check_progress = check_progress;
 	on_file_installed = file_installed;
 	on_stage = stage_changed;
 	progress_draw("Please wait...");
@@ -368,6 +376,7 @@ static void progress_stop(void)
 	on_download_progress = NULL;
 	on_extract_progress = NULL;
 	on_copy_progress = NULL;
+	on_check_progress = NULL;
 	on_file_installed = NULL;
 	on_stage = NULL;
 	screen_prefix = NULL;

@@ -48,6 +48,7 @@ typedef void (*progress_cb)(long current_bytes, long total_bytes);
 extern progress_cb on_download_progress;
 extern progress_cb on_extract_progress;
 extern progress_cb on_copy_progress;
+extern progress_cb on_check_progress; /* repos checked for releases */
 typedef void (*file_cb)(const char *path);
 extern file_cb on_file_installed;
 /* the step now running ("2/4 Extracting"), shown above the progress bar */

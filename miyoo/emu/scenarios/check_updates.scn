@@ -1,5 +1,5 @@
 # Check for updates against GitHub
 press 1 Y
-shots 1 2
+shots 1 2 every:1
 min_frames 2
 nonblank 1 2

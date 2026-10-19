@@ -723,8 +723,15 @@ static void rel_path(const char *repo, char *out, size_t n)
 			*c = '_';
 }
 
-/* fetches the repos' latest releases, all at once (one wget each), then retries the failed */
-static void fetch_releases(char **repos, int n)
+static void set_stage(const char *label)
+{
+	if (on_stage)
+		on_stage(label);
+}
+
+/* fetches the repos' latest releases, all at once (one wget each), then retries the failed;
+ * with `names` (a port of each repo), shows which one it is waiting for */
+static void fetch_releases(char **repos, const char **names, int n)
 {
 	int pids[64];
 	char f[64][512], part[64][600];
@@ -776,6 +783,13 @@ static void fetch_releases(char **repos, int n)
 		pids[i] = run_bg(argv, NULL);
 	}
 	for (int i = 0; i < n && i < 64; i++) {
+		if (names) {
+			char label[80];
+			snprintf(label, sizeof label, "Checking %s", names[i]);
+			set_stage(label);
+			if (on_check_progress)
+				on_check_progress(i, n);
+		}
 		char url[300];
 		snprintf(url, sizeof url, API "%s/releases/latest", repos[i]);
 		const char *tok = token_for_repo(repos[i]);
@@ -867,14 +881,19 @@ int pm_check(const Port *only)
 {
 	pm_error[0] = 0;
 	/* a new catalog reallocates ports: only for the whole check, `only` must stay valid */
-	if (!only)
+	if (!only) {
+		set_stage("Updating the catalog");
 		refresh_catalog();
+	}
 	pm_scan();
 	char *repos[64];
+	const char *names[64];
 	int n = 0;
 	if (only) {
-		if (*only->asset && *only->repo)
+		if (*only->asset && *only->repo) {
+			names[n] = only->name;
 			repos[n++] = only->repo;
+		}
 	} else {
 		for (int i = 0; i < nports; i++) {
 			Port *p = &ports[i];
@@ -883,15 +902,19 @@ int pm_check(const Port *only)
 			int seen = 0;
 			for (int j = 0; j < n; j++)
 				seen |= !strcmp(repos[j], p->repo);
-			if (!seen && n < 64)
+			if (!seen && n < 64) {
+				names[n] = p->name;
 				repos[n++] = p->repo;
+			}
 		}
 	}
 	if (net_check(n)) {
 		say("NONET %s", pm_error);
 		return -1;
 	}
-	fetch_releases(repos, n);
+	fetch_releases(repos, names, n);
+	if (on_check_progress)
+		on_check_progress(n, n);
 
 	int failed = 0;
 	for (int i = 0; i < nports; i++) {
@@ -1108,12 +1131,6 @@ static int manifest_has(const char *manifest, const char *hash, const char *dst)
 	char line[900];
 	snprintf(line, sizeof line, "%s %s\n", hash, dst);
 	return manifest && strstr(manifest, line) != NULL;
-}
-
-static void set_stage(const char *label)
-{
-	if (on_stage)
-		on_stage(label);
 }
 
 static int fail(const char *fmt, const char *a)
@@ -1385,7 +1402,7 @@ int pm_update(Port *p)
 		char *repo[] = {p->repo};
 		if (net_check(1))
 			return -1;
-		fetch_releases(repo, 1);
+		fetch_releases(repo, NULL, 1);
 		r = release_of(p->repo);
 		if (!r || !r->json)
 			return fail("%s: no release info (no connection?)", p->name);
@@ -1893,7 +1910,7 @@ int pm_check_self(void)
 		return -1;
 	}
 	char *repos[] = {PM_REPO};
-	fetch_releases(repos, 1);
+	fetch_releases(repos, NULL, 1);
 	Release *r = release_of(PM_REPO);
 	const cJSON *tag = (r && r->json) ? cJSON_GetObjectItemCaseSensitive(r->json, "tag_name") : NULL;
 	if (!cJSON_IsString(tag) || !*tag->valuestring)
