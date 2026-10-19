@@ -202,6 +202,15 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   go up by 0.0.1 (owner, 2026-10-19).
 - Self-update tested on the device by the owner, 2026-10-19: 1.0.0 -> v1.1.0 -> v1.1.1 over
   Wi-Fi, "works very well".
+- F-Zero X ROM and saves lost (owner, 2026-10-19): the build on the card on 2026-10-17
+  evening (efd46af) took any file with an exec bit for a program file, checked before the data
+  rules; on FAT every file is rwxrwxrwx, so "remove, keep data" deleted all 12 files (3 program,
+  `rom.z64`, 8 in `data/`). The exec-bit check went in 91dff62; now the catalog's data rules
+  also come before any code guess, and the emulator makes the test card 0777 like FAT.
+  Restored: `rom.z64` from `G:\Emulacja\n64\F-Zero X (USA).zip` (SHA-1 checked), `data/` from
+  `G:\Emulacja\redriver2-miyoo\backup\20261017-before-pm-1.1.3\miyoo-sdcard.tar` (saves of
+  2026-10-16 20:35); the folder before that in `backup/20261019-before-fzerox-restore/`.
+  Hexen II, Carmageddon, Tomb Raider (also removed keeping data) still have their data.
 - Emulator scenarios `remove_*`: fixed quit frames dropped (the removal page draws more
   frames now and was cut off); they end when the scripted keys run out.
 - The menu (owner, 2026-10-17: nothing checked at start, the installed ports listed, update

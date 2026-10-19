@@ -207,13 +207,12 @@ def run_scenario(sc, opts):
     else:
         os.makedirs(sdcard, exist_ok=True)
 
-    # Ensure executable permissions on helper scripts in sdcard/.tmp_update/bin
-    bin_dir = os.path.join(sdcard, ".tmp_update", "bin")
-    if os.path.isdir(bin_dir):
-        for fname in os.listdir(bin_dir):
-            fpath = os.path.join(bin_dir, fname)
+    # Every file executable, as on the card's FAT (rwxrwxrwx): Port Manager must not take that
+    # for a sign of program files (it once deleted a port's ROM and saves that way)
+    for dirpath, _, files in os.walk(sdcard):
+        for fname in files:
             try:
-                os.chmod(fpath, 0o755)
+                os.chmod(os.path.join(dirpath, fname), 0o777)
             except OSError:
                 pass
 

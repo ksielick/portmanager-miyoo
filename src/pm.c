@@ -357,30 +357,13 @@ static int is_data_file(const Port *p, const char *rel)
 	if (!strcmp(rel, ".pm_version") || !strcmp(rel, ".miyoo64_version") || !strcmp(rel, ".pm_manifest"))
 		return 0;
 
-	/* Scripts, libraries, and binaries are never data */
-	if (ends_with(rel, ".sh") || ends_with(rel, ".so") || strstr(rel, ".so."))
-		return 0;
-	if (!strncmp(rel, "lib/", 4) || !strncmp(rel, "bin/", 4) || !strncmp(rel, "miyoo/", 6))
-		return 0;
-
-	char full[1024];
-	snprintf(full, sizeof full, "%s/%s", gdir(p), rel);
-	if (is_code_file(full))
-		return 0;
+	/* What the catalog names as data (1, 3-7) comes before the guesses about code (on the
+	 * card's FAT every file looks executable: a check of that once deleted F-Zero X's ROM and
+	 * saves, 2026-10-17) */
 
 	/* 1. ROM file */
 	if (*p->rom && (!strcasecmp(rel, p->rom) || !strcasecmp(base_name(rel), p->rom)))
 		return 1;
-
-	/* 2. Common ROM / CD image / save extensions */
-	const char *exts[] = {
-		".z64", ".n64", ".v64", ".iso", ".cue", ".chd", ".pbp", ".rom",
-		".sav", ".srm", ".eep", ".fla", ".mpk", ".state", ".cfg", ".ini",
-		".mp3", ".ogg", ".wav", ".mid", ".midi", ".flac"
-	};
-	for (size_t i = 0; i < sizeof(exts) / sizeof(exts[0]); i++)
-		if (ends_with(rel, exts[i]))
-			return 1;
 
 	/* 3. Catalog required files */
 	for (int i = 0; i < p->nrequired; i++) {
@@ -430,6 +413,27 @@ static int is_data_file(const Port *p, const char *rel)
 	    !strncasecmp(rel, "sounds/", 7) || !strncasecmp(rel, "movies/", 7) ||
 	    !strncasecmp(rel, "fmv/", 4))
 		return 1;
+
+	/* Scripts, libraries, and binaries are never data */
+	if (ends_with(rel, ".sh") || ends_with(rel, ".so") || strstr(rel, ".so."))
+		return 0;
+	if (!strncmp(rel, "lib/", 4) || !strncmp(rel, "bin/", 4) || !strncmp(rel, "miyoo/", 6))
+		return 0;
+
+	char full[1024];
+	snprintf(full, sizeof full, "%s/%s", gdir(p), rel);
+	if (is_code_file(full))
+		return 0;
+
+	/* 2. Common ROM / CD image / save extensions */
+	const char *exts[] = {
+		".z64", ".n64", ".v64", ".iso", ".cue", ".chd", ".pbp", ".rom",
+		".sav", ".srm", ".eep", ".fla", ".mpk", ".state", ".cfg", ".ini",
+		".mp3", ".ogg", ".wav", ".mid", ".midi", ".flac"
+	};
+	for (size_t i = 0; i < sizeof(exts) / sizeof(exts[0]); i++)
+		if (ends_with(rel, exts[i]))
+			return 1;
 
 	return 0;
 }
