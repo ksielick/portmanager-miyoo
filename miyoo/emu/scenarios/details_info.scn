@@ -1,0 +1,14 @@
+# A port's page at a glance; Select: everything else (instructions, checksums, source)
+press 1 A        # details: Diddy Kong Racing
+press 2 SELECT   # more info
+press 3 DOWN
+press 4 B        # back to the page
+press 5 B        # list
+press 6 X        # all ports
+press 7 A        # details: Ocarina of Time (not installed)
+press 8 B
+press 9 B
+press 10 B
+shots every:1
+nonblank 1 2 3
+min_frames 8

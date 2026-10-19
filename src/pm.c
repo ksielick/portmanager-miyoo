@@ -1908,7 +1908,60 @@ static void append_info(char *buf, int size, int *n, const char *fmt, ...)
 	}
 }
 
+/* the port's page at a glance (owner, 2026-10-19: easy to read, the rest under Select) */
 void pm_info(const Port *p, char *buf, int size)
+{
+	int n = 0;
+	if (size <= 0)
+		return;
+	buf[0] = 0;
+
+	/* 1. Where it stands, in one line */
+	if (!*p->asset)
+		append_info(buf, size, &n, CLR_DIM "No releases yet.\n");
+	else if (!p->installed)
+		append_info(buf, size, &n, CLR_TEXT "Not installed.%s%s\n",
+			p->checked && *p->latest ? " Latest: " : "", p->checked ? p->latest : "");
+	else if (!*p->version)
+		append_info(buf, size, &n, CLR_WARN "Installed, version unknown.\n");
+	else if (p->update)
+		append_info(buf, size, &n, CLR_WARN "Update: %s -> %s\n", p->version, p->latest);
+	else if (p->checked)
+		append_info(buf, size, &n, CLR_GOOD "Installed: %s (up to date)\n", p->version);
+	else
+		append_info(buf, size, &n, CLR_TEXT "Installed: %s\n", p->version);
+
+	/* 2. The game files the player adds */
+	char need[512] = "";
+	if (p->installed || *p->missing)
+		snprintf(need, sizeof need, "%s", p->missing);
+	else {
+		for (int i = 0; i < p->nrequired; i++)
+			snprintf(need + strlen(need), sizeof need - strlen(need), "%s%s", *need ? ", " : "", p->required[i]);
+		if (p->nrequired_any)
+			snprintf(need + strlen(need), sizeof need - strlen(need), "%sone of: %s%s", *need ? ", " : "",
+				p->required_any[0], p->nrequired_any > 1 ? ", ..." : "");
+		if (*p->rom)
+			snprintf(need + strlen(need), sizeof need - strlen(need), "%s%s", *need ? ", " : "", p->rom);
+	}
+	append_info(buf, size, &n, "\n");
+	if (!p->nrequired && !p->nrequired_any && !*p->rom)
+		append_info(buf, size, &n, CLR_GOOD "No game files needed.\n");
+	else if (p->installed && !*need)
+		append_info(buf, size, &n, CLR_GOOD "Game files: OK\n");
+	else {
+		append_info(buf, size, &n, "%sGame files from your own copy:\n" CLR_TEXT,
+			p->installed ? CLR_WARN : CLR_TEXT);
+		if (p->rom_name && *p->rom_name)
+			append_info(buf, size, &n, "  %s\n", p->rom_name);
+		append_info(buf, size, &n, CLR_DIM "  copy to " CLR_TEXT "%s/\n" CLR_DIM "  as " CLR_TEXT "%s\n", p->dir, need);
+	}
+
+	append_info(buf, size, &n, "\n" CLR_DIM "Select: more info\n");
+}
+
+/* everything about the port, under Select on its page */
+void pm_details(const Port *p, char *buf, int size)
 {
 	int n = 0;
 	if (size <= 0)

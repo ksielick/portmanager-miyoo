@@ -952,7 +952,8 @@ static void details(Port *p)
 		int unknown = p->installed && p->checked && !*p->version;
 		int installable = !p->installed && p->checked && *p->latest;
 		int has_action = (p->update || unknown || installable);
-		int keys[4] = {0}, nk = 0;
+		int keys[5] = {0}, nk = 0;
+		keys[nk++] = K_SELECT;
 		if (*p->asset || has_action)
 			keys[nk++] = K_A;
 		if (p->installed || *p->asset)
@@ -974,6 +975,14 @@ static void details(Port *p)
 				if (do_check(p) == K_A)
 					do_update(p);
 			}
+		}
+		else if (k == K_SELECT) {
+			static char more[8192];
+			pm_details(p, more, sizeof more);
+			Lines m = {0};
+			lines_add(&m, more);
+			view(p->name, "info", &m, "Up/Down   B: back", NULL);
+			lines_free(&m);
 		}
 		else if (k == K_Y && (p->installed || *p->asset)) {
 			do_restore(p);

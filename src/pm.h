@@ -48,6 +48,7 @@ const char *pm_release_notes(const Port *p);
 
 /* a port's details and how to add its game files */
 void pm_info(const Port *p, char *buf, int size);
+void pm_details(const Port *p, char *buf, int size);
 
 /* backup management */
 typedef struct {
