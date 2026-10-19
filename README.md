@@ -74,11 +74,11 @@ updates.
 
 ## Ports
 
-Racing: Mario Kart 64, Diddy Kong Racing, F-Zero X, Carmageddon, Carmageddon Splat Pack ·
+Racing: Mario Kart 64, Diddy Kong Racing, F-Zero X ·
 FPS: GoldenEye 007, Perfect Dark, Hexen II · Platform: Super Mario 64, Tomb Raider ·
 Action: Ocarina of Time, Star Fox 64, Super Smash Bros. · RPG: Fallout, Fallout 2,
 Paper Mario · Arcade: 3D Pinball Space Cadet, SkiFree · Strategy: Plants vs. Zombies.
-Coming when their authors publish releases: REDRIVER2, Zuma Deluxe.
+Coming when its author publishes a release: Zuma Deluxe.
 
 All credit goes to the ports' authors; Port Manager only fetches their releases.
 

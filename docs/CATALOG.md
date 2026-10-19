@@ -56,7 +56,7 @@ Categories (Onion's names, plus RPG; confirmed by the owner 2026-10-17):
 
 | Category | Games |
 |---|---|
-| Racing | Mario Kart 64, Diddy Kong Racing, F-Zero X, Carmageddon, Carmageddon Splat Pack, REDRIVER2 |
+| Racing | Mario Kart 64, Diddy Kong Racing, F-Zero X |
 | FPS | GoldenEye 007, Perfect Dark, Hexen II |
 | Platform | Super Mario 64, Tomb Raider |
 | Action | Ocarina of Time, Star Fox 64, Super Smash Bros. |
@@ -73,6 +73,6 @@ so a game folder can move to `Roms/PORTS/Games/<dir>/` as it is, saves included.
 shortcuts (`forward.sh`) hard-code `/mnt/SDCARD/App/<dir>`, so we write ours:
 `GameDir="<dir>"`, `GameDataFile="rom.z64"`, then `exec sh .../launch.sh`. Its
 `app_config.json` is harmless outside `App/`. Done on the owner's Miyoo on 2026-10-17
-(redriver2-miyoo's `update_miyoo64.sh`); categories applied there too (`docs/NOTES.md`).
+(the owner's `update_miyoo64.sh` script); categories applied there too (`docs/NOTES.md`).
 
 [mmp]: https://github.com/Producdevity/MiyooMini-Ports
