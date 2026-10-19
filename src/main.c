@@ -1119,8 +1119,20 @@ static int run_list(int all)
 		if (top > 0 && rows[top - 1].port < 0 && sel - (top - 1) < LIST_ROWS)
 			top--; /* keep a heading with its first port */
 		if (nr == 0 && !all) {
-			gfx_text(16, 200, "No ports installed yet.", COLS, C_TEXT);
-			gfx_text(16, 200 + ROWH, "Press X to browse all available ports.", COLS, C_DIM);
+			/* a new player's first screen: how to get games, X lit in the footer too */
+			static const char *const help[] = {
+				"No ports installed yet.",
+				"",
+				"How to get games:",
+				"1. Press " CLR_GOOD "X" CLR_TEXT ": all ports you can install.",
+				"2. Choose a game and press " CLR_GOOD "A" CLR_TEXT ",",
+				"   then " CLR_GOOD "A" CLR_TEXT " to check and to install it.",
+				"3. If it needs files from your own",
+				"   copy of the game (ROM, data),",
+				"   its page says which and where.",
+			};
+			for (int r = 0; r < (int)(sizeof help / sizeof *help); r++)
+				gfx_text(16, LIST_Y + 8 + r * ROWH, help[r], COLS, r ? C_TEXT : C_ACCENT);
 		} else {
 			for (int r = 0; r < LIST_ROWS && top + r < nr; r++) {
 				const Row *row = &rows[top + r];
@@ -1142,6 +1154,8 @@ static int run_list(int all)
 		}
 		if (all)
 			footer("A: details  B: back");
+		else if (nr == 0)
+			footer(CLR_GOOD "X: get ports" CLR_DIM "   Y: check   B: exit");
 		else if (pm_self_update_available)
 			footer(nup ? "A:Info X:All Y:Chk Sel:UpdPM St:Upd" : "A:Info X:All Y:Check Sel:Update PM B:Exit");
 		else

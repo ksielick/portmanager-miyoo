@@ -1,0 +1,10 @@
+# A new player's card with no ports: the first screen says how to get games, X opens all ports
+rm Roms/PORTS/Games
+rm Roms/PORTS/Shortcuts
+press 1 X        # all ports
+press 2 B        # back
+press 3 B        # exit
+shots 1 2 3
+nonblank 1 2
+min_frames 3
+assert_log "--- scan: 0/"
