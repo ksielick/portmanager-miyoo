@@ -531,6 +531,16 @@ static void check_data(Port *p)
 	}
 }
 
+/* "1.0.1" and "v1.0.1" are the same release (versions written by other tools lack the v) */
+static int same_version(const char *a, const char *b)
+{
+	if (*a == 'v' || *a == 'V')
+		a++;
+	if (*b == 'v' || *b == 'V')
+		b++;
+	return !strcmp(a, b);
+}
+
 void pm_scan(void)
 {
 	int ninst = 0;
@@ -545,7 +555,7 @@ void pm_scan(void)
 		}
 		else
 			p->missing[0] = 0;
-		p->update = p->installed && p->checked && p->asset_name[0] && *p->version && strcmp(p->version, p->latest);
+		p->update = p->installed && p->checked && p->asset_name[0] && *p->version && !same_version(p->version, p->latest);
 	}
 	say("--- scan: %d/%d ports installed", ninst, nports);
 }
