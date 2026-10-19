@@ -1347,7 +1347,7 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 			return fail("%s: can't create the backup archive, nothing was changed", p->name);
 		}
 		say_log("backup: %s", bk_tar + strlen(SD) + 1);
-		say_screen("Backup: %s", base_name(bk_tar));
+		say_screen("Backup saved to Backups/PortManager");
 	}
 	if (total_to_copy > 0) {
 		set_stage("4/4 Copying");

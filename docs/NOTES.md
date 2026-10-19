@@ -182,7 +182,7 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   progress page a log line arriving while a bar runs goes above the bar (fixed a stale
   `0/18` bar left behind by "saved ... to the backup").
 - Progress screen (2026-10-19, owner: full details in the log, a simple screen, one bar):
-  the port's name once (purple), then only lines worth reading (warnings, "Backup: <tar>",
+  the port's name once (purple), then only lines worth reading (warnings, "Backup saved to Backups/PortManager",
   "v1 -> v2, N file(s) replaced"); the `<name>: ` prefix is cut on screen only. One status
   place under the lines: step label (`1/4 Downloading`, `2/4 Extracting`, `3/4 Backup`,
   `4/4 Copying`) and its bar, replaced step by step (`on_stage`, `say_log`/`say_screen` in
