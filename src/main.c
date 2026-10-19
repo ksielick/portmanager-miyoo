@@ -1124,7 +1124,7 @@ static int run_list(int all)
 				"No ports installed yet.",
 				"",
 				"How to get games:",
-				"1. Press " CLR_GOOD "X" CLR_TEXT ": all ports you can install.",
+				"1. Press " CLR_GOOD "X" CLR_TEXT ": all ports to install.",
 				"2. Choose a game and press " CLR_GOOD "A" CLR_TEXT ",",
 				"   then " CLR_GOOD "A" CLR_TEXT " to check and to install it.",
 				"3. If it needs files from your own",
