@@ -9,4 +9,4 @@ assert_contains app/.pm_version v
 assert_not_contains app/.pm_version 1.0.0
 assert_exists app/portmanager
 assert_exists Backups/PortManager/*-PortManager-before-1.0.0.tar
-assert_log_not "--- check\n"
+assert_log_not "Checking installed ports"

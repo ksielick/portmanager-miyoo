@@ -621,6 +621,7 @@ static void do_pm_self_update(int ask, int then_check)
 	if (!g_self_bin[0])
 		snprintf(g_self_bin, sizeof g_self_bin, "%s/portmanager", pm_here());
 
+	progress_stop(); /* nothing may draw once the screen is closed */
 	gfx_close();
 	pm_unlock();
 	/* the emulator can't run the downloaded (device) binary: the tests stop here */

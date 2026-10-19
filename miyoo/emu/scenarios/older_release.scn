@@ -12,6 +12,6 @@ press 10 B       # exit
 shots every:1
 min_frames 8
 assert_log "--- install miyoo64-diddykongracing -> "
-assert_log "Installation completed"
+assert_log "file(s) replaced"
 assert_exists Roms/PORTS/Games/DiddyKongRacing/.pm_version
 assert_exists Roms/PORTS/Games/DiddyKongRacing/data/save.bin
