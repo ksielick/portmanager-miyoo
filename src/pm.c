@@ -927,7 +927,7 @@ int pm_check(const Port *only)
 							snprintf(pm_self_asset_name, sizeof pm_self_asset_name, "%s", nm->valuestring);
 						if (cJSON_IsNumber(sz))
 							pm_self_asset_size = (long)sz->valuedouble;
-						say("pm: self-update available %s -> %s (asset %s, %ld bytes)",
+						say_log("pm: self-update available %s -> %s (asset %s, %ld bytes)",
 							cur, pm_self_latest_version, pm_self_asset_name, pm_self_asset_size);
 						break;
 					}

@@ -1,8 +1,10 @@
 # Capture screenshot from Miyoo Mini Plus framebuffer (/dev/fb0)
-# Usage: powershell -File tools/screenshot_miyoo.ps1 [out.png]
+# Usage: powershell -File tools/screenshot_miyoo.ps1 [out.png] [-Open]
+# Without out.png: screenshots/miyoo-<date>-<time>.png in the repo.
 param(
-    [string]$OutFile = "screenshot.png",
-    [string]$MiyooIP = "192.168.0.246"
+    [string]$OutFile = "",
+    [string]$MiyooIP = "192.168.0.246",
+    [switch]$Open
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,6 +18,11 @@ if (-not (Test-Path $Ffmpeg)) {
     $Ffmpeg = (Get-Command ffmpeg -ErrorAction SilentlyContinue).Source
 }
 
+if (-not $OutFile) {
+    $ShotDir = Join-Path $RepoRoot "screenshots"
+    New-Item -ItemType Directory -Force $ShotDir | Out-Null
+    $OutFile = Join-Path $ShotDir ("miyoo-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".png")
+}
 if (-not [System.IO.Path]::IsPathRooted($OutFile)) {
     $OutFile = Join-Path (Get-Location) $OutFile
 }
@@ -44,3 +51,6 @@ $CleanCmd = "SSH_ASKPASS='$AskPass' SSH_ASKPASS_REQUIRE=force DISPLAY=:0 ssh -o 
 & $GitSh -c $CleanCmd
 
 Write-Host "Screenshot saved to: $OutFile" -ForegroundColor Green
+if ($Open) {
+    Invoke-Item $OutFile
+}
