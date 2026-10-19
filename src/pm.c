@@ -1957,7 +1957,9 @@ void pm_info(const Port *p, char *buf, int size)
 		if (strpbrk(need, ",;:*"))
 			append_info(buf, size, &n, "\n" CLR_DIM "Copy into:\n" CLR_TEXT "%s/\n%s\n", p->dir, need);
 		else
-			append_info(buf, size, &n, "\n" CLR_DIM "Save as:\n" CLR_TEXT "%s/%s\n", p->dir, need);
+			/* a path too long for the screen's 37 columns breaks after the folder, not in the name */
+			append_info(buf, size, &n, "\n" CLR_DIM "Save as:\n" CLR_TEXT "%s/%s%s\n", p->dir,
+				strlen(p->dir) + 1 + strlen(need) > 37 ? "\n" : "", need);
 	}
 
 	append_info(buf, size, &n, "\n" CLR_DIM "Select: more info\n");
