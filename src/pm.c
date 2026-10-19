@@ -8,6 +8,7 @@
 #include <regex.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1930,6 +1931,23 @@ void pm_info(const Port *p, char *buf, int size)
 		append_info(buf, size, &n, "\n" CLR_DIM "Instructions:\n" CLR_TEXT "%s\n", p->get);
 }
 
+/* "1.1.10" vs "1.1.9", number by number; <0, 0 or >0 */
+static int version_cmp(const char *a, const char *b)
+{
+	while (*a || *b) {
+		long x = strtol(a, (char **)&a, 10), y = strtol(b, (char **)&b, 10);
+		if (x != y)
+			return x < y ? -1 : 1;
+		if (*a == '.')
+			a++;
+		if (*b == '.')
+			b++;
+		if ((*a && !isdigit((unsigned char)*a)) || (*b && !isdigit((unsigned char)*b)))
+			return strcmp(a, b);
+	}
+	return 0;
+}
+
 int pm_check_self(void)
 {
 	pm_error[0] = 0;
@@ -1951,7 +1969,7 @@ int pm_check_self(void)
 	const char *cur = pm_version();
 	const char *cur_v = (*cur == 'v' || *cur == 'V') ? cur + 1 : cur;
 	const char *tag_v = (*tag->valuestring == 'v' || *tag->valuestring == 'V') ? tag->valuestring + 1 : tag->valuestring;
-	if (!strcmp(cur_v, tag_v))
+	if (version_cmp(tag_v, cur_v) <= 0) /* only a newer one, never back to an older release */
 		return 0;
 	const cJSON *a;
 	cJSON_ArrayForEach(a, cJSON_GetObjectItemCaseSensitive(r->json, "assets")) {

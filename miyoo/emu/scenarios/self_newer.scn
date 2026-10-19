@@ -1,0 +1,9 @@
+# Port Manager newer than its latest release (e.g. while a release is being made): no offer to go back
+file app/.pm_version 9.9.9
+press 1 Y        # check
+press 2 B        # check result
+press 3 B        # exit
+shots every:1
+min_frames 3
+assert_log "Checking installed ports..."
+assert_log_not "self-update available"
