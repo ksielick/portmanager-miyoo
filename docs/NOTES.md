@@ -41,8 +41,24 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   - `fallout_install.scn`: tests Fallout unknown version flow (details, Y, `A: install` directly from check results screen, confirm, writes `.pm_version` `v1.2.0`).
   - `remove_delete_all.scn`: tests uninstalling a port and deleting all files/folder (SkiFree).
   - `remove_keep_data.scn`: tests uninstalling a port while keeping game data, ROMs, and saves (Fallout: removes shortcut and program files, retains `MASTER.DAT`, `CRITTER.DAT`, `data/`).
+  - Added 2026-10-19 (owner: tests for every feature), 22 in all, all passing:
+    `update_single` (details: check, update, installed files; data kept, backup before
+    copying), `restore_backup` (files and version back), `delete_backup`, `older_release`
+    (GitHub list, second release), `install_new_port` (F-Zero X from all ports, no backup),
+    `remove_keep_data_rom` (miyoo64: `rom.z64`, `data/` stay), `remove_cancel` (each step),
+    `self_update` (old Port Manager updated first, backup, restart with --check),
+    `self_update_later`, `start_check` (`--check`), `offline`, `broken_catalog`,
+    `already_running`, `kept_shortcut` (the player's own shortcut kept).
+  - Runner directives besides `press`/`shots`/...: `file <path> <text>` and `rm <path>` set
+    the card up before the run (`app/...` = Port Manager's folder, `\n` in text, `{pid}` = a
+    live pid), `offline` (wget/nslookup stubs fail), `assert_exists`/`assert_not_exists`
+    (`*` globs), `assert_contains`/`assert_not_contains`, `assert_log`/`assert_log_not`/
+    `assert_log_order a b c` on the log; quoted arguments may hold spaces. The test card is
+    made 0777 like FAT.
+  - Under the emulator the restart after a self-update is skipped (the downloaded binary is
+    the device build, without the shim).
 - **Workflow** (`.github/workflows/emu-test.yml`):
-  - Automatically runs all 8 scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries). All 8 scenarios passed 100% in CI.
+  - Automatically runs all scenarios on ubuntu-24.04 with qemu-user, toolchain caching, and uploads artifacts (screenshots, logs, and compiled binaries).
 
 ## ASCII Progress Bar & Download Size Display (2026-10-17 22:12)
 
