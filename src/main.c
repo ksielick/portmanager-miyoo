@@ -423,6 +423,8 @@ static int progress_end(const char *hints, const int *keys)
 	return progress_end_at(hints, keys, -1);
 }
 
+static int port_ok;
+
 /* one port's install or update: its name once, then lines without it */
 static void port_begin(const Port *p)
 {
@@ -432,6 +434,7 @@ static void port_begin(const Port *p)
 	snprintf(s, sizeof s, CLR_ACCENT "%s", p->name);
 	lines_add(&progress, s);
 	screen_prefix = p->name;
+	port_ok = 1;
 	progress_draw("Please wait...");
 }
 
@@ -440,10 +443,14 @@ static void port_failed(void)
 	char s[sizeof pm_error + 4];
 	snprintf(s, sizeof s, CLR_BAD "%s", unprefixed(pm_error));
 	lines_add(&progress, s);
+	port_ok = 0;
 }
 
+/* the running bar goes; a finished port keeps a full one (owner, 2026-10-19) */
 static void port_end(void)
 {
+	if (port_ok)
+		lines_add(&progress, CLR_GOOD "[==============]" CLR_TEXT " 100%  done");
 	screen_prefix = NULL;
 	status_clear();
 	progress_draw("Please wait...");
