@@ -1,0 +1,6 @@
+# A second Port Manager while one runs (a live pid in the lock): an error page, exit code 1
+file .pm_work/lock/pid {pid}
+press 1 B
+shots 1
+nonblank 1
+exit 1

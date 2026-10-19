@@ -1,0 +1,20 @@
+# Update, then restore the backup made by it: old files and the old version back
+press 1 A        # details: Diddy Kong Racing
+press 2 A        # check
+press 3 A        # update
+press 4 A        # yes
+press 5 B        # result
+press 6 Y        # restore / rollback
+press 7 A        # local backup
+press 8 A        # the newest backup
+press 9 A        # yes
+press 10 B       # result
+press 11 B       # details
+press 12 B       # exit
+shots every:1
+min_frames 10
+assert_log "Diddy Kong Racing: restored from backup"
+assert_not_contains Roms/PORTS/Games/DiddyKongRacing/launch.sh miyoo_pack
+assert_contains Roms/PORTS/Games/DiddyKongRacing/.miyoo64_version 1.1.2
+assert_not_exists Roms/PORTS/Games/DiddyKongRacing/.pm_version
+assert_exists Roms/PORTS/Games/DiddyKongRacing/data/save.bin

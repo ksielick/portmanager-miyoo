@@ -1,4 +1,6 @@
 #!/bin/sh
+# EMU_OFFLINE=1 (scenario "offline"): no network, as with Wi-Fi off
+[ -n "$EMU_OFFLINE" ] && exit 1
 REAL_NSLOOKUP=""
 for p in /usr/bin/nslookup /bin/nslookup; do
 	if [ -x "$p" ]; then

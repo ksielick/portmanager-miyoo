@@ -1,0 +1,11 @@
+# Port Manager's update put off (B: later): the ports are checked as usual, Port Manager unchanged
+file app/.pm_version 1.0.0
+press 1 Y        # check
+press 2 B        # later
+press 3 B        # check result
+press 4 B        # exit
+shots every:1
+min_frames 4
+assert_log_order "--- check Port Manager" "Checking installed ports..."
+assert_log_not "updating Port Manager"
+assert_contains app/.pm_version 1.0.0

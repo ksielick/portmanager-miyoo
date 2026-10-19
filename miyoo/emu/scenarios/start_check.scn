@@ -1,0 +1,8 @@
+# Started with --check (after a self-update): the ports are checked at once, Port Manager not again
+args --check
+press 1 B        # check result
+press 2 B        # exit
+shots every:1
+min_frames 2
+assert_log "Checking installed ports..."
+assert_log_not "--- check Port Manager"

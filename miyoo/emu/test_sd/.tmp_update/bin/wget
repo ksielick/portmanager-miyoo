@@ -1,4 +1,6 @@
 #!/bin/sh
+# EMU_OFFLINE=1 (scenario "offline"): no network, as with Wi-Fi off
+[ -n "$EMU_OFFLINE" ] && exit 1
 REAL_WGET=""
 for p in /usr/bin/wget /bin/wget; do
 	if [ -x "$p" ]; then

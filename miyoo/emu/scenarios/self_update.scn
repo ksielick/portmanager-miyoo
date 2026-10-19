@@ -1,0 +1,12 @@
+# Port Manager is checked before the ports; an old one updates itself first (backup, then restart with --check)
+file app/.pm_version 1.0.0
+press 1 Y        # check
+press 2 A        # update Port Manager now
+shots every:1
+min_frames 3
+assert_log_order "--- check Port Manager" "--- updating Port Manager to v" "Port Manager: updated to" "restart skipped (emulator), then --check"
+assert_contains app/.pm_version v
+assert_not_contains app/.pm_version 1.0.0
+assert_exists app/portmanager
+assert_exists Backups/PortManager/*-PortManager-before-1.0.0.tar
+assert_log_not "--- check\n"

@@ -1,0 +1,13 @@
+# Remove a miyoo64 port keeping data on a FAT-like card (every file rwx): ROM and saves stay
+press 1 A        # details: Diddy Kong Racing
+press 2 X        # remove
+press 3 A        # yes
+press 4 A        # keep data
+press 5 B        # result
+press 6 B        # exit
+shots every:1
+min_frames 5
+assert_exists Roms/PORTS/Games/DiddyKongRacing/rom.z64
+assert_exists Roms/PORTS/Games/DiddyKongRacing/data/save.bin
+assert_not_exists Roms/PORTS/Games/DiddyKongRacing/launch.sh
+assert_not_exists "Roms/PORTS/Shortcuts/Racing/Diddy Kong Racing.port"

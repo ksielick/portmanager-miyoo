@@ -1,0 +1,21 @@
+# Each step of removing can be cancelled: nothing changes
+press 1 DOWN
+press 2 DOWN
+press 3 A        # details: SkiFree
+press 4 X        # remove
+press 5 B        # no
+press 6 X
+press 7 A        # yes
+press 8 B        # cancel at "keep data?"
+press 9 X
+press 10 A       # yes
+press 11 Y       # delete all
+press 12 B       # no at "are you SURE"
+press 13 B       # details
+press 14 B       # exit
+shots every:1
+min_frames 12
+assert_exists Roms/PORTS/Games/SkiFree/SkiFree.sh
+assert_exists Roms/PORTS/Games/SkiFree/.pm_version
+assert_exists Roms/PORTS/Shortcuts/Arcade/SkiFree.port
+assert_log_not "removing port"

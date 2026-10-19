@@ -1,0 +1,13 @@
+# The player's own shortcut (not written by Port Manager) is kept on update
+file "Roms/PORTS/Shortcuts/Racing/Diddy Kong Racing.port" "my own shortcut"
+press 1 A        # details: Diddy Kong Racing
+press 2 A        # check
+press 3 A        # update
+press 4 A        # yes
+press 5 B        # result
+press 6 B        # details
+press 7 B        # exit
+shots every:1
+min_frames 5
+assert_contains "Roms/PORTS/Shortcuts/Racing/Diddy Kong Racing.port" "my own shortcut"
+assert_log "kept your Roms/PORTS/Shortcuts/Racing/Diddy Kong Racing.port"

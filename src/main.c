@@ -623,6 +623,11 @@ static void do_pm_self_update(int ask, int then_check)
 
 	gfx_close();
 	pm_unlock();
+	/* the emulator can't run the downloaded (device) binary: the tests stop here */
+	if (getenv("MIYOO_EMU_DIR")) {
+		say("restart skipped (emulator)%s", then_check ? ", then --check" : "");
+		exit(0);
+	}
 	char *restart_argv[] = {g_argv ? g_argv[0] : g_self_bin, then_check ? "--check" : NULL, NULL};
 	execv(g_self_bin, restart_argv);
 	exit(0);

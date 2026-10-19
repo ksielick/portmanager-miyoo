@@ -15,6 +15,8 @@ import hashlib
 import json
 import os
 import re
+import glob
+import shlex
 import shutil
 import struct
 import subprocess
@@ -48,6 +50,12 @@ class Scenario:
         self.assert_exists = []
         self.assert_contains = []
         self.assert_not_exists = []
+        self.assert_not_contains = []
+        self.assert_log = []
+        self.assert_log_not = []
+        self.assert_log_order = []
+        self.files = []  # (path, text or None to remove) set up before the run
+        self.offline = False
         self.parse()
 
     def parse(self):
@@ -60,7 +68,7 @@ class Scenario:
                     self.title = raw.strip().lstrip("#").strip()
                 continue
             for part in line.split(" / "):
-                self.directive(part.split(), n)
+                self.directive(shlex.split(part), n)
         if self.min_frames is None:
             self.min_frames = self.frames
 
@@ -111,6 +119,20 @@ class Scenario:
                 self.assert_contains.append((a[0], " ".join(a[1:])))
             elif d == "assert_not_exists":
                 self.assert_not_exists.append(a[0])
+            elif d == "assert_not_contains":
+                self.assert_not_contains.append((a[0], " ".join(a[1:])))
+            elif d == "assert_log":
+                self.assert_log.append(" ".join(a))
+            elif d == "assert_log_not":
+                self.assert_log_not.append(" ".join(a))
+            elif d == "assert_log_order":
+                self.assert_log_order.append(a)
+            elif d == "file":
+                self.files.append((a[0], " ".join(a[1:]).replace("\\n", "\n")))
+            elif d == "rm":
+                self.files.append((a[0], None))
+            elif d == "offline":
+                self.offline = True
             else:
                 fail(f"unknown directive {d}")
         except (IndexError, ValueError):
@@ -230,6 +252,24 @@ def run_scenario(sc, opts):
     if os.path.isfile(cat_src):
         shutil.copy2(cat_src, os.path.join(app_dir, "catalog.json"))
 
+    # "app/..." is Port Manager's own folder, anything else is on the card
+    def where(p):
+        return os.path.join(app_dir, p[4:]) if p.startswith("app/") else os.path.join(sdcard, p)
+
+    # The scenario's own state: "{pid}" is a live process (this runner), e.g. for a lock
+    for p, text in sc.files:
+        full = where(p)
+        if text is None:
+            if os.path.isdir(full):
+                shutil.rmtree(full)
+            elif os.path.exists(full):
+                os.remove(full)
+            continue
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        with open(full, "w") as f:
+            f.write(text.replace("{pid}", str(os.getpid())))
+        os.chmod(full, 0o777)
+
     # 3. Write scripted input
     script = os.path.join(out, "input.txt")
     with open(script, "w") as f:
@@ -246,6 +286,8 @@ def run_scenario(sc, opts):
         "PM_SD": os.path.abspath(sdcard),
         "PATH": f"{os.path.abspath(bin_dir)}:{os.environ.get('PATH', '')}",
     }
+    if sc.offline:
+        target_env["EMU_OFFLINE"] = "1"  # the wget / nslookup stubs fail as with no Wi-Fi
     target_env.update(sc.env)
     env.update(target_env)
 
@@ -291,23 +333,53 @@ def run_scenario(sc, opts):
         res["problems"].append(f"only {frames} frames shown, expected at least {sc.min_frames}")
 
     # Check assertions on the SD card
+    # Check assertions (paths may hold glob patterns, e.g. a backup's time stamp)
+    def found(p):
+        if "*" in p:
+            return glob.glob(where(p))
+        return [where(p)] if os.path.exists(where(p)) else []
+
+    def read(p):
+        hits = found(p)
+        if not hits:
+            return None
+        with open(hits[0], errors="replace") as f:
+            return f.read()
+
     for p in sc.assert_exists:
-        full = os.path.join(sdcard, p)
-        if not os.path.exists(full):
+        if not found(p):
             res["problems"].append(f"assertion failed: {p} does not exist")
     for p, txt in sc.assert_contains:
-        full = os.path.join(sdcard, p)
-        if not os.path.exists(full):
+        c = read(p)
+        if c is None:
             res["problems"].append(f"assertion failed: {p} does not exist (cannot check contents)")
-        else:
-            with open(full, errors="replace") as f:
-                c = f.read()
-            if txt not in c:
-                res["problems"].append(f"assertion failed: '{txt}' not found in {p} (got: {c.strip()})")
+        elif txt not in c:
+            res["problems"].append(f"assertion failed: '{txt}' not found in {p} (got: {c.strip()[:200]})")
+    for p, txt in sc.assert_not_contains:
+        c = read(p)
+        if c is None:
+            res["problems"].append(f"assertion failed: {p} does not exist (cannot check contents)")
+        elif txt in c:
+            res["problems"].append(f"assertion failed: '{txt}' found in {p} but should not be")
     for p in sc.assert_not_exists:
-        full = os.path.join(sdcard, p)
-        if os.path.exists(full):
+        if found(p):
             res["problems"].append(f"assertion failed: {p} exists but should not")
+
+    # ... and on Port Manager's log (its lines show as "pm: ..." in log.txt)
+    for txt in sc.assert_log:
+        if txt not in text:
+            res["problems"].append(f"assertion failed: log has no '{txt}'")
+    for txt in sc.assert_log_not:
+        if txt in text:
+            res["problems"].append(f"assertion failed: log has '{txt}' but should not")
+    for seq in sc.assert_log_order:
+        pos = 0
+        for txt in seq:
+            i = text.find(txt, pos)
+            if i < 0:
+                res["problems"].append(f"assertion failed: log has no '{txt}' after '{seq[0]}' (order: {' -> '.join(seq)})")
+                break
+            pos = i + len(txt)
 
     # Screenshots
     shots, res["shots"] = [], {}

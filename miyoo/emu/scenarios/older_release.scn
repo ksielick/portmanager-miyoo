@@ -1,0 +1,17 @@
+# Install an older release from GitHub (restore menu, second option, second release on the list)
+press 1 A        # details: Diddy Kong Racing
+press 2 Y        # restore / rollback
+press 3 DOWN
+press 4 A        # older release (GitHub)
+press 5 DOWN     # the release before the latest
+press 6 A
+press 7 A        # yes
+press 8 B        # result
+press 9 B        # details
+press 10 B       # exit
+shots every:1
+min_frames 8
+assert_log "--- install miyoo64-diddykongracing -> "
+assert_log "Installation completed"
+assert_exists Roms/PORTS/Games/DiddyKongRacing/.pm_version
+assert_exists Roms/PORTS/Games/DiddyKongRacing/data/save.bin

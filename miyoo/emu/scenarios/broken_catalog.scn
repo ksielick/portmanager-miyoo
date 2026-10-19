@@ -1,0 +1,6 @@
+# A broken catalog.json: an error page, exit code 1
+file app/catalog.json "{ broken"
+press 1 B
+shots 1
+nonblank 1
+exit 1

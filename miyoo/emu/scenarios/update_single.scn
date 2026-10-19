@@ -1,0 +1,19 @@
+# Update one port from its details: check, update, its data kept, backup made before copying, installed files list
+press 1 A        # details: Diddy Kong Racing
+press 2 A        # A: check
+press 3 A        # A: update (check result)
+press 4 A        # yes
+press 5 SELECT   # installed files
+press 6 B
+press 7 B        # result
+press 8 B        # details
+press 9 B        # exit
+shots every:1
+min_frames 8
+nonblank 1 2
+assert_exists Roms/PORTS/Games/DiddyKongRacing/.pm_version
+assert_contains Roms/PORTS/Games/DiddyKongRacing/launch.sh miyoo_pack
+assert_exists Roms/PORTS/Games/DiddyKongRacing/rom.z64
+assert_exists Roms/PORTS/Games/DiddyKongRacing/data/save.bin
+assert_exists Backups/PortManager/*-miyoo64-diddykongracing-before-*.tar
+assert_log_order "--- check miyoo64-diddykongracing" "Diddy Kong Racing: backing up" "backup: Backups/PortManager/" "Diddy Kong Racing: copying files" "file(s) replaced"

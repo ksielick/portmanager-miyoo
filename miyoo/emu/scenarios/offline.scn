@@ -1,0 +1,9 @@
+# No network: the check says so instead of hanging or crashing
+offline
+press 1 Y        # check
+press 2 B        # result
+press 3 B        # exit
+shots every:1
+min_frames 2
+assert_log "NONET"
+assert_log_not "self-update available"

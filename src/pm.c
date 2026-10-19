@@ -1283,16 +1283,36 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 		replace[i] = 1;
 		total_to_copy++;
 	}
-	/* then the backup, before anything is written: the port's backup folders, version and the files to be replaced */
-	if (total_to_copy > 0 || is_dir(bk_stage)) {
+	/* then the backup, before anything is written: the port's backup folders, version and the files to be replaced
+	 * (nothing to keep on a fresh install) */
+	int anything_old = is_dir(bk_stage);
+	{
+		char old_vf[700];
+		snprintf(old_vf, sizeof old_vf, "%s/.pm_version", g);
+		anything_old |= file_exists(old_vf);
+	}
+	for (int b = 0; b < p->nbackup && !anything_old; b++) {
+		char from[800];
+		snprintf(from, sizeof from, "%s/%s", g, p->backup[b]);
+		anything_old = is_dir(from) || file_exists(from);
+	}
+	for (int i = 0; i < m.n && !anything_old; i++) {
+		char d[1000];
+		snprintf(d, sizeof d, "%s/%s", SD, m.e[i].dst);
+		anything_old = replace[i] && file_exists(d);
+	}
+	if (is_dir(bk_stage) || (total_to_copy > 0 && anything_old)) {
 		set_stage("3/4 Backup");
 		say_log("%s: backing up...", p->name);
 		mkdirs(bk_stage);
-		char old_vf[700], bk_vf[1100];
-		snprintf(old_vf, sizeof old_vf, "%s/.pm_version", g);
-		snprintf(bk_vf, sizeof bk_vf, "%s/%s/.pm_version", bk_stage, p->dir);
-		if (file_exists(old_vf) && !mkdirs_for(bk_vf))
-			copy_file(old_vf, bk_vf);
+		for (int v = 0; v < 2; v++) {
+			const char *vname = v ? ".miyoo64_version" : ".pm_version";
+			char old_vf[700], bk_vf[1100];
+			snprintf(old_vf, sizeof old_vf, "%s/%s", g, vname);
+			snprintf(bk_vf, sizeof bk_vf, "%s/%s/%s", bk_stage, p->dir, vname);
+			if (file_exists(old_vf))
+				copy_file(old_vf, bk_vf);
+		}
 		for (int b = 0; b < p->nbackup; b++) {
 			char from[800], to[1100];
 			snprintf(from, sizeof from, "%s/%s", g, p->backup[b]);
@@ -1559,10 +1579,19 @@ int pm_restore_backup(Port *p, const BackupItem *b)
 		remove_tree(rstage);
 		return fail("%s: failed to copy backup files to SD card", p->name);
 	}
-	remove_tree(rstage);
 
 	char g[600];
 	snprintf(g, sizeof g, "%s/%s", SD, p->dir);
+	/* the version goes back with the files: none in the backup means it wasn't known then */
+	for (int v = 0; v < 2; v++) {
+		const char *vname = v ? ".miyoo64_version" : ".pm_version";
+		char in_bk[1200], vf[700];
+		snprintf(in_bk, sizeof in_bk, "%s/%s/%s", src_dir, p->dir, vname);
+		snprintf(vf, sizeof vf, "%s/%s", g, vname);
+		if (!file_exists(in_bk))
+			unlink(vf);
+	}
+	remove_tree(rstage);
 	if (*p->sc_run) {
 		char exe[700];
 		snprintf(exe, sizeof exe, "%s/%s", g, p->sc_run);
@@ -2011,18 +2040,19 @@ int pm_self_update(void)
 	snprintf(stage_app, sizeof stage_app, "%s/App", stage);
 	snprintf(stage_roms, sizeof stage_roms, "%s/Roms", stage);
 
-	if (is_dir(stage_app)) {
-		char dst_app[600];
-		snprintf(dst_app, sizeof dst_app, "%s/App", SD);
-		copy_tree(stage_app, dst_app);
-	} else {
-		copy_tree(stage, HERE);
-	}
+	/* the release's App/PortManager goes where this Port Manager runs from */
+	char stage_pm[800];
+	snprintf(stage_pm, sizeof stage_pm, "%s/PortManager", stage_app);
+	int copy_failed = copy_tree(is_dir(stage_pm) ? stage_pm : stage, HERE) != 0;
 
-	if (is_dir(stage_roms)) {
+	if (!copy_failed && is_dir(stage_roms)) {
 		char dst_roms[600];
 		snprintf(dst_roms, sizeof dst_roms, "%s/Roms", SD);
-		copy_tree(stage_roms, dst_roms);
+		copy_failed = copy_tree(stage_roms, dst_roms) != 0;
+	}
+	if (copy_failed) {
+		remove_tree(stage);
+		return fail("%s: could not write the update; the backup is in Backups/PortManager", "Port Manager");
 	}
 
 	/* 5. Set executable permissions */

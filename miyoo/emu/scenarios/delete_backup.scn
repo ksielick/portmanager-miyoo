@@ -1,0 +1,17 @@
+# Update, then delete its backup from the restore list
+press 1 A        # details: Diddy Kong Racing
+press 2 A        # check
+press 3 A        # update
+press 4 A        # yes
+press 5 B        # result
+press 6 Y        # restore / rollback
+press 7 A        # local backup
+press 8 X        # delete the backup
+press 9 A        # yes
+press 10 B       # "no backups" note
+press 11 B       # details
+press 12 B       # exit
+shots every:1
+min_frames 10
+assert_not_exists Backups/PortManager/*-miyoo64-diddykongracing-before-*.tar
+assert_exists Roms/PORTS/Games/DiddyKongRacing/.pm_version
