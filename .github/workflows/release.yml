@@ -143,6 +143,12 @@ jobs:
             ARGS+=("--prerelease")
           fi
 
+          # plain-language notes for players: docs/releases/<tag>.md (else GitHub's commit list)
+          NOTES=(--generate-notes)
+          if [ -f "docs/releases/$TAG.md" ]; then
+            NOTES=(--notes-file "docs/releases/$TAG.md")
+          fi
+
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists, uploading assets..."
             gh release upload "$TAG" "$ZIP_VER" "$ZIP_LATEST" --clobber
@@ -150,6 +156,6 @@ jobs:
             echo "Creating release $TAG..."
             gh release create "$TAG" "$ZIP_VER" "$ZIP_LATEST" \
               --title "Port Manager $TAG" \
-              --generate-notes \
+              "${NOTES[@]}" \
               "${ARGS[@]}"
           fi
