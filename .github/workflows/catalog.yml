@@ -1,0 +1,26 @@
+name: catalog
+# Every device fetches catalog.json from main, so a wrong field reaches every player:
+# check it against catalog.schema.json, and that ids are unique and asset regexes compile.
+on:
+  push:
+    paths: ['catalog.json', 'catalog.schema.json', '.github/workflows/catalog.yml']
+  pull_request:
+    paths: ['catalog.json', 'catalog.schema.json', '.github/workflows/catalog.yml']
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Schema
+        run: npx --yes ajv-cli@5.0.0 validate --spec=draft7 --all-errors -s catalog.schema.json -d catalog.json
+      - name: Unique ids
+        run: |
+          dup=$(jq -r '.ports[].id' catalog.json | sort | uniq -d)
+          [ -z "$dup" ] || { echo "duplicate ids: $dup"; exit 1; }
+      - name: Asset regexes (POSIX extended, as Port Manager uses them)
+        run: |
+          jq -r '.ports[] | select(.asset != null) | .asset' catalog.json | while IFS= read -r re; do
+            echo | grep -E -- "$re" > /dev/null; [ $? -le 1 ] || { echo "bad regex: $re"; exit 1; }
+          done

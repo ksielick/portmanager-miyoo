@@ -35,7 +35,7 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 - **Scenarios** (`miyoo/emu/scenarios/`):
   - `start_list.scn`: verifies initial UI and installed port list.
   - `scroll_details.scn`: opens details and scrolls down.
-  - `catalog.scn`: displays full catalog by category.
+  - `catalog.scn`: the full catalog, A-Z, then by category after Select.
   - `check_updates.scn`: queries GitHub API for updates.
   - `update_port.scn`: checks updates, confirms update with direct `Start` on check results screen (DKR 1.1.2 -> 1.1.3), verifies backup and `.pm_version`.
   - `fallout_install.scn`: tests Fallout unknown version flow (details, Y, `A: install` directly from check results screen, confirm, writes `.pm_version` `v1.2.0`).
@@ -422,3 +422,97 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
 - dethrace-miyoo (ksielick/dethrace-miyoo, private, `G:\Emulacja\dethrace-miyoo`):
   `Roms/PORTS/Games/Carmageddon/`, `Roms/PORTS/Games/SplatPack/`; data from the GOG Max Pack
   via `miyoo/install/install_gog.bat` on the PC, or the Carmageddon demo; no releases yet.
+
+## Local catalog, schema, status and author (2026-10-19, local only, not pushed)
+
+- The owner asked to keep this local for now: nothing goes to GitHub.
+- `catalog.local.json` (repo root, git-ignored; `src/build.sh` copies it to
+  `App/PortManager/`) holds REDRIVER2, Carmageddon and Carmageddon Splat Pack. Those three were
+  taken out of `catalog.json`, since the repos aren't public.
+  - Port Manager reads it after the catalog on every load. An entry with a catalog id replaces
+    that entry.
+  - The catalog refresh from GitHub and self-update never touch it.
+  - Until this code is released, a self-update to the GitHub version drops support for it.
+- `catalog.schema.json` (draft 7) is checked in CI by `.github/workflows/catalog.yml`
+  (ajv-cli, unique ids, asset regexes compile). Locally there's no node or python: a small
+  Rust checker was built in the session's scratchpad (jsonschema crate). Both catalogs pass,
+  and wrong categories and layouts are caught.
+- `status` (playable / experimental / prerelease, from MiyooMini-Ports) is set on the 8 ports
+  that list has.
+  - The game page shows a warning line for experimental and prerelease.
+  - The details page (Select) shows `Port by: <repo owner>` and `Status:`.
+- `sources` in `catalog.json` no longer claims Port Manager reads it (it never did).
+- New rule from the owner: only clean ports. That means open source with the source on GitHub,
+  native, with no Java or other emulation layer
+  (docs/CATALOG.md, Rules).
+  - All current entries have their source on GitHub.
+  - Zuma's main route is a PC converter (Launcher.py). Copying main.pak by hand also works.
+  - Owner, later the same day: preparing the player's own game files on a PC does **not**
+    rule a port out, since Port Manager never installs game data anyway. Zuma stays. Only the
+    port's program itself has to come from an installable release.
+- Tested on the device (screenshots): Zuma's page shows "Experimental: it runs, but rough.",
+  its details "Port by: Fnava1" and "Status: experimental" (yellow); Tomb Raider's details
+  "Port by: cacuracaptors", "Status: playable" (green). A full check (Y) fetches the GitHub
+  catalog, which has no `status` yet, so the lines vanish until it is pushed.
+  - Fixed in Zuma's details (checked on the device): "Latest: not checked (A:check)" with no releases (A does
+    nothing there) now reads "no releases yet" (no longer repeated after Source), and "Files: OK
+    (none required)" ignored `required_any`, now "not found yet".
+
+## All ports: A-Z by default, Select for categories (2026-10-19, local only)
+
+- Owner: All ports (X) is now one A-Z list, no headings; Select switches to the old view by
+  category and back. The selected port stays selected; the choice lasts until Port Manager
+  closes (`g_by_category` in `src/main.c`). Footer "A: details  Sel: categories  B: back" /
+  "Sel: A-Z". README's key table says so.
+- Emulator scenarios: `catalog.scn` now also presses Select twice; `install_new_port.scn`
+  reaches F-Zero X with 2 Downs (3rd in A-Z of the 18-entry catalog.json).
+- Tested on the device (screenshots): both views and the switch back, same port kept.
+  Onion's `sendkeys 97` needs the button held ~0.3 s: with 0.1 s Select is often lost (also
+  on a game's page), the other buttons aren't.
+
+## Five new ports (local catalog), .notfound shortcuts, one-step install (2026-10-19, local only)
+
+- From the MiyooMini-Ports list, checked against the clean-ports rule (source on GitHub,
+  open licence, native) and added to `catalog.local.json` (not public yet), all `playable`:
+  - Frozen Bubble (mehdisadeghi/frozen-bubble-onion, GPL-2.0), Puzzle games, 3300 files;
+  - Panel Attack (snyderman3000/panelattack-miyoo, MIT; LÖVE 11.5 built for ARM, the game's
+    own engine, not emulation), Puzzle games;
+  - Tennis Vs Zombies (gutospinelli/TennisVsZombies-MiyooMini, code MIT, the author's own
+    assets), Arcade; its zip has the shortcut three times, `skip` drops the one in
+    `Shortcuts/`, the one in `Roms/PORTS/` is outside what Port Manager installs;
+  - Mines of Moria (mxmgorin/moria-handheld, GPL-3.0) and Monk Tower
+    (mxmgorin/monktower-handheld, MIT), RPG (their zips say Action).
+  - Left out for now: Petals Around the Rose (schizophreek/petals, MIT, C): its zip is an
+    App (files at the root, `config.json`), so it needs a new layout.
+- Installed from Port Manager on the device, each started from Onion's Ports list
+  (`Emu/PORTS/launch.sh <shortcut>`): all five reach their title screens; audioserver is back
+  after each.
+- Release shortcuts shipped as `.notfound` (Frozen Bubble has only that) now go in as
+  `.port`; when the zip has both (Panel Attack), only the `.port` is used.
+- **The card is mounted `dirsync`** (Onion): every create/rename/delete is a synchronous
+  directory write. 200 `mv` on the card: 3.5 s. So copying from `.pm_work/stage` was a second
+  slow pass (owner: unpacking and copying should be one step):
+  - files are now moved (`move_file` in `src/util.c`: rename, or copy + delete across
+    filesystems), within the guard;
+  - a **new game folder is moved in whole** (one rename) after the files the catalog doesn't
+    install are deleted from it (`prune_cb`);
+  - the progress bar redraws at most 4 times a second (every redraw waits for the panel).
+  - Panel Attack, 1247 files, after the download: unpack 23.5 s + install 29.6 s before;
+    19.7 s + 3.1 s now (0.5 s of it the move, the rest reading files for the manifest).
+  - Updates still move file by file: v0.9.3 -> v0.9.2 -> v0.9.3, 249 files each way, ~8 s,
+    with a backup before each.
+  - Steps on screen: `1/3 Downloading`, `2/3 Unpacking`, `Backup` (only when something is
+    replaced), `3/3 Installing`. Log: "unpacking...", "installing files..." (the emulator
+    scenario `update_single` expects the new line).
+  - Seen, not changed: files a newer release no longer has stay in the folder (v0.9.2 left 76).
+
+## Removing a port: plain screen, colours, progress bar (2026-10-19, local only)
+
+- Owner: the removal screen showed log lines ("(keep_data=0)", full paths). Now, like an
+  install: the game's name (accent), "Shortcut removed from the Ports list.", a
+  `Removing files` bar counting files (`remove_game_folder` in `src/pm.c`, file by file for
+  the bar, then `remove_tree`; with "keep data" the program files are counted), the green
+  "100% done" bar and a green result: "Removed, with its game folder." or "Removed. Your game
+  files stay in: <dir>" (only if the folder is really still there, `pm_folder_kept`). The
+  details stay in the log.
+- Tested on the device with Frozen Bubble (3300 files, the owner's choice; reinstalled after).

@@ -16,4 +16,4 @@ assert_contains Roms/PORTS/Games/DiddyKongRacing/launch.sh miyoo_pack
 assert_exists Roms/PORTS/Games/DiddyKongRacing/rom.z64
 assert_exists Roms/PORTS/Games/DiddyKongRacing/data/save.bin
 assert_exists Backups/PortManager/*-miyoo64-diddykongracing-before-*.tar
-assert_log_order "--- check miyoo64-diddykongracing" "Diddy Kong Racing: backing up" "backup: Backups/PortManager/" "Diddy Kong Racing: copying files" "file(s) replaced"
+assert_log_order "--- check miyoo64-diddykongracing" "Diddy Kong Racing: backing up" "backup: Backups/PortManager/" "Diddy Kong Racing: installing files" "file(s) replaced"

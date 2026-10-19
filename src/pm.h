@@ -7,6 +7,7 @@
 
 typedef struct {
 	char *id, *name, *dir, *layout, *repo, *asset, *category, *get;
+	char *status; /* playable, experimental, prerelease, or "" */
 	char *rom, *rom_name, *sc_gdf, *sc_run;
 	char **skip, **backup, **required, **required_any, **built;
 	int nskip, nbackup, nrequired, nrequired_any, nbuilt;
@@ -42,6 +43,7 @@ int pm_update(Port *p);
 /* removes an installed port; if keep_data is set, ROMs, game data and saves in its folder
  * are kept; 0, or -1 with pm_error */
 int pm_uninstall(Port *p, int keep_data);
+extern int pm_folder_kept; /* after pm_uninstall: the game folder is still there (data kept) */
 
 /* release notes / changelog (from GitHub release body) for a checked port */
 const char *pm_release_notes(const Port *p);
@@ -81,7 +83,7 @@ void pm_free_remote_releases(RemoteRelease *items, int n);
 int pm_install_release(Port *p, const RemoteRelease *rel);
 
 /* self-update (Port Manager updating itself) */
-#define PM_VERSION "1.2.1"
+#define PM_VERSION "1.2.2"
 #define PM_REPO "ksielick/portmanager-miyoo"
 
 extern int pm_self_update_available;

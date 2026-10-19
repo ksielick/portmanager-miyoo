@@ -1,10 +1,11 @@
 {
+  "$schema": "./catalog.schema.json",
   "version": 0,
   "sources": [
     {
       "name": "MiyooMini-Ports",
       "url": "https://raw.githubusercontent.com/Producdevity/MiyooMini-Ports/master/ports.json",
-      "use": "name, notes, image, porter, status, assets of the entries below, matched by repo; the other entries there are listed as not installable yet"
+      "use": "where names and statuses of entries below were checked, by hand; Port Manager doesn't read this"
     }
   ],
   "ports": [
@@ -12,6 +13,7 @@
       "id": "hexen2",
       "name": "Hexen II",
       "category": "FPS",
+      "status": "playable",
       "repo": "cacuracaptors/uhexen2-miyoomini",
       "asset": "^HexenII-miyoomini-.*\\.zip$",
       "layout": "sdcard-root",
@@ -31,6 +33,7 @@
       "id": "skifree",
       "name": "SkiFree",
       "category": "Arcade",
+      "status": "playable",
       "repo": "cacuracaptors/skifree-miyoomini",
       "asset": "^SkiFree-Miyoo-.*\\.zip$",
       "layout": "sdcard-root",
@@ -41,6 +44,7 @@
       "id": "tombraider",
       "name": "Tomb Raider",
       "category": "Platform",
+      "status": "playable",
       "repo": "cacuracaptors/OpenLara-miyoomini",
       "asset": "^OpenLara-Miyoo-.*\\.zip$",
       "layout": "sdcard-root",
@@ -60,6 +64,7 @@
       "id": "pinball",
       "name": "3D Pinball Space Cadet",
       "category": "Arcade",
+      "status": "playable",
       "repo": "cacuracaptors/spacecadetpinball-miyoomini",
       "asset": "^Pinball-Miyoo-.*\\.zip$",
       "layout": "sdcard-root",
@@ -80,6 +85,7 @@
       "id": "fallout",
       "name": "Fallout",
       "category": "RPG",
+      "status": "playable",
       "repo": "cacuracaptors/fallout1-ce-miyoomini",
       "asset": "^Fallout1-Miyoo-.*\\.zip$",
       "layout": "sdcard-root",
@@ -97,6 +103,7 @@
       "id": "fallout2",
       "name": "Fallout 2",
       "category": "RPG",
+      "status": "playable",
       "repo": "cacuracaptors/fallout2-ce-miyoomini",
       "asset": "^Fallout2-Miyoo-.*\\.zip$",
       "layout": "sdcard-root",
@@ -116,6 +123,7 @@
       "id": "mk64",
       "name": "Mario Kart 64",
       "category": "Racing",
+      "status": "playable",
       "repo": "cacuracaptors/mk64-miyoomini",
       "asset": "^MarioKart64-Miyoo-.*\\.zip$",
       "layout": "sdcard-root",
@@ -467,27 +475,6 @@
       }
     },
     {
-      "id": "redriver2",
-      "name": "REDRIVER2 (Driver 2)",
-      "category": "Racing",
-      "repo": "ksielick/redriver2-miyoo",
-      "asset": null,
-      "layout": "sdcard-root",
-      "dir": "Roms/PORTS/Games/REDRIVER2",
-      "data": {
-        "disc": {
-          "system": "psx",
-          "name": "Driver 2 (USA), both discs",
-          "where": "Roms/PS",
-          "formats": [
-            "chd",
-            "cue/bin"
-          ]
-        }
-      },
-      "get": "Your own Driver 2 (USA) PlayStation discs, both, as CHD or BIN/CUE in Roms/PS (where Onion's PlayStation games go)."
-    },
-    {
       "id": "pvz",
       "name": "Plants vs. Zombies",
       "category": "Strategy",
@@ -510,6 +497,7 @@
       "id": "zuma",
       "name": "Zuma Deluxe",
       "category": "Puzzle games",
+      "status": "experimental",
       "repo": "Fnava1/zuma-deluxe-miyoo",
       "asset": null,
       "layout": "sdcard-root",
@@ -529,58 +517,62 @@
       "get": "Zuma Deluxe PC version (Steam, EA App, or PopCap CD). Use Launcher.py from the port repo (github.com/Fnava1/zuma-deluxe-miyoo) on your PC to convert music and pack assets into dist/Zuma_Deluxe_MiyooMini.zip, then extract it to your SD card. Alternatively, copy main.pak or loose asset folders into Roms/PORTS/Games/Zuma Deluxe/."
     },
     {
-      "id": "carmageddon",
-      "name": "Carmageddon",
-      "category": "Racing",
-      "repo": "ksielick/dethrace-miyoo",
-      "asset": "^Carmageddon-Miyoo-.*\\.zip$",
+      "id": "frozenbubble",
+      "name": "Frozen Bubble",
+      "category": "Puzzle games",
+      "status": "playable",
+      "repo": "mehdisadeghi/frozen-bubble-onion",
+      "asset": "^FrozenBubble-OnionOS\\.zip$",
       "layout": "sdcard-root",
-      "dir": "Roms/PORTS/Games/Carmageddon",
-      "shortcut": {
-        "run": "run.sh",
-        "GameDataFile": "run.sh"
-      },
-      "backup": [
-        "DATA/SAVEGAME",
-        "dethrace.ini"
-      ],
-      "data": {
-        "required": [
-          "DATA/"
-        ],
-        "optional": [
-          "MUSIC/",
-          "DATA/CUTSCENE/"
-        ]
-      },
-      "get": "Carmageddon PC (DOS / GOG / Steam). Copy the DATA folder (and optional MUSIC folder) from your PC game installation directly into Roms/PORTS/Games/Carmageddon/."
+      "dir": "Roms/PORTS/Games/Frozen Bubble",
+      "data": null
     },
     {
-      "id": "carmageddon-splatpack",
-      "name": "Carmageddon Splat Pack",
-      "category": "Racing",
-      "repo": "ksielick/dethrace-miyoo",
-      "asset": "^Carmageddon-SplatPack-Miyoo-.*\\.zip$",
+      "id": "panelattack",
+      "name": "Panel Attack",
+      "category": "Puzzle games",
+      "status": "playable",
+      "repo": "snyderman3000/panelattack-miyoo",
+      "asset": "^PanelAttack-miyoo-v.*\\.zip$",
       "layout": "sdcard-root",
-      "dir": "Roms/PORTS/Games/SplatPack",
-      "shortcut": {
-        "run": "run.sh",
-        "GameDataFile": "run.sh"
-      },
-      "backup": [
-        "DATA/SAVEGAME",
-        "dethrace.ini"
+      "dir": "Roms/PORTS/Games/PanelAttack",
+      "data": null
+    },
+    {
+      "id": "tennisvszombies",
+      "name": "Tennis Vs Zombies",
+      "category": "Arcade",
+      "status": "playable",
+      "repo": "gutospinelli/TennisVsZombies-MiyooMini",
+      "asset": "^TennisVsZombies_MiyooMini_v.*\\.zip$",
+      "layout": "sdcard-root",
+      "skip": [
+        "Roms/PORTS/Shortcuts/Tennis Vs Zombies.port"
       ],
-      "data": {
-        "required": [
-          "DATA/"
-        ],
-        "optional": [
-          "MUSIC/",
-          "DATA/CUTSCENE/"
-        ]
-      },
-      "get": "Carmageddon Splat Pack PC. Copy the DATA folder (and optional MUSIC folder) from your PC game installation directly into Roms/PORTS/Games/SplatPack/."
+      "dir": "Roms/PORTS/Games/TennisVsZombies",
+      "data": null
+    },
+    {
+      "id": "minesofmoria",
+      "name": "Mines of Moria",
+      "category": "RPG",
+      "status": "playable",
+      "repo": "mxmgorin/moria-handheld",
+      "asset": "^minesofmoria-onionos-port\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/MinesOfMoria",
+      "data": null
+    },
+    {
+      "id": "monktower",
+      "name": "Monk Tower",
+      "category": "RPG",
+      "status": "playable",
+      "repo": "mxmgorin/monktower-handheld",
+      "asset": "^monktower-onionos\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/MonkTower",
+      "data": null
     }
   ]
 }

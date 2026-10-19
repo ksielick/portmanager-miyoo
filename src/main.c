@@ -8,6 +8,7 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "gfx.h"
 #include "pm.h"
@@ -332,8 +333,15 @@ static void count_progress(long current, long total)
 		set_bar("");
 		return;
 	}
-	if (current > 0 && current < total && total > 20 && (current % 5 != 0))
+	/* every redraw waits for the panel's refresh: at most 4 a second, not one per 5 files
+	 * (unpacking 1250 files: 23.5 s -> 20.9 s) */
+	static long long last_ms;
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	long long now = ts.tv_sec * 1000LL + ts.tv_nsec / 1000000;
+	if (current > 0 && current < total && now - last_ms < 250)
 		return;
+	last_ms = now;
 	char s[80];
 	make_ascii_count_bar(s, sizeof s, current, total, "files");
 	set_bar(s);
@@ -1029,14 +1037,20 @@ static void details(Port *p)
 			int keep_data = (choice == 1);
 			progress_begin("Removing port");
 			say("--- remove %s", p->id);
-			if (pm_uninstall(p, keep_data)) {
-				lines_add(&progress, "");
-				lines_add(&progress, "Can't remove port:");
-				lines_add(&progress, pm_error);
-			} else {
-				lines_add(&progress, "");
-				lines_add(&progress, keep_data ? "Port removed (game data kept in folder)." : "Port and folder removed.");
-			}
+			char dir[600];
+			snprintf(dir, sizeof dir, "%s", p->dir); /* the scan after removing may move ports */
+			port_begin(p);
+			if (pm_uninstall(p, keep_data))
+				port_failed();
+			port_end();
+			lines_add(&progress, "");
+			if (pm_error[0])
+				lines_add(&progress, CLR_BAD "Can't remove the port.");
+			else if (pm_folder_kept) {
+				lines_add(&progress, CLR_GOOD "Removed. Your game files stay in:");
+				lines_add(&progress, dir);
+			} else
+				lines_add(&progress, CLR_GOOD "Removed, with its game folder.");
 			progress_end(NULL, NULL);
 			return;
 		}
@@ -1088,11 +1102,15 @@ static const char *status(const Port *p, int all, uint32_t *c)
 	return s;
 }
 
-/* all = the whole catalog by category; else the installed ports by name */
+/* All ports: A-Z, or by category after Select (kept until Port Manager closes) */
+static int g_by_category;
+
+/* all = the whole catalog; else the installed ports by name */
 static int run_list(int all)
 {
-	int sel = 0, top = 0;
+	int sel = 0, top = 0, keep = -1;
 	for (;;) {
+		int grouped = all && g_by_category;
 		if (!all && g_check_at_start) {
 			g_check_at_start = 0;
 			check_all(0);
@@ -1101,14 +1119,19 @@ static int run_list(int all)
 		for (int i = 0; i < nports && n < 256; i++)
 			if (all || ports[i].installed)
 				idx[n++] = i;
-		qsort(idx, n, sizeof *idx, all ? by_category : by_name);
+		qsort(idx, n, sizeof *idx, grouped ? by_category : by_name);
 		Row rows[512];
 		int nr = 0;
 		for (int i = 0; i < n; i++) {
-			if (all && (i == 0 || strcasecmp(ports[idx[i]].category, ports[idx[i - 1]].category)))
+			if (grouped && (i == 0 || strcasecmp(ports[idx[i]].category, ports[idx[i - 1]].category)))
 				rows[nr++] = (Row){-1, ports[idx[i]].category};
 			rows[nr++] = (Row){idx[i], NULL};
 		}
+		/* after switching the order, stay on the same port */
+		for (int r = 0; keep >= 0 && r < nr; r++)
+			if (rows[r].port == keep)
+				sel = r;
+		keep = -1;
 		while (sel < nr && rows[sel].port < 0)
 			sel++;
 		if (sel >= nr)
@@ -1156,13 +1179,13 @@ static int run_list(int all)
 				int sl = strlen(s);
 				if (top + r == sel)
 					gfx_fill(8, y, SCR_W - 28, ROWH, C_SEL);
-				gfx_text(all ? 32 : 16, y + (ROWH - CW) / 2, p->name, COLS - sl - 2 - (all ? 1 : 0), C_TEXT);
+				gfx_text(grouped ? 32 : 16, y + (ROWH - CW) / 2, p->name, COLS - sl - 2 - (grouped ? 1 : 0), C_TEXT);
 				gfx_text(SCR_W - 28 - sl * CW, y + (ROWH - CW) / 2, s, sl, c);
 			}
 			scrollbar(top, LIST_ROWS, nr, LIST_Y, LIST_ROWS * ROWH);
 		}
 		if (all)
-			footer("A: details  B: back");
+			footer(grouped ? "A: details  Sel: A-Z  B: back" : "A: details  Sel: categories  B: back");
 		else if (nr == 0)
 			footer(CLR_GOOD "X: get ports" CLR_DIM "   Y: check   B: exit");
 		else if (pm_self_update_available)
@@ -1191,6 +1214,11 @@ static int run_list(int all)
 		}
 		if (k == K_A && nr && rows[sel].port >= 0)
 			details(&ports[rows[sel].port]);
+		if (all && k == K_SELECT) {
+			keep = nr ? rows[sel].port : -1;
+			g_by_category = !g_by_category;
+			top = 0;
+		}
 		if (!all && k == K_X)
 			run_list(1);
 		if (!all && k == K_Y)

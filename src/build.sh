@@ -51,5 +51,6 @@ else
 	"$CC" $CFLAGS -o "$OUT" $SRCS &&
 	"$STRIP" "$OUT" &&
 	cp -f ../catalog.json "$(dirname "$OUT")/catalog.json" &&
+	{ [ ! -f ../catalog.local.json ] || cp -f ../catalog.local.json "$(dirname "$OUT")/catalog.local.json"; } &&
 	ls -l "$OUT"
 fi

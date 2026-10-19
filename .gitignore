@@ -9,3 +9,6 @@ __pycache__/
 *token*.txt
 *tokens*.txt
 screenshots/
+
+# private ports, kept off GitHub (copied to App/PortManager by src/build.sh)
+catalog.local.json

@@ -1,7 +1,10 @@
-# Full catalog by category
+# Full catalog: A-Z, then by category after Select (the same port stays selected)
 press 1 X
 press 2 DOWN
 press 3 DOWN
-frames 4
-shots 1 2 3 4
-nonblank 1 2 3 4
+press 4 SELECT
+press 5 DOWN
+press 6 SELECT
+frames 7
+shots 1 2 3 4 5 6 7
+nonblank 1 2 3 4 5 6 7

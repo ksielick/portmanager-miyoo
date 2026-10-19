@@ -20,6 +20,7 @@ long file_size(const char *path);
 int mkdirs(const char *path); /* mkdir -p */
 int mkdirs_for(const char *file); /* mkdir -p of the file's folder */
 int copy_file(const char *src, const char *dst); /* via dst.new, then renamed */
+int move_file(const char *src, const char *dst); /* rename, or copy + delete across filesystems */
 int copy_tree(const char *src, const char *dst); /* cp -r */
 int remove_tree(const char *path); /* rm -rf */
 int del_file(const char *path); /* unlink, within the guard */

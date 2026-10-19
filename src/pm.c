@@ -29,6 +29,7 @@
 Port *ports;
 int nports;
 char pm_error[512];
+int pm_folder_kept;
 
 int pm_self_update_available = 0;
 char pm_self_latest_version[64] = {0};
@@ -183,47 +184,84 @@ static int validate_port(const Port *p)
 	return 1;
 }
 
-static int load_catalog(const char *path)
+static void parse_port(const cJSON *e, Port *p)
+{
+	const cJSON *data = cJSON_GetObjectItemCaseSensitive(e, "data");
+	const cJSON *rom = cJSON_GetObjectItemCaseSensitive(data, "rom");
+	const cJSON *sc = cJSON_GetObjectItemCaseSensitive(e, "shortcut");
+	p->id = str(e, "id");
+	p->name = str(e, "name");
+	p->dir = str(e, "dir");
+	p->layout = str(e, "layout");
+	p->repo = str(e, "repo");
+	p->asset = str(e, "asset");
+	p->category = str(e, "category");
+	p->status = str(e, "status");
+	p->get = str(e, "get");
+	p->rom = str(rom, "dest");
+	p->rom_name = str(rom, "name");
+	p->sc_gdf = str(sc, "GameDataFile");
+	p->sc_run = str(sc, "run");
+	p->skip = strs(e, "skip", &p->nskip);
+	p->backup = strs(e, "backup", &p->nbackup);
+	p->required = strs(data, "required", &p->nrequired);
+	p->required_any = strs(data, "required_any", &p->nrequired_any);
+	p->built = strs(data, "built", &p->nbuilt);
+}
+
+static cJSON *read_json(const char *path)
 {
 	char *text = read_file(path, NULL);
 	cJSON *root = text ? cJSON_Parse(text) : NULL;
 	free(text);
-	const cJSON *list = cJSON_GetObjectItemCaseSensitive(root, "ports"), *e;
+	return root;
+}
+
+/* the catalog, then catalog.local.json next to this program (the player's own entries, never
+ * replaced by the catalog from GitHub); a local entry with a catalog entry's id replaces it */
+static int load_catalog(const char *path)
+{
+	char local_path[600];
+	snprintf(local_path, sizeof local_path, "%s/catalog.local.json", HERE);
+	cJSON *root = read_json(path), *local = NULL;
+	const cJSON *list = cJSON_GetObjectItemCaseSensitive(root, "ports"), *llist = NULL, *e;
 	if (!cJSON_IsArray(list) || cJSON_GetArraySize(list) == 0) {
 		cJSON_Delete(root);
 		return -1;
 	}
-	ports = calloc(cJSON_GetArraySize(list), sizeof *ports);
-	nports = 0;
-	cJSON_ArrayForEach(e, list) {
-		Port *p = &ports[nports];
-		const cJSON *data = cJSON_GetObjectItemCaseSensitive(e, "data");
-		const cJSON *rom = cJSON_GetObjectItemCaseSensitive(data, "rom");
-		const cJSON *sc = cJSON_GetObjectItemCaseSensitive(e, "shortcut");
-		p->id = str(e, "id");
-		p->name = str(e, "name");
-		p->dir = str(e, "dir");
-		p->layout = str(e, "layout");
-		p->repo = str(e, "repo");
-		p->asset = str(e, "asset");
-		p->category = str(e, "category");
-		p->get = str(e, "get");
-		p->rom = str(rom, "dest");
-		p->rom_name = str(rom, "name");
-		p->sc_gdf = str(sc, "GameDataFile");
-		p->sc_run = str(sc, "run");
-		p->skip = strs(e, "skip", &p->nskip);
-		p->backup = strs(e, "backup", &p->nbackup);
-		p->required = strs(data, "required", &p->nrequired);
-		p->required_any = strs(data, "required_any", &p->nrequired_any);
-		p->built = strs(data, "built", &p->nbuilt);
-		if (!validate_port(p)) {
-			say("catalog: rejected invalid/unsafe port entry %s", p->id ? p->id : "(unnamed)");
-			continue;
+	if (file_exists(local_path)) {
+		local = read_json(local_path);
+		llist = cJSON_GetObjectItemCaseSensitive(local, "ports");
+		if (!cJSON_IsArray(llist)) {
+			say("catalog.local.json: not a valid catalog, ignored");
+			llist = NULL;
 		}
-		nports++;
 	}
+	ports = calloc(cJSON_GetArraySize(list) + cJSON_GetArraySize(llist), sizeof *ports);
+	nports = 0;
+	const cJSON *lists[] = {list, llist};
+	for (int l = 0; l < 2; l++)
+		cJSON_ArrayForEach(e, lists[l]) {
+			Port p = {0};
+			parse_port(e, &p);
+			if (!validate_port(&p)) {
+				say("%s: rejected invalid/unsafe port entry %s", l ? "catalog.local.json" : "catalog",
+					*p.id ? p.id : "(unnamed)");
+				continue;
+			}
+			int k = 0;
+			while (k < nports && strcmp(ports[k].id, p.id))
+				k++;
+			if (k < nports)
+				say("%s: %s replaces an earlier entry", l ? "catalog.local.json" : "catalog", p.id);
+			else
+				nports++;
+			ports[k] = p;
+		}
+	if (llist)
+		say("catalog.local.json: %d entries", cJSON_GetArraySize(llist));
 	cJSON_Delete(root);
+	cJSON_Delete(local);
 	if (nports == 0) {
 		free(ports);
 		ports = NULL;
@@ -1084,12 +1122,21 @@ static void map_cb(const char *rel, void *ctx)
 	}
 	else if (!strncmp(rel, "Roms/PORTS/Imgs/", 16))
 		map_add(m, M_IMG, src, rel);
-	else if (!strncmp(rel, "Roms/PORTS/Shortcuts/", 21) && strstr(rel, ".port")) {
+	else if (!strncmp(rel, "Roms/PORTS/Shortcuts/", 21) && (strstr(rel, ".port") || ends_with(rel, ".notfound"))) {
+		char bn[256];
+		snprintf(bn, sizeof bn, "%s", base_name(rel));
+		/* a shortcut shipped as .notfound (Onion's "data not found yet") goes in as .port,
+		 * unless the release has the .port too; the game page tells what's missing */
+		if (ends_with(bn, ".notfound")) {
+			char twin[900];
+			snprintf(twin, sizeof twin, "%.*s.port", (int)(strlen(src) - 9), src);
+			if (file_exists(twin))
+				return;
+			snprintf(bn + strlen(bn) - 9, sizeof bn - (strlen(bn) - 9), ".port");
+		}
 		if (app)
 			map_add(m, M_TEMPLATE, src, "");
 		else {
-			char bn[256];
-			snprintf(bn, sizeof bn, "%s", base_name(rel));
 			Find f = {bn, NULL, ""};
 			walk_files(SC, find_cb, &f);
 			if (!*f.found)
@@ -1211,6 +1258,24 @@ static int fail(const char *fmt, const char *a)
 	return -1;
 }
 
+/* before a new folder is moved in whole: what the catalog doesn't install (skip, App's
+ * config.json) leaves it first */
+typedef struct {
+	const Map *m;
+	const char *replace, *root;
+} Prune;
+
+static void prune_cb(const char *rel, void *ctx)
+{
+	Prune *pr = ctx;
+	char src[900];
+	snprintf(src, sizeof src, "%s/%s", pr->root, rel);
+	for (int i = 0; i < pr->m->n; i++)
+		if (pr->replace[i] && pr->m->e[i].kind == M_GAME && !strcmp(pr->m->e[i].src, src))
+			return;
+	del_file(src);
+}
+
 static int apply_release(Port *p, const char *tag, const char *aname, const char *url_str,
 	const char *api_url_str, const char *digest_str, long total_bytes)
 {
@@ -1229,10 +1294,10 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 	snprintf(basebuf, sizeof basebuf, "%s", base);
 	base = basebuf;
 
-	/* the zip, its unpacked files and the copy on the card, with room to spare */
+	/* the zip and its unpacked files (moved into place, not copied), with room to spare */
 	if (no_space(p->name, total_bytes > 0 ? 3LL * total_bytes : 0))
 		return -1;
-	set_stage("1/4 Downloading");
+	set_stage("1/3 Downloading");
 	if (total_bytes >= 1024 * 1024)
 		say_log("%s: %s -> %s, downloading %s (%.1f MB)", p->name, *p->version ? p->version : "?", tag, aname,
 			(double)total_bytes / (1024.0 * 1024.0));
@@ -1266,8 +1331,8 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 		return fail("%s: the download's size is wrong", p->name);
 	}
 	remove_tree(stage);
-	set_stage("2/4 Extracting");
-	say_log("%s: extracting files...", p->name);
+	set_stage("2/3 Unpacking");
+	say_log("%s: unpacking...", p->name);
 	if (on_extract_progress)
 		on_extract_progress(0, 1);
 	if (unpack(zip, stage)) {
@@ -1372,14 +1437,15 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 		snprintf(d, sizeof d, "%s/%s", SD, m.e[i].dst);
 		anything_old = replace[i] && file_exists(d);
 	}
-	/* now exactly: the new files, and the backup twice (its folder, then the tar) */
+	/* now exactly: the backup twice (its folder, then the tar); the new files are on the card
+	 * already, unpacked in the work folder, and only moved */
 	{
 		long long need = 0;
 		for (int i = 0; i < m.n; i++)
 			if (replace[i]) {
 				char d[1000];
 				snprintf(d, sizeof d, "%s/%s", SD, m.e[i].dst);
-				need += tree_bytes(m.e[i].src) + (anything_old ? 2 * tree_bytes(d) : 0);
+				need += anything_old ? 2 * tree_bytes(d) : 0;
 			}
 		for (int b = 0; b < p->nbackup && anything_old; b++) {
 			char from[800];
@@ -1397,7 +1463,7 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 		}
 	}
 	if (is_dir(bk_stage) || (total_to_copy > 0 && anything_old)) {
-		set_stage("3/4 Backup");
+		set_stage("Backup");
 		say_log("%s: backing up...", p->name);
 		mkdirs(bk_stage);
 		for (int v = 0; v < 2; v++) {
@@ -1443,23 +1509,45 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 		say_screen("Backup saved to Backups/PortManager");
 	}
 	if (total_to_copy > 0) {
-		set_stage("4/4 Copying");
-		say_log("%s: copying files...", p->name);
+		set_stage("3/3 Installing");
+		say_log("%s: installing files...", p->name);
 		if (on_copy_progress)
 			on_copy_progress(0, total_to_copy);
 	}
+	/* a new game folder goes in whole: one rename, not one per file (the card is mounted
+	 * dirsync, so every rename costs a directory write: ~30 s for 1250 files) */
+	char whole[800] = "";
+	if (total_to_copy > 0 && !is_dir(g)) {
+		if (!strcmp(p->layout, "app-to-ports"))
+			snprintf(whole, sizeof whole, "%s/App/%s", stage, base);
+		else
+			snprintf(whole, sizeof whole, "%s/%s", stage, p->dir);
+		Prune pr = {&m, replace, whole};
+		if (!is_dir(whole))
+			whole[0] = 0;
+		else {
+			walk_files(whole, prune_cb, &pr);
+			if (!guard_ok(whole) || !guard_ok(g) || mkdirs_for(g) || rename(whole, g))
+				whole[0] = 0;
+			else
+				say_log("%s: moved the new folder in whole", p->name);
+		}
+	}
 	int n = 0, failed = 0;
+	size_t wl = strlen(whole);
 	for (int i = 0; i < m.n && !failed; i++) {
 		MapEntry *e = &m.e[i];
 		if (!replace[i])
 			continue;
 		char d[1000], h[65];
 		snprintf(d, sizeof d, "%s/%s", SD, e->dst);
-		if (sha256_file(e->src, h))
+		int in_place = wl && e->kind == M_GAME && !strncmp(e->src, whole, wl) && e->src[wl] == '/';
+		if (sha256_file(in_place ? d : e->src, h))
 			h[0] = 0;
 		if (mlen + strlen(e->dst) + 80 > mcap)
 			newman = realloc(newman, mcap *= 2);
-		if (copy_file(e->src, d)) {
+		/* the work folder is on the card too: moved, not written a second time */
+		if (!in_place && move_file(e->src, d)) {
 			fail("%s: can't write a file", p->name);
 			failed = 1;
 			break;
@@ -1886,11 +1974,15 @@ static void clean_port_files(const Port *p)
 	ctx.p = p;
 	snprintf(ctx.gdir, sizeof ctx.gdir, "%s", g);
 	walk_files(g, clean_cb, &ctx);
+	if (on_copy_progress)
+		on_copy_progress(0, ctx.n);
 	for (int i = 0; i < ctx.n; i++) {
 		del_file(ctx.to_delete[i]);
 		free(ctx.to_delete[i]);
+		if (on_copy_progress)
+			on_copy_progress(i + 1, ctx.n);
 	}
-	say("%s: %d program file(s) removed", p->name, ctx.n);
+	say_log("%s: %d program file(s) removed", p->name, ctx.n);
 	free(ctx.to_delete);
 
 	rmdir_empty_subdirs(g);
@@ -1898,12 +1990,46 @@ static void clean_port_files(const Port *p)
 		rmdir(g);
 }
 
+/* a game folder file by file, for the bar (Frozen Bubble has 3300), then what's left */
+typedef struct {
+	const char *root;
+	long n, total;
+} DelCtx;
+
+static void count_cb(const char *rel, void *ctx)
+{
+	(void)rel;
+	((DelCtx *)ctx)->total++;
+}
+
+static void del_cb(const char *rel, void *ctx)
+{
+	DelCtx *d = ctx;
+	char f[1100];
+	snprintf(f, sizeof f, "%s/%s", d->root, rel);
+	del_file(f);
+	d->n++;
+	if (on_copy_progress)
+		on_copy_progress(d->n, d->total);
+}
+
+static void remove_game_folder(const char *g)
+{
+	DelCtx d = {g, 0, 0};
+	walk_files(g, count_cb, &d);
+	if (on_copy_progress)
+		on_copy_progress(0, d.total);
+	walk_files(g, del_cb, &d);
+	remove_tree(g);
+}
+
 int pm_uninstall(Port *p, int keep_data)
 {
 	pm_error[0] = 0;
+	pm_folder_kept = 0;
 	if (!p->installed)
 		return fail("%s: not installed", p->name);
-	say("%s: removing port (keep_data=%d)", p->name, keep_data);
+	say_log("%s: removing port (keep_data=%d)", p->name, keep_data);
 
 	/* 1. Remove shortcut in Roms/PORTS/Shortcuts/ */
 	char sc[700];
@@ -1911,8 +2037,9 @@ int pm_uninstall(Port *p, int keep_data)
 	if (*sc) {
 		char sc_path[1000];
 		snprintf(sc_path, sizeof sc_path, "%s/%s", SD, sc);
-		say("%s: removing shortcut %s", p->name, sc);
-		del_file(sc_path);
+		say_log("%s: removing shortcut %s", p->name, sc);
+		if (del_file(sc_path) == 0)
+			say_screen("Shortcut removed from the Ports list.");
 
 		/* Try removing empty category folder, e.g. Roms/PORTS/Shortcuts/RPG */
 		char *slash = strrchr(sc_path, '/');
@@ -1945,16 +2072,17 @@ int pm_uninstall(Port *p, int keep_data)
 
 	/* 4. Remove program files / directory */
 	const char *g = gdir(p);
+	set_stage(keep_data ? "Removing program files" : "Removing files");
 	if (!keep_data) {
-		say("%s: deleting directory %s", p->name, g);
-		remove_tree(g);
+		say_log("%s: deleting directory %s", p->name, g);
+		remove_game_folder(g);
 		if (legacy_app(p)) {
 			char app[600];
 			snprintf(app, sizeof app, "%s/App/%s", SD, base_name(p->dir));
 			remove_tree(app);
 		}
 	} else {
-		say("%s: cleaning program files, keeping game data", p->name);
+		say_log("%s: cleaning program files, keeping game data", p->name);
 		clean_port_files(p);
 		if (legacy_app(p)) {
 			char app[600];
@@ -1963,7 +2091,8 @@ int pm_uninstall(Port *p, int keep_data)
 		}
 	}
 
-	say("%s: removed", p->name);
+	pm_folder_kept = is_dir(g);
+	say_log("%s: removed", p->name);
 	pm_scan();
 	return 0;
 }
@@ -2005,6 +2134,10 @@ void pm_info(const Port *p, char *buf, int size)
 		append_info(buf, size, &n, CLR_GOOD "Installed: %s (up to date)\n", p->version);
 	else
 		append_info(buf, size, &n, CLR_TEXT "Installed: %s\n", p->version);
+	if (!strcmp(p->status, "experimental"))
+		append_info(buf, size, &n, CLR_WARN "Experimental: it runs, but rough.\n");
+	else if (!strcmp(p->status, "prerelease"))
+		append_info(buf, size, &n, CLR_WARN "Test version from its author.\n");
 
 	/* 2. The game files the player adds */
 	char need[512] = "";
@@ -2058,8 +2191,10 @@ void pm_details(const Port *p, char *buf, int size)
 		append_info(buf, size, &n, CLR_DIM "Installed: " CLR_DIM "not installed\n");
 	}
 
-	/* 2. Latest */
-	if (!p->checked) {
+	/* 2. Latest; with no asset there's nothing to check, so A does nothing */
+	if (!*p->asset) {
+		append_info(buf, size, &n, CLR_DIM "Latest:    " CLR_DIM "no releases yet\n");
+	} else if (!p->checked) {
 		append_info(buf, size, &n, CLR_DIM "Latest:    " CLR_WARN "not checked (A:check)\n");
 	} else if (*p->latest) {
 		if (p->installed) {
@@ -2087,14 +2222,20 @@ void pm_details(const Port *p, char *buf, int size)
 		append_info(buf, size, &n, CLR_DIM "Files:     " CLR_WARN "missing (%s)\n", p->missing);
 	} else if (p->installed || dir_has_files(gdir(p))) {
 		append_info(buf, size, &n, CLR_DIM "Files:     " CLR_GOOD "OK\n");
-	} else if (p->nrequired == 0 && (!p->rom || !*p->rom)) {
+	} else if (p->nrequired == 0 && p->nrequired_any == 0 && (!p->rom || !*p->rom)) {
 		append_info(buf, size, &n, CLR_DIM "Files:     " CLR_GOOD "OK (none required)\n");
 	} else {
 		append_info(buf, size, &n, CLR_DIM "Files:     " CLR_DIM "not found yet\n");
 	}
 
-	append_info(buf, size, &n, CLR_DIM "Source:    " CLR_TEXT "github.com/%s%s\n",
-		p->repo, *p->asset ? "" : " (no releases yet)");
+	append_info(buf, size, &n, CLR_DIM "Source:    " CLR_TEXT "github.com/%s\n", p->repo);
+	/* the port's author: the repo's owner */
+	const char *slash = strchr(p->repo, '/');
+	if (slash)
+		append_info(buf, size, &n, CLR_DIM "Port by:   " CLR_TEXT "%.*s\n", (int)(slash - p->repo), p->repo);
+	if (*p->status)
+		append_info(buf, size, &n, CLR_DIM "Status:    %s%s\n",
+			strcmp(p->status, "playable") ? CLR_WARN : CLR_GOOD, p->status);
 
 	/* 5. Instructions */
 	if (p->get && *p->get)

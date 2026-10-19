@@ -29,7 +29,7 @@ updates.
 
 | Button | |
 |---|---|
-| **X** | all available ports (by category) |
+| **X** | all available ports, A-Z (**Select** there: by category) |
 | **A** | a game's page: install or update it, and see which file you need to add and where |
 | **Y** | check your installed ports (and Port Manager) for updates |
 | **Start** | update all (after a check) |
@@ -77,7 +77,8 @@ updates.
 Racing: Mario Kart 64, Diddy Kong Racing, F-Zero X ·
 FPS: GoldenEye 007, Perfect Dark, Hexen II · Platform: Super Mario 64, Tomb Raider ·
 Action: Ocarina of Time, Star Fox 64, Super Smash Bros. · RPG: Fallout, Fallout 2,
-Paper Mario · Arcade: 3D Pinball Space Cadet, SkiFree · Strategy: Plants vs. Zombies.
+Paper Mario, Mines of Moria, Monk Tower · Arcade: 3D Pinball Space Cadet, SkiFree, Tennis Vs
+Zombies · Puzzle games: Frozen Bubble, Panel Attack · Strategy: Plants vs. Zombies.
 Coming when its author publishes a release: Zuma Deluxe.
 
 All credit goes to the ports' authors; Port Manager only fetches their releases.

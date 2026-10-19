@@ -263,6 +263,20 @@ int copy_file(const char *src, const char *dst)
 	return 0;
 }
 
+int move_file(const char *src, const char *dst)
+{
+	if (!guard_ok(src) || !guard_ok(dst))
+		return -1;
+	mkdirs_for(dst);
+	if (rename(src, dst) == 0)
+		return 0;
+	/* another filesystem, or the card refused: copy it instead */
+	if (copy_file(src, dst))
+		return -1;
+	unlink(src);
+	return 0;
+}
+
 int copy_tree(const char *src, const char *dst)
 {
 	if (!is_dir(src))

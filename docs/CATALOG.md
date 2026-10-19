@@ -12,10 +12,30 @@ Plan: `PLAN.md`; decisions, findings and the state of the owner's card: `NOTES.m
   them; every entry says where to get them legally and where they go (`get`).
 - Files the player added, changed or created (data, saves, settings) are never overwritten or
   deleted; replaced files are backed up first.
+- **Only clean ports** (owner, 2026-10-19):
+  - open source, with the source on GitHub (not only release zips);
+  - native, with no Java emulation (FreeJ2ME) or other emulation or compatibility layer;
+  - preparing the player's own game files on a PC is fine (Zuma Deluxe's `Launcher.py`
+    packs them and converts the music): Port Manager never installs game data anyway, and
+    `get` describes the step. The port's program itself must come from a release Port
+    Manager can install.
+  Apps are out anyway (first rule).
 
 ## catalog.json
 
-`sources`: other catalogs used for descriptions. [MiyooMini-Ports][mmp] (MIT, 66 entries,
+`catalog.schema.json` is the format as a JSON Schema (draft 7): allowed fields, categories,
+layouts and statuses, and paths that stay inside the game folder. CI (`catalog.yml`) checks
+`catalog.json` against it, plus unique ids and asset regexes that compile. Every device
+fetches `catalog.json` from `main`, so a wrong field would reach every player.
+
+`catalog.local.json` (git-ignored): entries for this card only, e.g. ports from private repos.
+`src/build.sh` copies it from the repo root to `App/PortManager/` next to `catalog.json`.
+Port Manager reads it after the catalog every time, and a local entry with the same `id`
+replaces the catalog's. The catalog fetched from GitHub never touches it, and neither does
+self-update. Same format and schema.
+
+`sources`: other catalogs entries were checked against, by hand; Port Manager doesn't read it.
+[MiyooMini-Ports][mmp] (MIT, 66 entries,
 2026-10-17) already lists Miyoo Mini ports by their authors' `/releases` pages, with `name`,
 `categories`, `status` (playable/experimental/prerelease/source-only), `assets` (free/owned),
 `porter`, `image`, `notes`. It has no install data, so our entries add it, matched by repo.
@@ -30,9 +50,10 @@ asset by a regex.
 | `id` | unique, lowercase |
 | `name` | display name = shortcut and picture file name |
 | `category` | Shortcuts subfolder (see below) |
-| `repo` | `owner/name` on GitHub; the latest release is used |
+| `status` | optional: `playable`, `experimental` (runs, but rough) or `prerelease` (the author calls it a test version); the last two are shown on the game's page, all three in its details |
+| `repo` | `owner/name` on GitHub; the latest release is used; the owner is shown as the port's author |
 | `asset` | regex for the release file; `null` = no releases yet |
-| `layout` | `sdcard-root`: the zip mirrors the card (`Roms/PORTS/...`); `app-to-ports`: the zip has `App/<dir>/` (miyoo64), which goes to `Roms/PORTS/Games/<dir>/`, and its `App`-pointing shortcut is replaced by our own |
+| `layout` | `sdcard-root`: the zip mirrors the card (`Roms/PORTS/...`); its shortcuts go to `category` (a `.notfound` one as `.port`, unless the zip has the `.port` too); `app-to-ports`: the zip has `App/<dir>/` (miyoo64), which goes to `Roms/PORTS/Games/<dir>/`, and its `App`-pointing shortcut is replaced by our own |
 | `skip` | zip paths not installed (e.g. miyoo64's MinUI folders) |
 | `dir` | the game folder on the card |
 | `data` | what the player supplies: `required`, `required_any`, `optional`, `forbidden` (paths in `dir`, case-insensitive, `*` allowed), `rom`, `disc` |
@@ -60,10 +81,10 @@ Categories (Onion's names, plus RPG; confirmed by the owner 2026-10-17):
 | FPS | GoldenEye 007, Perfect Dark, Hexen II |
 | Platform | Super Mario 64, Tomb Raider |
 | Action | Ocarina of Time, Star Fox 64, Super Smash Bros. |
-| RPG | Fallout, Fallout 2, Paper Mario |
-| Arcade | 3D Pinball Space Cadet, SkiFree |
+| RPG | Fallout, Fallout 2, Paper Mario, Mines of Moria, Monk Tower |
+| Arcade | 3D Pinball Space Cadet, SkiFree, Tennis Vs Zombies |
 | Strategy | Plants vs. Zombies |
-| Puzzle games | Zuma Deluxe |
+| Puzzle games | Frozen Bubble, Panel Attack, Zuma Deluxe |
 
 ## miyoo64 outside App/ (checked in its sources, 2026-10-17)
 

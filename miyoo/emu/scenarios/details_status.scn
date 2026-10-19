@@ -1,0 +1,12 @@
+# A rough port says so: Zuma Deluxe's page (Experimental) and details (author, status)
+press 1 X        # all ports, A-Z: Zuma Deluxe is last
+press 2 R1 / press 3 R1 / press 4 R1
+press 5 A        # Zuma's page: "Experimental: it runs, but rough."
+press 6 SELECT   # details: "Port by: Fnava1", "Status: experimental", "Latest: no releases yet"
+press 7 B
+press 8 B
+press 9 B
+press 10 B
+shots every:1
+nonblank 5 6
+min_frames 8
