@@ -174,6 +174,25 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
   working files in `/mnt/SDCARD/.pm_work`, backups in `Backups/PortManager/`, log in
   `PortManager/log.txt`; version in `<game>/.pm_version` (also `.miyoo64_version` when there),
   installed files' md5 in `<game>/.pm_manifest`.
+- Update order (2026-10-19, owner's request): download -> extract -> work out which files
+  change (unchanged ones and the player's own edits skipped) -> backup tar in
+  `Backups/PortManager/` (no progress bar; if `tar` fails the update stops before any file
+  is written) -> copy with a bar counting only the files actually replaced. Before, the tar
+  was made after copying and the bar counted unchanged files too (0% -> 100% jump). On the
+  progress page a log line arriving while a bar runs goes above the bar (fixed a stale
+  `0/18` bar left behind by "saved ... to the backup").
+- Progress screen (2026-10-19, owner: full details in the log, a simple screen, one bar):
+  the port's name once (purple), then only lines worth reading (warnings, "Backup: <tar>",
+  "v1 -> v2, N file(s) replaced"); the `<name>: ` prefix is cut on screen only. One status
+  place under the lines: step label (`1/4 Downloading`, `2/4 Extracting`, `3/4 Backup`,
+  `4/4 Copying`) and its bar, replaced step by step (`on_stage`, `say_log`/`say_screen` in
+  `util.c`). Update all: `k/n` in the header's right corner.
+- Self-update: compares the latest GitHub release tag of ksielick/portmanager-miyoo with
+  `App/PortManager/.pm_version` (fallback `PM_VERSION`); the release workflow now writes the
+  tag into `.pm_version` in the zip. v1.1.0 is the first release (the card still says 1.0.0,
+  so it should offer the update: the first real test of self-update).
+- Emulator scenarios `remove_*`: fixed quit frames dropped (the removal page draws more
+  frames now and was cut off); they end when the scripted keys run out.
 - The menu (owner, 2026-10-17: nothing checked at start, the installed ports listed, update
   checks for installed ports only, the whole catalog on request) is **a folder in Onion's
   Ports list**, `Shortcuts/~Port manager/`, built by `menu.sh build` (no network, ~4 s): one

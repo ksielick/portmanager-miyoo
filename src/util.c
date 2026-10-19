@@ -22,23 +22,44 @@ void log_open(const char *path)
 	log_file = fopen(path, "a");
 }
 
-void say(const char *fmt, ...)
+static void vsay(int to_log, int to_screen, const char *fmt, va_list ap)
 {
 	char line[1024];
-	va_list ap;
-	va_start(ap, fmt);
 	vsnprintf(line, sizeof line, fmt, ap);
-	va_end(ap);
-	if (log_file) {
+	if (to_log && log_file) {
 		fprintf(log_file, "%s\n", line);
 		fflush(log_file);
 	}
-	if (getenv("MIYOO_EMU_DIR")) {
+	if (to_log && getenv("MIYOO_EMU_DIR")) {
 		fprintf(stderr, "pm: %s\n", line);
 		fflush(stderr);
 	}
-	if (log_sink)
+	if (to_screen && log_sink)
 		log_sink(line);
+}
+
+void say(const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vsay(1, 1, fmt, ap);
+	va_end(ap);
+}
+
+void say_log(const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vsay(1, 0, fmt, ap);
+	va_end(ap);
+}
+
+void say_screen(const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vsay(0, 1, fmt, ap);
+	va_end(ap);
 }
 
 char *read_file(const char *path, size_t *len)
@@ -294,6 +315,7 @@ progress_cb on_download_progress = NULL;
 progress_cb on_extract_progress = NULL;
 progress_cb on_copy_progress = NULL;
 file_cb on_file_installed = NULL;
+file_cb on_stage = NULL;
 
 const char *curl_bin(void)
 {

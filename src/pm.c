@@ -1153,6 +1153,12 @@ static int manifest_has(const char *manifest, const char *hash, const char *dst)
 	return manifest && strstr(manifest, line) != NULL;
 }
 
+static void set_stage(const char *label)
+{
+	if (on_stage)
+		on_stage(label);
+}
+
 static int fail(const char *fmt, const char *a)
 {
 	snprintf(pm_error, sizeof pm_error, fmt, a);
@@ -1177,14 +1183,15 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 	snprintf(basebuf, sizeof basebuf, "%s", base);
 	base = basebuf;
 
+	set_stage("1/4 Downloading");
 	if (total_bytes >= 1024 * 1024)
-		say("%s: %s -> %s, downloading %s (%.1f MB)", p->name, *p->version ? p->version : "?", tag, aname,
+		say_log("%s: %s -> %s, downloading %s (%.1f MB)", p->name, *p->version ? p->version : "?", tag, aname,
 			(double)total_bytes / (1024.0 * 1024.0));
 	else if (total_bytes > 0)
-		say("%s: %s -> %s, downloading %s (%ld KB)", p->name, *p->version ? p->version : "?", tag, aname,
+		say_log("%s: %s -> %s, downloading %s (%ld KB)", p->name, *p->version ? p->version : "?", tag, aname,
 			(total_bytes + 1023) / 1024);
 	else
-		say("%s: %s -> %s, downloading %s", p->name, *p->version ? p->version : "?", tag, aname);
+		say_log("%s: %s -> %s, downloading %s", p->name, *p->version ? p->version : "?", tag, aname);
 	const char *tok = token_for_repo(p->repo);
 	int dl_ok = 0;
 	if (tok) {
@@ -1210,7 +1217,8 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 		return fail("%s: the download's size is wrong", p->name);
 	}
 	remove_tree(stage);
-	say("%s: extracting files...", p->name);
+	set_stage("2/4 Extracting");
+	say_log("%s: extracting files...", p->name);
 	if (on_extract_progress)
 		on_extract_progress(0, 1);
 	if (unpack(zip, stage)) {
@@ -1260,28 +1268,21 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 	size_t mcap = 4096, mlen = 0;
 	char *newman = malloc(mcap);
 	newman[0] = 0;
+	/* first what changes: files already the same, and the player's own edits, stay as they are */
+	char *replace = calloc(m.n + 1, 1);
 	int total_to_copy = 0;
-	for (int i = 0; i < m.n; i++)
-		if (m.e[i].kind != M_TEMPLATE)
-			total_to_copy++;
-	if (total_to_copy > 0) {
-		say("%s: copying files...", p->name);
-		if (on_copy_progress)
-			on_copy_progress(0, total_to_copy);
-	}
-	int n = 0, saved = 0, failed = 0;
-	for (int i = 0; i < m.n && !failed; i++) {
+	for (int i = 0; i < m.n; i++) {
 		MapEntry *e = &m.e[i];
 		if (e->kind == M_TEMPLATE)
 			continue;
 		char d[1000], h[65];
 		snprintf(d, sizeof d, "%s/%s", SD, e->dst);
-		if (sha256_file(e->src, h))
-			h[0] = 0;
-		if (mlen + strlen(e->dst) + 80 > mcap)
-			newman = realloc(newman, mcap *= 2);
 		if (file_exists(d)) {
 			if (same_file(e->src, d)) {
+				if (sha256_file(e->src, h))
+					h[0] = 0;
+				if (mlen + strlen(e->dst) + 80 > mcap)
+					newman = realloc(newman, mcap *= 2);
 				mlen += sprintf(newman + mlen, "%s %s\n", h, e->dst);
 				continue;
 			}
@@ -1301,31 +1302,70 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 				}
 			}
 		}
-		/* before the first replaced file: the port's backup folders and version */
-		if (!saved) {
-			saved = 1;
-			mkdirs(bk_stage);
-			char old_vf[700], bk_vf[1100];
-			snprintf(old_vf, sizeof old_vf, "%s/.pm_version", g);
-			snprintf(bk_vf, sizeof bk_vf, "%s/%s/.pm_version", bk_stage, p->dir);
-			if (file_exists(old_vf) && !mkdirs_for(bk_vf))
-				copy_file(old_vf, bk_vf);
-			for (int b = 0; b < p->nbackup; b++) {
-				char from[800], to[1100];
-				snprintf(from, sizeof from, "%s/%s", g, p->backup[b]);
-				snprintf(to, sizeof to, "%s/%s/%s", bk_stage, p->dir, p->backup[b]);
-				if (to[strlen(to) - 1] == '/')
-					to[strlen(to) - 1] = 0;
-				if (is_dir(from) && copy_tree(from, to) == 0)
-					say("%s: saved %s/%s to the backup", p->name, p->dir, p->backup[b]);
-			}
+		replace[i] = 1;
+		total_to_copy++;
+	}
+	/* then the backup, before anything is written: the port's backup folders, version and the files to be replaced */
+	if (total_to_copy > 0 || is_dir(bk_stage)) {
+		set_stage("3/4 Backup");
+		say_log("%s: backing up...", p->name);
+		mkdirs(bk_stage);
+		char old_vf[700], bk_vf[1100];
+		snprintf(old_vf, sizeof old_vf, "%s/.pm_version", g);
+		snprintf(bk_vf, sizeof bk_vf, "%s/%s/.pm_version", bk_stage, p->dir);
+		if (file_exists(old_vf) && !mkdirs_for(bk_vf))
+			copy_file(old_vf, bk_vf);
+		for (int b = 0; b < p->nbackup; b++) {
+			char from[800], to[1100];
+			snprintf(from, sizeof from, "%s/%s", g, p->backup[b]);
+			snprintf(to, sizeof to, "%s/%s/%s", bk_stage, p->dir, p->backup[b]);
+			if (to[strlen(to) - 1] == '/')
+				to[strlen(to) - 1] = 0;
+			if (is_dir(from) && copy_tree(from, to) == 0)
+				say_log("%s: saved %s/%s to the backup", p->name, p->dir, p->backup[b]);
 		}
-		if (file_exists(d)) {
-			char b[1100];
-			snprintf(b, sizeof b, "%s/%s", bk_stage, e->dst);
-			if (copy_file(d, b))
-				say("%s: warning: could not back up %s before overwrite", p->name, e->dst);
+		for (int i = 0; i < m.n; i++) {
+			char d[1000], b[1100];
+			snprintf(d, sizeof d, "%s/%s", SD, m.e[i].dst);
+			snprintf(b, sizeof b, "%s/%s", bk_stage, m.e[i].dst);
+			if (replace[i] && file_exists(d) && copy_file(d, b))
+				say("%s: warning: could not back up %s before overwrite", p->name, m.e[i].dst);
 		}
+		char bk_tar[800];
+		snprintf(bk_tar, sizeof bk_tar, "%s/Backups/PortManager/%s-%s-before-%s.tar", SD, STAMP, p->id, tag);
+		mkdirs_for(bk_tar);
+		const char *tar_cmd[] = {"tar", "-cf", bk_tar, "-C", bk_stage, ".", NULL};
+		int tar_failed = run(tar_cmd, NULL);
+		remove_tree(bk_stage);
+		if (tar_failed) {
+			unlink(bk_tar);
+			free(replace);
+			free(oldman);
+			free(newman);
+			free(m.e);
+			remove_tree(stage);
+			return fail("%s: can't create the backup archive, nothing was changed", p->name);
+		}
+		say_log("backup: %s", bk_tar + strlen(SD) + 1);
+		say_screen("Backup: %s", base_name(bk_tar));
+	}
+	if (total_to_copy > 0) {
+		set_stage("4/4 Copying");
+		say_log("%s: copying files...", p->name);
+		if (on_copy_progress)
+			on_copy_progress(0, total_to_copy);
+	}
+	int n = 0, failed = 0;
+	for (int i = 0; i < m.n && !failed; i++) {
+		MapEntry *e = &m.e[i];
+		if (!replace[i])
+			continue;
+		char d[1000], h[65];
+		snprintf(d, sizeof d, "%s/%s", SD, e->dst);
+		if (sha256_file(e->src, h))
+			h[0] = 0;
+		if (mlen + strlen(e->dst) + 80 > mcap)
+			newman = realloc(newman, mcap *= 2);
 		if (copy_file(e->src, d)) {
 			fail("%s: can't write a file", p->name);
 			failed = 1;
@@ -1342,14 +1382,12 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 		if (on_copy_progress)
 			on_copy_progress(n, total_to_copy);
 	}
-	if (on_copy_progress && total_to_copy > 0)
-		on_copy_progress(total_to_copy, total_to_copy);
+	free(replace);
 	free(oldman);
 	free(m.e);
 	remove_tree(stage);
 	if (failed) {
 		free(newman);
-		remove_tree(bk_stage);
 		return -1;
 	}
 	write_file(manf, newman, mlen);
@@ -1376,18 +1414,6 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 			closedir(d);
 	}
 	say("%s: %s -> %s, %d file(s) replaced", p->name, *p->version ? p->version : "?", tag, n);
-	if (saved) {
-		char bk_tar[800];
-		snprintf(bk_tar, sizeof bk_tar, "%s/Backups/PortManager/%s-%s-before-%s.tar", SD, STAMP, p->id, tag);
-		mkdirs_for(bk_tar);
-		say("%s: archiving backup...", p->name);
-		const char *tar_cmd[] = {"tar", "-cf", bk_tar, "-C", bk_stage, ".", NULL};
-		if (run(tar_cmd, NULL) == 0)
-			say("backup: %s", bk_tar + strlen(SD) + 1);
-		else
-			say("%s: warning: could not create backup archive", p->name);
-		remove_tree(bk_stage);
-	}
 	pm_scan();
 	return 0;
 }

@@ -8,6 +8,9 @@
 extern void (*log_sink)(const char *line);
 void log_open(const char *path);
 void say(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+/* the log file only (details the screen leaves out) / the screen only */
+void say_log(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+void say_screen(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 
 char *read_file(const char *path, size_t *len); /* malloc'd, 0-terminated; NULL if missing */
 int write_file(const char *path, const char *data, size_t len);
@@ -47,6 +50,8 @@ extern progress_cb on_extract_progress;
 extern progress_cb on_copy_progress;
 typedef void (*file_cb)(const char *path);
 extern file_cb on_file_installed;
+/* the step now running ("2/4 Extracting"), shown above the progress bar */
+extern file_cb on_stage;
 
 /* "a/b/c" -> "c" (static buffer) */
 const char *base_name(const char *path);

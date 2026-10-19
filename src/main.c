@@ -182,7 +182,11 @@ static int view(const char *title, const char *right, const Lines *t, const char
 static Lines progress;
 static Lines installed_files;
 static const char *progress_title;
-static int bar_line_idx = -1;
+static char progress_right[24];
+/* the step running now and its bar: one place under the log lines, replaced step by step */
+static char status_label[48], status_bar[80];
+/* "<port name>: " is left out on the screen (the log keeps it) */
+static const char *screen_prefix;
 
 static void make_ascii_bar(char *buf, size_t size, long cur, long total)
 {
@@ -259,25 +263,45 @@ static void make_ascii_count_bar(char *buf, size_t size, long cur, long total, c
 
 static void progress_draw(const char *hints)
 {
-	int top = progress.n > TEXT_ROWS ? progress.n - TEXT_ROWS : 0;
-	header(progress_title, NULL);
-	draw_lines_limit(&progress, top, TEXT_ROWS);
+	int rows = TEXT_ROWS - (*status_label != 0) - (*status_bar != 0);
+	int top = progress.n > rows ? progress.n - rows : 0;
+	header(progress_title, progress_right);
+	draw_lines_limit(&progress, top, rows);
+	int y = TOPH + 8 + (progress.n - top) * (CW + 6);
+	if (*status_label) {
+		gfx_text(16, y, status_label, COLS, C_DIM);
+		y += CW + 6;
+	}
+	if (*status_bar)
+		gfx_text(16, y, status_bar, COLS, C_TEXT);
 	footer(hints);
 	gfx_flip();
 }
 
-static void update_progress_bar(const char *s, int is_done)
+static void status_clear(void)
 {
-	if (bar_line_idx >= 0 && bar_line_idx < progress.n) {
-		free(progress.l[bar_line_idx]);
-		progress.l[bar_line_idx] = strdup(s);
-	} else {
-		bar_line_idx = progress.n;
-		lines_push(&progress, s, strlen(s));
-	}
+	status_label[0] = status_bar[0] = 0;
+}
+
+static void stage_changed(const char *label)
+{
+	snprintf(status_label, sizeof status_label, "%s", label);
+	status_bar[0] = 0;
 	progress_draw("Please wait...");
-	if (is_done)
-		bar_line_idx = -1;
+}
+
+static void set_bar(const char *s)
+{
+	snprintf(status_bar, sizeof status_bar, "%s", s);
+	progress_draw("Please wait...");
+}
+
+static const char *unprefixed(const char *line)
+{
+	size_t n = screen_prefix ? strlen(screen_prefix) : 0;
+	if (n && !strncmp(line, screen_prefix, n) && line[n] == ':' && line[n + 1] == ' ')
+		return line + n + 2;
+	return line;
 }
 
 static void progress_sink(const char *line)
@@ -285,46 +309,32 @@ static void progress_sink(const char *line)
 	/* lines meant for the log only */
 	if (!strncmp(line, "NONET ", 6) || !strncmp(line, "ERROR ", 6) || !strncmp(line, "--- ", 4))
 		return;
-	bar_line_idx = -1;
-	lines_add(&progress, line);
+	lines_add(&progress, unprefixed(line));
 	progress_draw("Please wait...");
 }
 
 static void download_progress(long current, long total)
 {
-	if (total <= 0) {
-		bar_line_idx = -1;
+	if (total <= 0 && current <= 0) {
+		set_bar("");
 		return;
 	}
 	char s[80];
 	make_ascii_bar(s, sizeof s, current, total);
-	update_progress_bar(s, current >= total);
+	set_bar(s);
 }
 
-static void extract_progress(long current, long total)
+static void count_progress(long current, long total)
 {
 	if (total <= 0) {
-		bar_line_idx = -1;
+		set_bar("");
 		return;
 	}
 	if (current > 0 && current < total && total > 20 && (current % 5 != 0))
 		return;
 	char s[80];
 	make_ascii_count_bar(s, sizeof s, current, total, "files");
-	update_progress_bar(s, current >= total);
-}
-
-static void copy_progress(long current, long total)
-{
-	if (total <= 0) {
-		bar_line_idx = -1;
-		return;
-	}
-	if (current > 0 && current < total && total > 20 && (current % 5 != 0))
-		return;
-	char s[80];
-	make_ascii_count_bar(s, sizeof s, current, total, "files");
-	update_progress_bar(s, current >= total);
+	set_bar(s);
 }
 
 static void file_installed(const char *path)
@@ -337,12 +347,15 @@ static void progress_begin(const char *title)
 	lines_free(&progress);
 	lines_free(&installed_files);
 	progress_title = title;
-	bar_line_idx = -1;
+	progress_right[0] = 0;
+	screen_prefix = NULL;
+	status_clear();
 	log_sink = progress_sink;
 	on_download_progress = download_progress;
-	on_extract_progress = extract_progress;
-	on_copy_progress = copy_progress;
+	on_extract_progress = count_progress;
+	on_copy_progress = count_progress;
 	on_file_installed = file_installed;
+	on_stage = stage_changed;
 	progress_draw("Please wait...");
 }
 
@@ -354,7 +367,9 @@ static int progress_end_at(const char *hints, const int *keys, int start_top)
 	on_extract_progress = NULL;
 	on_copy_progress = NULL;
 	on_file_installed = NULL;
-	bar_line_idx = -1;
+	on_stage = NULL;
+	screen_prefix = NULL;
+	status_clear();
 
 	char custom_hints[80];
 	if (!hints) {
@@ -376,7 +391,7 @@ static int progress_end_at(const char *hints, const int *keys, int start_top)
 	handled_keys[nhk] = 0;
 
 	for (;;) {
-		int k = view_at(progress_title, NULL, &progress, hints, handled_keys, start_top);
+		int k = view_at(progress_title, progress_right, &progress, hints, handled_keys, start_top);
 		if (k == K_SELECT && installed_files.n > 0) {
 			view_at("Installed files", NULL, &installed_files, "Up/Down   B: back", NULL, 0);
 			continue;
@@ -390,6 +405,32 @@ static int progress_end_at(const char *hints, const int *keys, int start_top)
 static int progress_end(const char *hints, const int *keys)
 {
 	return progress_end_at(hints, keys, -1);
+}
+
+/* one port's install or update: its name once, then lines without it */
+static void port_begin(const Port *p)
+{
+	if (progress.n)
+		lines_add(&progress, "");
+	char s[200];
+	snprintf(s, sizeof s, CLR_ACCENT "%s", p->name);
+	lines_add(&progress, s);
+	screen_prefix = p->name;
+	progress_draw("Please wait...");
+}
+
+static void port_failed(void)
+{
+	char s[sizeof pm_error + 4];
+	snprintf(s, sizeof s, CLR_BAD "%s", unprefixed(pm_error));
+	lines_add(&progress, s);
+}
+
+static void port_end(void)
+{
+	screen_prefix = NULL;
+	status_clear();
+	progress_draw("Please wait...");
 }
 
 /* --- actions --- */
@@ -592,12 +633,16 @@ static void do_update(Port *only)
 		Port *p = &ports[i];
 		if ((only && p != only) || (!only && !p->update))
 			continue;
+		if (n > 1)
+			snprintf(progress_right, sizeof progress_right, "%d/%d", ok + bad + 1, n);
+		port_begin(p);
 		if (pm_update(p)) {
-			lines_add(&progress, pm_error);
+			port_failed();
 			bad++;
 		}
 		else
 			ok++;
+		port_end();
 	}
 	char s[80];
 	snprintf(s, sizeof s, "Done: %d %s%s", ok, only && !only->installed ? "installed" : "updated", bad ? "" : ".");
@@ -822,14 +867,12 @@ static void do_restore(Port *p)
 			if (confirm(q)) {
 				progress_begin("Installing release");
 				say("--- install %s -> %s", p->id, releases[r_sel].tag);
-				if (pm_install_release(p, &releases[r_sel])) {
-					lines_add(&progress, "");
-					lines_add(&progress, "Can't install release:");
-					lines_add(&progress, pm_error);
-				} else {
-					lines_add(&progress, "");
-					lines_add(&progress, "Installation completed.");
-				}
+				port_begin(p);
+				if (pm_install_release(p, &releases[r_sel]))
+					port_failed();
+				port_end();
+				lines_add(&progress, "");
+				lines_add(&progress, pm_error[0] ? "Can't install release." : "Installation completed.");
 				progress_end(NULL, NULL);
 			}
 		}

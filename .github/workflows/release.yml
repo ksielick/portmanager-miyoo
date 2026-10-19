@@ -97,7 +97,9 @@ jobs:
         run: |
           chmod +x onion/App/PortManager/portmanager onion/App/PortManager/launch.sh
           cp -f catalog.json onion/App/PortManager/catalog.json
-          
+          # the version Port Manager compares with the latest release (self-update)
+          echo "${{ steps.vars.outputs.tag }}" > onion/App/PortManager/.pm_version
+
           ZIP_VER="${{ steps.vars.outputs.ZIP_VERSIONED }}"
           ZIP_LATEST="${{ steps.vars.outputs.ZIP_LATEST }}"
           
