@@ -2,7 +2,7 @@
 press 1 Y
 press 2 START
 press 3 A
-shots 1 2 4
+shots 1 2 4 every:10
 min_frames 4
 nonblank 1 2
 assert_exists Backups/PortManager
