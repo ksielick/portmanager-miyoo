@@ -208,7 +208,9 @@ def run_scenario(sc, opts):
         os.makedirs(sdcard, exist_ok=True)
 
     # Every file executable, as on the card's FAT (rwxrwxrwx): Port Manager must not take that
-    # for a sign of program files (it once deleted a port's ROM and saves that way)
+    # for a sign of program files (it once deleted a port's ROM and saves that way); this also
+    # covers the helper scripts in .tmp_update/bin
+    bin_dir = os.path.join(sdcard, ".tmp_update", "bin")
     for dirpath, _, files in os.walk(sdcard):
         for fname in files:
             try:
