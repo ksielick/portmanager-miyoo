@@ -1953,8 +1953,11 @@ void pm_info(const Port *p, char *buf, int size)
 		append_info(buf, size, &n, "%sGame files from your own copy:\n" CLR_TEXT,
 			p->installed ? CLR_WARN : CLR_TEXT);
 		if (p->rom_name && *p->rom_name)
-			append_info(buf, size, &n, "  %s\n", p->rom_name);
-		append_info(buf, size, &n, CLR_DIM "  copy to " CLR_TEXT "%s/\n" CLR_DIM "  as " CLR_TEXT "%s\n", p->dir, need);
+			append_info(buf, size, &n, "%s\n", p->rom_name);
+		if (strpbrk(need, ",;:*"))
+			append_info(buf, size, &n, "\n" CLR_DIM "Copy into:\n" CLR_TEXT "%s/\n%s\n", p->dir, need);
+		else
+			append_info(buf, size, &n, "\n" CLR_DIM "Save as:\n" CLR_TEXT "%s/%s\n", p->dir, need);
 	}
 
 	append_info(buf, size, &n, "\n" CLR_DIM "Select: more info\n");
