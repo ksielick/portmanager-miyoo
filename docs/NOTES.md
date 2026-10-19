@@ -1,6 +1,6 @@
 # Notes: decisions, findings, the card's state
 
-Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md`.
+Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 
 ## Owner's decisions (2026-10-17)
 
@@ -9,7 +9,7 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `../README.md
 - **Ports list only**: every port in `Roms/PORTS/Games` + `Roms/PORTS/Shortcuts`; nothing in
   Onion's Apps (`App/`). Port entries already in Apps were to be removed (done, see below).
 - **Thematic category folders** in `Roms/PORTS/Shortcuts`: Onion's names plus RPG (mapping
-  in `../README.md`), confirmed and applied on the card.
+  in `CATALOG.md`), confirmed and applied on the card.
 - **Copyrighted files** (ROMs, game data): never downloaded or hosted; each entry gives the
   player instructions for adding them.
 - **Carmageddon and Carmageddon Splat Pack are two separate games** (one repo, one binary,

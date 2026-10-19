@@ -5,7 +5,7 @@ An app on the Miyoo that lists, installs and updates native ports, downloading e
 straight from its author's GitHub releases instead of from one central repo of zips. Today
 only the miyoo64 games are handled, from the PC, by redriver2-miyoo's
 `miyoo/tools/update_miyoo64.sh` + `miyoo64_apply.sh`; this grows that into a general tool.
-Findings, decisions and the card's state: `NOTES.md`. Catalog format: `../README.md`.
+Findings, decisions and the card's state: `NOTES.md`. Catalog format: `CATALOG.md`.
 
 ## What PortMaster-New does (checked 2026-10-17)
 
@@ -56,7 +56,7 @@ Python.
 
 ## Design
 
-- **Catalog, not hosting** (`catalog.json`, format in `../README.md`): where each port is
+- **Catalog, not hosting** (`catalog.json`, format in `CATALOG.md`): where each port is
   released and how it installs; no zip is ever copied. Descriptions (name, notes, image,
   porter, status) come from [MiyooMini-Ports](https://github.com/Producdevity/MiyooMini-Ports),
   an existing catalog of the same kind (links to authors' `/releases`), matched by repo.
