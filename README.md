@@ -30,17 +30,18 @@ updates.
 | Button | |
 |---|---|
 | **X** | all available ports (by category) |
-| **A** | a port's details: check, install or update it, and see which game files it needs |
+| **A** | a game's page: install or update it, and see which file you need to add and where |
 | **Y** | check your installed ports (and Port Manager) for updates |
 | **Start** | update all (after a check) |
-| **Y** in details | restore a backup or install an older version |
-| **X** in details | remove (you can keep your game data and saves) |
+| **Select** on a game's page | all details: where to get the files, checksums, source |
+| **Y** on a game's page | restore a backup or install an older version |
+| **X** on a game's page | remove it (you can keep your game data and saves) |
 | **B** | back |
 
 ## Making a game appear in the Ports list
 
 1. Install the port in Port Manager (**X**, choose the game, **A**).
-2. Copy the game files listed on its details page from your own copy, for example
+2. Copy the game file shown on its page (with the full path) from your own copy, for example
    `Roms/PORTS/Games/FZeroX/rom.z64`.
 3. Open **Games › Ports**: the game is in its category folder (Racing, FPS, RPG, ...).
    If it isn't there yet, run **~Import ports** at the top of the Ports list, or press **Y**
