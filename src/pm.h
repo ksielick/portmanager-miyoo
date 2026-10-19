@@ -80,7 +80,7 @@ void pm_free_remote_releases(RemoteRelease *items, int n);
 int pm_install_release(Port *p, const RemoteRelease *rel);
 
 /* self-update (Port Manager updating itself) */
-#define PM_VERSION "1.1.0"
+#define PM_VERSION "1.1.1"
 #define PM_REPO "ksielick/portmanager-miyoo"
 
 extern int pm_self_update_available;
