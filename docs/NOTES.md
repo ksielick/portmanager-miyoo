@@ -505,3 +505,19 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
   files stay in: <dir>" (only if the folder is really still there, `pm_folder_kept`). The
   details stay in the log.
 - Tested on the device with Frozen Bubble (3300 files, the owner's choice; reinstalled after).
+
+## Two new miyoo64 games: Majora's Mask, Harvest Moon 64 (2026-10-20, catalog only)
+
+- miyoo64 1.2.0 (2026-10-19) added `MajorasMask-miyoo.zip` and `HarvestMoon64-miyoo.zip`.
+  Same zip layout as Ocarina of Time (`App/<dir>/`, Onion shortcut, MinUI/Apps folders that
+  `skip` leaves out), so both use `app-to-ports` and the same fields. ROMs from the author's
+  README (USA dumps): Majora's Mask SHA-1 `d6133ace...` (32 MB), Harvest Moon 64 `90631460...`
+  (16 MB).
+- Status: Majora's Mask `prerelease` (the author calls it Beta), Harvest Moon 64 `playable`.
+- Category: Harvest Moon 64 goes to a new `Simulation` folder (owner's OK, 2026-10-20; added
+  to the schema's enum and CATALOG.md).
+- A-Z list: Harvest Moon 64 and Majora's Mask sort before Panel Attack, so
+  `install_port_and_notfound` needs 14 Downs (was 12). New emulator scenario
+  `install_majoras_mask` (9 Downs): installs it, checks our shortcut in Action points at the
+  Ports folder, no `App/`, `Emus/` or `Apps/` left, no ROM.
+- No program change: the owner installs them on the Miyoo after the catalog update from main.

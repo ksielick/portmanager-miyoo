@@ -48,7 +48,7 @@
         "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$", "description": "Unique, lowercase; the key of what's installed, so never change it."},
         "name": {"type": "string", "minLength": 1, "pattern": "^[^/\\\\]+$", "description": "Display name, also the shortcut's and picture's file name."},
         "category": {
-          "enum": ["Action", "Arcade", "FPS", "Platform", "Puzzle games", "Racing", "Reflex", "RPG", "Strategy"],
+          "enum": ["Action", "Arcade", "FPS", "Platform", "Puzzle games", "Racing", "Reflex", "RPG", "Simulation", "Strategy"],
           "description": "The Shortcuts subfolder in Onion's Ports list. A new one needs the owner's OK, then add it here."
         },
         "status": {

@@ -1,0 +1,27 @@
+# A new miyoo64 game (Majora's Mask, app-to-ports, a test version from its author): its
+# App/ folder goes to the Ports list with our shortcut, MinUI/Apps folders stay out, no ROM yet
+press 1 X        # all ports, A-Z
+press 2 DOWN / press 3 DOWN / press 4 DOWN / press 5 DOWN / press 6 DOWN / press 7 DOWN
+press 8 DOWN / press 9 DOWN / press 10 DOWN
+press 11 A       # details: Majora's Mask ("Test version" on the page)
+press 12 A       # check
+press 13 A       # install
+press 14 A       # yes
+press 15 B       # result
+press 16 B       # details: ROM still missing
+press 17 B       # all ports
+press 18 B       # exit
+timeout 600
+shots every:1
+nonblank 11
+min_frames 13
+assert_exists Roms/PORTS/Games/MajorasMask/mm
+assert_exists Roms/PORTS/Games/MajorasMask/launch.sh
+assert_exists Roms/PORTS/Games/MajorasMask/.pm_version
+assert_exists "Roms/PORTS/Shortcuts/Action/Majora's Mask.port"
+assert_contains "Roms/PORTS/Shortcuts/Action/Majora's Mask.port" Roms/PORTS/Games/MajorasMask
+assert_not_contains "Roms/PORTS/Shortcuts/Action/Majora's Mask.port" /App/
+assert_not_exists App/MajorasMask
+assert_not_exists Emus
+assert_not_exists Apps
+assert_not_exists Roms/PORTS/Games/MajorasMask/rom.z64

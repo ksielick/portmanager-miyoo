@@ -258,6 +258,80 @@
       }
     },
     {
+      "id": "miyoo64-harvestmoon64",
+      "name": "Harvest Moon 64",
+      "category": "Simulation",
+      "status": "playable",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^HarvestMoon64-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/HarvestMoon64",
+      "backup": [
+        "data/"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "Harvest Moon 64 (USA)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "90631460f1876a14849df0541d534012b410a34c",
+          "size": 16777216
+        }
+      },
+      "get": "Harvest Moon 64 (USA) dump as rom.z64 (SHA-1: 90631460f1876a14849df0541d534012b410a34c, 16 MB). Save as Roms/PORTS/Games/HarvestMoon64/rom.z64. Any .z64, .v64 or .n64 works.",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
+      "id": "miyoo64-majorasmask",
+      "name": "Majora's Mask",
+      "category": "Action",
+      "status": "prerelease",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^MajorasMask-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/MajorasMask",
+      "backup": [
+        "data/"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "The Legend of Zelda: Majora's Mask (USA)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "d6133ace5afaa0882cf214cf88daba39e266c078",
+          "size": 33554432
+        }
+      },
+      "get": "The Legend of Zelda: Majora's Mask (USA) dump as rom.z64 (SHA-1: d6133ace5afaa0882cf214cf88daba39e266c078, 32 MB). Save as Roms/PORTS/Games/MajorasMask/rom.z64. Any .z64, .v64 or .n64 works.",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
       "id": "miyoo64-ocarinaoftime",
       "name": "Ocarina of Time",
       "category": "Action",

@@ -2,17 +2,18 @@
 press 1 X        # all ports, A-Z
 press 2 DOWN / press 3 DOWN / press 4 DOWN / press 5 DOWN / press 6 DOWN / press 7 DOWN
 press 8 DOWN / press 9 DOWN / press 10 DOWN / press 11 DOWN / press 12 DOWN / press 13 DOWN
-press 14 A       # details: Panel Attack
-press 15 A       # check
-press 16 A       # install
-press 17 A       # yes
-press 18 B       # result
-press 19 B       # details
-press 20 B       # all ports
-press 21 B       # exit
+press 14 DOWN / press 15 DOWN
+press 16 A       # details: Panel Attack
+press 17 A       # check
+press 18 A       # install
+press 19 A       # yes
+press 20 B       # result
+press 21 B       # details
+press 22 B       # all ports
+press 23 B       # exit
 timeout 600
 shots every:1
-min_frames 15
+min_frames 17
 assert_exists Roms/PORTS/Games/PanelAttack/launch.sh
 assert_exists "Roms/PORTS/Shortcuts/Puzzle games/Panel Attack.port"
 assert_not_exists "Roms/PORTS/Shortcuts/Puzzle games/Panel Attack.notfound"
