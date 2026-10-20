@@ -521,3 +521,25 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
   `install_majoras_mask` (9 Downs): installs it, checks our shortcut in Action points at the
   Ports folder, no `App/`, `Emus/` or `Apps/` left, no ROM.
 - No program change: the owner installs them on the Miyoo after the catalog update from main.
+
+## The update check, step by step (2026-10-20, v1.2.3)
+
+- Owner (screenshot of the Y page): it showed catalog.local.json lines and "catalog updated"
+  between the ports. Now, in order, as the owner asked: Port Manager first, then the catalog,
+  then the ports.
+  - First line: "Port Manager: up to date (v...)", "... is available" (green, Select updates
+    it) or "updated to v..." after the restart. The old block at the bottom is gone.
+  - The catalog: one line, "Catalog:" with its bar on the same line (a stage label ending in
+    ':' draws inline, percentage only), then "Catalog: 2 new, 3 updated, 1 removed" or
+    "up to date" (`catalog_changes` in `src/pm.c` compares entries by id with `cJSON_Compare`).
+  - Then "Checking installed ports..." with the per-repo bar, and the update list.
+  - catalog.local.json lines ("replaces an earlier entry", "N entries") go to the log only.
+- Owner: after Port Manager updates itself, it restarts before the catalog and ports are
+  checked. That was already so (`--check`); now the self-update no longer copies the zip's
+  catalog.json over the card's, so the check after the restart downloads it and says what
+  changed. The zip still carries it for a first install.
+- No catalog.json on the card: Port Manager starts anyway (local entries only) and runs the
+  check at once, Port Manager first. Before, it stopped with "missing or broken"; a broken
+  file still does (`broken_catalog`).
+- Emulator: `no_catalog`, `catalog_changes` (an older two-entry catalog: "1 updated,
+  1 removed").

@@ -16,8 +16,11 @@
 
 static char **g_argv = NULL;
 static char g_self_bin[512] = {0};
-/* --check: started again after a self-update, the ports are checked right away */
+/* the check runs right away: 1 = --check, started again after a self-update; 2 = no catalog
+ * on the card yet (Port Manager is checked first, as with Y) */
 static int g_check_at_start;
+/* the check page's first line: what became of Port Manager itself */
+static char g_pm_line[120];
 
 
 #define TOPH 48
@@ -188,6 +191,8 @@ static const char *progress_title;
 static char progress_right[24];
 /* the step running now and its bar: one place under the log lines, replaced step by step */
 static char status_label[48], status_bar[80];
+/* a label ending in ':' ("Catalog:") has its bar on the same line */
+static int status_inline;
 /* "<port name>: " is left out on the screen (the log keeps it) */
 static const char *screen_prefix;
 
@@ -257,26 +262,37 @@ static void make_ascii_count_bar(char *buf, size_t size, long cur, long total, c
 		bar[1 + bar_width] = ']';
 		bar[2 + bar_width] = 0;
 
-		snprintf(buf, size, CLR_GOOD "%s" CLR_TEXT " %3d%%  %ld/%ld %s",
-			bar, pct, cur, total, unit ? unit : "files");
+		if (unit)
+			snprintf(buf, size, CLR_GOOD "%s" CLR_TEXT " %3d%%  %ld/%ld %s", bar, pct, cur, total, unit);
+		else /* the percentage only, to fit after a label */
+			snprintf(buf, size, CLR_GOOD "%s" CLR_TEXT " %3d%%", bar, pct);
 	} else {
-		snprintf(buf, size, CLR_GOOD "[===>          ]" CLR_TEXT "  %ld %s", cur, unit ? unit : "files");
+		snprintf(buf, size, CLR_GOOD "[===>          ]" CLR_TEXT "  %ld %s", cur, unit ? unit : "");
 	}
 }
 
 static void progress_draw(const char *hints)
 {
-	int rows = TEXT_ROWS - (*status_label != 0) - (*status_bar != 0);
+	int rows = TEXT_ROWS - (*status_label != 0) - (*status_bar != 0 && !status_inline);
 	int top = progress.n > rows ? progress.n - rows : 0;
 	header(progress_title, progress_right);
 	draw_lines_limit(&progress, top, rows);
 	int y = TOPH + 8 + (progress.n - top) * (CW + 6);
-	if (*status_label) {
-		gfx_text(16, y, status_label, COLS, C_DIM);
+	if (status_inline) {
+		int n = (int)strlen(status_label) + 1;
+		gfx_text(16, y, status_label, COLS, C_TEXT);
+		if (*status_bar)
+			gfx_text(16 + n * CW, y, status_bar, COLS - n, C_TEXT);
 		y += CW + 6;
 	}
-	if (*status_bar)
-		gfx_text(16, y, status_bar, COLS, C_TEXT);
+	else {
+		if (*status_label) {
+			gfx_text(16, y, status_label, COLS, C_DIM);
+			y += CW + 6;
+		}
+		if (*status_bar)
+			gfx_text(16, y, status_bar, COLS, C_TEXT);
+	}
 	footer(hints);
 	gfx_flip();
 }
@@ -289,6 +305,8 @@ static void status_clear(void)
 static void stage_changed(const char *label)
 {
 	snprintf(status_label, sizeof status_label, "%s", label);
+	size_t n = strlen(status_label);
+	status_inline = n && status_label[n - 1] == ':';
 	status_bar[0] = 0;
 	progress_draw("Please wait...");
 }
@@ -323,7 +341,10 @@ static void download_progress(long current, long total)
 		return;
 	}
 	char s[80];
-	make_ascii_bar(s, sizeof s, current, total);
+	if (status_inline)
+		make_ascii_count_bar(s, sizeof s, current > total ? total : current, total, NULL);
+	else
+		make_ascii_bar(s, sizeof s, current, total);
 	set_bar(s);
 }
 
@@ -484,10 +505,16 @@ static int do_check(const Port *only)
 	const int *keys = NULL;
 	progress_begin("Checking for updates");
 	say(only ? "--- check %s" : "--- check", only ? only->id : "");
+	/* in order: Port Manager, the catalog, the ports (pm_check says the last two) */
 	if (only)
 		say("Checking %s...", only->name);
-	else
-		say("Checking installed ports...");
+	else if (pm_self_update_available) {
+		say_log("Port Manager %s is available", pm_self_latest_version);
+		say_screen(CLR_GOOD "Port Manager %s is available" CLR_TEXT, pm_self_latest_version);
+	}
+	else if (*g_pm_line)
+		say("%s", g_pm_line);
+	g_pm_line[0] = 0;
 	if (pm_check(only)) {
 		lines_add(&progress, "");
 		lines_add(&progress, "Can't check for updates:");
@@ -558,13 +585,6 @@ static int do_check(const Port *only)
 				}
 		} else {
 			lines_add(&progress, "All installed ports are up to date.");
-		}
-		if (pm_self_update_available) {
-			char s[256];
-			snprintf(s, sizeof s, CLR_GOOD "New Port Manager %s is available!" CLR_TEXT, pm_self_latest_version);
-			lines_add(&progress, "");
-			lines_add(&progress, s);
-			lines_add(&progress, "Select: update Port Manager now");
 		}
 		if (n && pm_self_update_available) {
 			hints = "Up/Down  Start: update all  Sel: update PM  B: back";
@@ -660,6 +680,10 @@ static void check_all(int self_first)
 		say("Checking Port Manager...");
 		int err = pm_check_self();
 		progress_stop();
+		if (err)
+			snprintf(g_pm_line, sizeof g_pm_line, "Port Manager: can't check");
+		else
+			snprintf(g_pm_line, sizeof g_pm_line, "Port Manager: up to date (%s)", pm_version());
 		if (!err && pm_self_update_available) {
 			char q[300];
 			snprintf(q, sizeof q, "Port Manager %s is available (installed: %s).\n\n"
@@ -671,6 +695,8 @@ static void check_all(int self_first)
 				do_pm_self_update(0, 1); /* returns only if it failed */
 		}
 	}
+	else /* started again after updating itself */
+		snprintf(g_pm_line, sizeof g_pm_line, "Port Manager: updated to %s", pm_version());
 	int chk_res = do_check(NULL);
 	if (chk_res == K_START)
 		do_update(NULL);
@@ -1112,8 +1138,9 @@ static int run_list(int all)
 	for (;;) {
 		int grouped = all && g_by_category;
 		if (!all && g_check_at_start) {
+			int self_first = g_check_at_start == 2;
 			g_check_at_start = 0;
-			check_all(0);
+			check_all(self_first);
 		}
 		int idx[256], n = 0;
 		for (int i = 0; i < nports && n < 256; i++)
@@ -1258,6 +1285,8 @@ int main(int argc, char **argv)
 		r = 1;
 	}
 	else {
+		if (pm_no_catalog && !g_check_at_start)
+			g_check_at_start = 2;
 		run_list(0);
 		pm_unlock();
 	}

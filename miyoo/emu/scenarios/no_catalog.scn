@@ -1,0 +1,12 @@
+# No catalog on the card (deleted, or not copied): Port Manager starts and checks at once,
+# in order: itself, the catalog (downloaded, all entries new), the ports
+rm app/catalog.json
+press 1 B        # check result
+press 2 B        # exit
+shots every:1
+nonblank 1
+min_frames 2
+assert_exists app/catalog.json
+assert_log_order "--- check Port Manager" "Port Manager: up to date" "Catalog: " "Checking installed ports..."
+assert_log " new"
+assert_log_not "Catalog: up to date"

@@ -30,6 +30,7 @@ Port *ports;
 int nports;
 char pm_error[512];
 int pm_folder_kept;
+int pm_no_catalog;
 
 int pm_self_update_available = 0;
 char pm_self_latest_version[64] = {0};
@@ -218,14 +219,16 @@ static cJSON *read_json(const char *path)
 }
 
 /* the catalog, then catalog.local.json next to this program (the player's own entries, never
- * replaced by the catalog from GitHub); a local entry with a catalog entry's id replaces it */
+ * replaced by the catalog from GitHub); a local entry with a catalog entry's id replaces it.
+ * No catalog file at all is fine (the check downloads it), a broken one is not. */
 static int load_catalog(const char *path)
 {
 	char local_path[600];
 	snprintf(local_path, sizeof local_path, "%s/catalog.local.json", HERE);
-	cJSON *root = read_json(path), *local = NULL;
+	int missing = !file_exists(path);
+	cJSON *root = missing ? NULL : read_json(path), *local = NULL;
 	const cJSON *list = cJSON_GetObjectItemCaseSensitive(root, "ports"), *llist = NULL, *e;
-	if (!cJSON_IsArray(list) || cJSON_GetArraySize(list) == 0) {
+	if (!missing && (!cJSON_IsArray(list) || cJSON_GetArraySize(list) == 0)) {
 		cJSON_Delete(root);
 		return -1;
 	}
@@ -237,7 +240,7 @@ static int load_catalog(const char *path)
 			llist = NULL;
 		}
 	}
-	ports = calloc(cJSON_GetArraySize(list) + cJSON_GetArraySize(llist), sizeof *ports);
+	ports = calloc(cJSON_GetArraySize(list) + cJSON_GetArraySize(llist) + 1, sizeof *ports);
 	nports = 0;
 	const cJSON *lists[] = {list, llist};
 	for (int l = 0; l < 2; l++)
@@ -253,15 +256,19 @@ static int load_catalog(const char *path)
 			while (k < nports && strcmp(ports[k].id, p.id))
 				k++;
 			if (k < nports)
-				say("%s: %s replaces an earlier entry", l ? "catalog.local.json" : "catalog", p.id);
+				say_log("%s: %s replaces an earlier entry", l ? "catalog.local.json" : "catalog", p.id);
 			else
 				nports++;
 			ports[k] = p;
 		}
 	if (llist)
-		say("catalog.local.json: %d entries", cJSON_GetArraySize(llist));
+		say_log("catalog.local.json: %d entries", cJSON_GetArraySize(llist));
 	cJSON_Delete(root);
 	cJSON_Delete(local);
+	if (missing) {
+		say_log("catalog: none on the card yet");
+		return 0;
+	}
 	if (nports == 0) {
 		free(ports);
 		ports = NULL;
@@ -650,6 +657,7 @@ int pm_init(void)
 		tokens_load(tokfile);
 		say("auth: loaded %d token(s) from %s", ntokens, tokfile);
 	}
+	pm_no_catalog = !file_exists(CAT);
 	if (load_catalog(CAT))
 		return -1;
 	pm_scan();
@@ -946,24 +954,70 @@ static void fetch_releases(char **repos, const char **names, int n)
 	}
 }
 
+/* entries in `newf` that `oldf` doesn't have, that differ, and that are gone (by id) */
+static void catalog_changes(const char *oldf, const char *newf, int *added, int *changed, int *removed)
+{
+	cJSON *o = read_json(oldf), *n = read_json(newf);
+	const cJSON *ol = cJSON_GetObjectItemCaseSensitive(o, "ports"), *nl = cJSON_GetObjectItemCaseSensitive(n, "ports");
+	const cJSON *a, *b;
+	*added = *changed = *removed = 0;
+	cJSON_ArrayForEach(a, nl) {
+		const cJSON *id = cJSON_GetObjectItemCaseSensitive(a, "id"), *same = NULL;
+		cJSON_ArrayForEach(b, ol)
+			if (cJSON_IsString(id) && cJSON_IsString(cJSON_GetObjectItemCaseSensitive(b, "id")) &&
+				!strcmp(id->valuestring, cJSON_GetObjectItemCaseSensitive(b, "id")->valuestring))
+				same = b;
+		if (!same)
+			(*added)++;
+		else if (!cJSON_Compare(a, same, 1))
+			(*changed)++;
+	}
+	int on = cJSON_GetArraySize(ol), nn = cJSON_GetArraySize(nl);
+	*removed = on - (nn - *added);
+	if (*removed < 0)
+		*removed = 0;
+	cJSON_Delete(o);
+	cJSON_Delete(n);
+}
+
+/* one line on the screen: "Catalog:" with its bar, then what changed */
 static int refresh_catalog(void)
 {
 	char f[400];
 	snprintf(f, sizeof f, "%s/catalog.json", WORK);
-	if (fetch(CAT_URL, f, 0))
+	set_stage("Catalog:");
+	long guess = file_size(CAT);
+	if (fetch(CAT_URL, f, guess > 0 ? guess : 32 * 1024)) {
+		set_stage("");
+		say("Catalog: can't download it, the saved one stays");
 		return -1;
-	if (same_file(f, CAT))
+	}
+	set_stage("");
+	if (same_file(f, CAT)) {
+		say("Catalog: up to date");
 		return 0;
+	}
+	int added, changed, removed;
+	catalog_changes(CAT, f, &added, &changed, &removed);
 	/* only a catalog that loads replaces the one on the card */
 	Port *old = ports;
 	int oldn = nports;
 	if (load_catalog(f)) {
 		ports = old;
 		nports = oldn;
+		say("Catalog: the new one is broken, the saved one stays");
 		return -1;
 	}
 	copy_file(f, CAT);
-	say("catalog updated");
+	char s[120] = "";
+	int l = 0;
+	if (added)
+		l += snprintf(s + l, sizeof s - l, "%s%d new", l ? ", " : "", added);
+	if (changed)
+		l += snprintf(s + l, sizeof s - l, "%s%d updated", l ? ", " : "", changed);
+	if (removed)
+		l += snprintf(s + l, sizeof s - l, "%s%d removed", l ? ", " : "", removed);
+	say("Catalog: %s", l ? s : "up to date");
 	return 0;
 }
 
@@ -991,8 +1045,8 @@ int pm_check(const Port *only)
 	pm_error[0] = 0;
 	/* a new catalog reallocates ports: only for the whole check, `only` must stay valid */
 	if (!only) {
-		set_stage("Updating the catalog");
 		refresh_catalog();
+		say("Checking installed ports...");
 	}
 	pm_scan();
 	char *repos[64];
@@ -2376,6 +2430,11 @@ int pm_self_update(void)
 	/* the release's App/PortManager goes where this Port Manager runs from */
 	char stage_pm[800];
 	snprintf(stage_pm, sizeof stage_pm, "%s/PortManager", stage_app);
+	/* the catalog isn't taken from the zip: the check after the restart downloads the latest
+	 * and says what changed (the zip carries it for a first install) */
+	char stage_cat[900];
+	snprintf(stage_cat, sizeof stage_cat, "%s/catalog.json", is_dir(stage_pm) ? stage_pm : stage);
+	del_file(stage_cat);
 	int copy_failed = copy_tree(is_dir(stage_pm) ? stage_pm : stage, HERE) != 0;
 
 	if (!copy_failed && is_dir(stage_roms)) {

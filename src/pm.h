@@ -29,7 +29,8 @@ extern Port *ports;
 extern int nports;
 extern char pm_error[512]; /* why the last pm_check/pm_update failed */
 
-int pm_init(void);   /* paths, log, the catalog on the card, pm_scan; -1 if no catalog */
+int pm_init(void);   /* paths, log, the catalog on the card, pm_scan; -1 if it is broken */
+extern int pm_no_catalog; /* none on the card yet: the first check downloads it */
 void pm_scan(void);  /* installed, version, missing for every port */
 int pm_lock(void);   /* one run at a time; -1 if another is running */
 void pm_unlock(void);
@@ -83,7 +84,7 @@ void pm_free_remote_releases(RemoteRelease *items, int n);
 int pm_install_release(Port *p, const RemoteRelease *rel);
 
 /* self-update (Port Manager updating itself) */
-#define PM_VERSION "1.2.2"
+#define PM_VERSION "1.2.3"
 #define PM_REPO "ksielick/portmanager-miyoo"
 
 extern int pm_self_update_available;

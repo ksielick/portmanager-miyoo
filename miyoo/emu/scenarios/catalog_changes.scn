@@ -1,0 +1,11 @@
+# An older catalog on the card: the check says how many entries are new, updated and gone
+# (Zuma Deluxe differs, "Old Game" is no longer in the catalog)
+file app/catalog.json '{"version": 1, "ports": [{"id": "zuma", "name": "Zuma Deluxe", "category": "Puzzle games", "repo": "Fnava1/zuma-deluxe-miyoo", "asset": null, "layout": "sdcard-root", "dir": "Roms/PORTS/Games/Zuma Deluxe", "data": null, "get": "an older text"}, {"id": "oldgame", "name": "Old Game", "category": "Arcade", "repo": "nobody/oldgame", "asset": null, "layout": "sdcard-root", "dir": "Roms/PORTS/Games/OldGame", "data": null}]}'
+press 1 Y        # check
+press 2 B        # check result
+press 3 B        # exit
+shots every:1
+nonblank 2
+min_frames 3
+assert_log "new, 1 updated, 1 removed"
+assert_not_contains app/catalog.json oldgame
