@@ -506,7 +506,7 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
   details stay in the log.
 - Tested on the device with Frozen Bubble (3300 files, the owner's choice; reinstalled after).
 
-## Two new miyoo64 games: Majora's Mask, Harvest Moon 64 (2026-10-20, catalog only)
+## Two new miyoo64 games: Majora's Mask, Harvest Moon 64 (2026-10-20, catalog only, on main the same day)
 
 - miyoo64 1.2.0 (2026-10-19) added `MajorasMask-miyoo.zip` and `HarvestMoon64-miyoo.zip`.
   Same zip layout as Ocarina of Time (`App/<dir>/`, Onion shortcut, MinUI/Apps folders that
@@ -522,7 +522,7 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
   Ports folder, no `App/`, `Emus/` or `Apps/` left, no ROM.
 - No program change: the owner installs them on the Miyoo after the catalog update from main.
 
-## The update check, step by step (2026-10-20, v1.2.3)
+## The update check, step by step (2026-10-20, released in v1.2.3)
 
 - Owner (screenshot of the Y page): it showed catalog.local.json lines and "catalog updated"
   between the ports. Now, in order, as the owner asked: Port Manager first, then the catalog,
@@ -544,7 +544,7 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
 - Emulator: `no_catalog`, `catalog_changes` (an older two-entry catalog: "1 updated,
   1 removed").
 
-## Mario Kart 64: two ports side by side (2026-10-20, next release)
+## Mario Kart 64: two ports side by side (2026-10-20, released in v1.2.4)
 
 - miyoo64 1.2.0 ships its own `MarioKart64-miyoo.zip` (`App/MarioKart64/`). The catalog
   already had cacuracaptors' mk64-miyoomini (`mk64`, `Roms/PORTS/Games/MarioKart64`, the one on
@@ -563,3 +563,23 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
 - A-Z: "Mario Kart 64 (mr-finster)" is 11th, Panel Attack 15th (`install_port_and_notfound`:
   14 Downs). Emulator scenario `install_mk64_two_ports`: a fake cacuracaptors install stays
   untouched (shortcut, picture, files) next to the new one.
+
+## Device tests and the owner's card (2026-10-20)
+
+- v1.2.3, on the owner's Mini Plus (updated through Port Manager's self-update, then
+  `catalog.json` deleted): Port Manager started without a catalog, ran the check at once and
+  showed "Port Manager: up to date (v1.2.3)", "Catalog:" with its bar, "Catalog: 25 new",
+  then 8 repos checked. Start to result ~11 s, the catalog ~1 s. Filmed by dumping fb0 every
+  0.5 s on the device (how: auto-memory, device testing).
+- v1.2.4 (dev build deployed before the release): "Mario Kart 64 (mr-finster)" installed next
+  to cacuracaptors' Mario Kart 64; theirs (folder, shortcut, picture) untouched, nothing in
+  `App/`. Screenshots in `screenshots/mk64-*.png`.
+- The card now:
+  - Majora's Mask and Harvest Moon 64 installed (the owner, 1.2.0), with ROMs added from
+    `G:\Emulacja\n64\` (SHA-1 checked on the device). Harvest Moon's dump was a byte-swapped
+    v64 named `.n64`, converted to z64 with `dd conv=swab`. Not started yet.
+  - Mario Kart 64 (mr-finster) installed, no ROM yet.
+  - The other miyoo64 games updated to 1.2.0 by the owner.
+  - `App/PortManager/catalog.local.json` on the card still has 8 entries (5 copies of entries
+    now public, plus the mk64 one); the PC copy has the 3 private ones. The next deploy fixes it.
+  - PC backup of the deleted catalog: `backup/20261020-before-catalog-delete/catalog.json`.

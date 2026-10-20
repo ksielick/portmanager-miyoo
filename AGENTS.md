@@ -55,6 +55,21 @@ The owner's guideline (2026-10-20): Port Manager stays **light, clear and fast**
    - Progress output: details go to the log only (`say_log`), and the screen shows one status line (`on_stage` + one bar). Nothing may draw after `gfx_close()`, so call `progress_stop()` first.
    - Releases (from v1.2.0, +0.0.1 each): bump `PM_VERSION` (`src/pm.h`) and `onion/App/PortManager/.pm_version`, write `docs/releases/<tag>.md` in plain language for players, then tag. The release workflow checks the tag and publishes that file as the notes.
    - Every feature has an emulator scenario (`miyoo/emu/scenarios/`). Add or extend one with each change. Setup and assertion directives are listed in `docs/NOTES.md`. The emulator runs only in CI here (no local Python/qemu), so read `contact.png` from the run's artifacts.
+6. **Lessons (2026-10-20)**:
+   - **Changing `catalog.json`** (an entry added, renamed, moved or removed):
+     - update the README's "## Ports" list and the category table in `docs/CATALOG.md` in the same commit;
+     - recheck scenarios that walk the All ports list: they count Downs in A-Z order of names (`strcasecmp`).
+   - **Scenarios must not pin an upstream version.** Assert what changed (e.g. "no longer the card's 1.1.2"), not "1.1.x": `update_port` broke when miyoo64 released 1.2.0.
+   - **Every device fetches `catalog.json` from main.** An entry that needs new program code (a new field) goes public only with the release:
+     - test it from `catalog.local.json` on the console;
+     - run the emulator on a branch (`gh workflow run emu-test.yml --ref <branch>`);
+     - push main and the tag together.
+   - **The check page (Y) is ordered:** Port Manager, then the catalog, then the ports.
+     - A stage label ending in `:` ("Catalog:") draws its bar on the same line.
+     - `refresh_catalog()` reports what changed.
+     - Port Manager starts without a `catalog.json` and downloads it, but a broken one still stops it.
+   - **Self-update keeps the card's `catalog.json`.** The check after the restart downloads it. Releases before v1.2.3 still copy the zip's.
+   - **Two ports of one game** use the `app` field: their own `dir`, and the shortcut, picture and `GameName` go by the entry's name. Only `app` entries are renamed, since zips' names don't always match the catalog's ("Super Smash Bros" vs "Super Smash Bros.").
 
 ## Commit Guidelines
 - Commit as: `153522713+ksielick@users.noreply.github.com` (configured in repo config).
