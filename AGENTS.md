@@ -26,6 +26,13 @@ powershell -ExecutionPolicy Bypass -File tools/screenshot_miyoo.ps1 [out.png]
 ```
 This dumps `/dev/fb0`, queries the pan offset, and converts to PNG using `ffmpeg`.
 
+## Project Guideline: Light, Clear, Fast
+The owner's guideline (2026-10-20): Port Manager stays **light, clear and fast**.
+- **Light:** one small static binary (~550 KB). No new runtimes or helper programs, and nothing left running after it exits.
+- **Clear:** simple screens in player terms, with one status line and one bar. Details go to the log or under Select.
+- **Fast:** few network requests and few card writes (the card is mounted `dirsync`, so each create, rename or delete costs a directory write). Throttle redraws, and time big ports on the device.
+- Weigh every change against these three. Say so when a feature would cost any of them.
+
 ## UI Conventions & Architecture
 1. **Inline Color Escapes**:
    - `src/gfx.h` defines `CLR_TEXT`, `CLR_DIM`, `CLR_ACCENT`, `CLR_GOOD`, `CLR_WARN`, `CLR_BAD` as control codes `\x01`..`\x06`.

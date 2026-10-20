@@ -7,6 +7,11 @@ NOTES updated after each step. Catalog: `catalog.json`, format in `docs/CATALOG.
 - The owner's rules: Onion's Ports list only (never `App/`), thematic Shortcuts category
   folders, copyrighted files only through player instructions, a PC backup before changing
   the card.
+- Project guideline (owner, 2026-10-20): Port Manager stays **light, clear and fast**.
+  - Light: one small static binary (~550 KB), no new runtimes or helper programs, nothing left running.
+  - Clear: simple screens in player terms, one status line and one bar, details in the log or under Select.
+  - Fast: few network requests and card writes (the card is `dirsync`), throttled redraws; time big ports on the device.
+  - Weigh every change against these three; say so when a feature would cost any of them.
 - Device access and automated tools:
   - Deploy to device: `powershell -ExecutionPolicy Bypass -File tools/deploy_to_miyoo.ps1` (backs up `App/PortManager` to `backup/`, copies shortcuts/imgs to `\\192.168.0.246\Roms`, streams `App/PortManager` tar over SSH with chmod +x, removes old `portmaster`, clears `Shortcuts_cache*.db`).
   - Capture screenshot from device: `tools/screenshot_miyoo.bat` (double-click; saves to `screenshots/` and opens it) or `powershell -ExecutionPolicy Bypass -File tools/screenshot_miyoo.ps1 [out.png] [-Open]` (dumps `/dev/fb0`, converts with ffmpeg using pan offset).
