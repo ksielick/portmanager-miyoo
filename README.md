@@ -74,7 +74,7 @@ updates.
 
 ## Ports
 
-Racing: Mario Kart 64, Diddy Kong Racing, F-Zero X ·
+Racing: Mario Kart 64 (two ports: cacuracaptors' and mr-finster's), Diddy Kong Racing, F-Zero X ·
 FPS: GoldenEye 007, Perfect Dark, Hexen II · Platform: Super Mario 64, Tomb Raider ·
 Action: Ocarina of Time, Majora's Mask, Star Fox 64, Super Smash Bros. · RPG: Fallout, Fallout 2,
 Paper Mario, Mines of Moria, Monk Tower · Arcade: 3D Pinball Space Cadet, SkiFree, Tennis Vs

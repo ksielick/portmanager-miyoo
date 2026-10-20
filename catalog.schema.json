@@ -58,6 +58,7 @@
         "repo": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", "description": "owner/name on GitHub; the owner is shown as the port's author."},
         "asset": {"type": ["string", "null"], "minLength": 1, "description": "Regex for the release file; null = no releases yet."},
         "layout": {"enum": ["sdcard-root", "app-to-ports"]},
+        "app": {"type": "string", "pattern": "^[A-Za-z0-9_. -]+$", "description": "app-to-ports only: the folder under App/ in the zip when it isn't dir's last part (two ports of one game). Then the shortcut and the picture are named after name."},
         "skip": {"$ref": "#/definitions/relpaths"},
         "dir": {"type": "string", "pattern": "^Roms/PORTS/Games/[^/\\\\](?!.*\\.\\.)[^\\\\]*$"},
         "backup": {"$ref": "#/definitions/relpaths"},

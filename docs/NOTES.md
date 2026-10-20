@@ -543,3 +543,23 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
   file still does (`broken_catalog`).
 - Emulator: `no_catalog`, `catalog_changes` (an older two-entry catalog: "1 updated,
   1 removed").
+
+## Mario Kart 64: two ports side by side (2026-10-20, next release)
+
+- miyoo64 1.2.0 ships its own `MarioKart64-miyoo.zip` (`App/MarioKart64/`). The catalog
+  already had cacuracaptors' mk64-miyoomini (`mk64`, `Roms/PORTS/Games/MarioKart64`, the one on
+  the owner's card). Same folder, shortcut and picture names. Owner: cacuracaptors' port is
+  technically better, keep both as separate games.
+- New optional catalog field `app` (app-to-ports): the zip's folder under `App/` when it isn't
+  `dir`'s last part. Entry `miyoo64-mariokart64`, "Mario Kart 64 (mr-finster)", dir
+  `MarioKart64-mrfinster`. With `app`, the shortcut (`<name>.port`), the picture
+  (`Imgs/<name>.png`) and `GameName` go by the entry's name, and our shortcut is looked up by
+  `dir`'s GameDir (before: by the App folder's name, the same thing for every other entry).
+  Only entries with `app` are renamed: miyoo64's zip calls Smash Bros. "Super Smash Bros"
+  (no dot) while the catalog has "Super Smash Bros.".
+- Its saves: `data/` and `eeprom.bin`; game data built from the ROM: `assets.bin` (its
+  README_MIYOO). The ROM stays.
+- cacuracaptors' repo has no licence file (seen 2026-10-20); kept at the owner's word.
+- A-Z: "Mario Kart 64 (mr-finster)" is 11th, Panel Attack 15th (`install_port_and_notfound`:
+  14 Downs). Emulator scenario `install_mk64_two_ports`: a fake cacuracaptors install stays
+  untouched (shortcut, picture, files) next to the new one.

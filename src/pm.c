@@ -162,6 +162,8 @@ static int validate_port(const Port *p)
 		return 0;
 	if (*p->category && (!is_safe_name(p->category)))
 		return 0;
+	if (*p->app && !is_safe_name(p->app))
+		return 0;
 	if (strncmp(p->dir, "Roms/PORTS/Games/", 17) != 0)
 		return 0;
 	if (strstr(p->dir, "..") || strchr(p->dir, '\\') || strlen(p->dir) <= 17)
@@ -194,6 +196,7 @@ static void parse_port(const cJSON *e, Port *p)
 	p->name = str(e, "name");
 	p->dir = str(e, "dir");
 	p->layout = str(e, "layout");
+	p->app = str(e, "app");
 	p->repo = str(e, "repo");
 	p->asset = str(e, "asset");
 	p->category = str(e, "category");
@@ -298,10 +301,16 @@ static int dir_has_files(const char *d)
 	return any;
 }
 
+/* app-to-ports: the zip's folder under App/ */
+static const char *app_name(const Port *p)
+{
+	return *p->app ? p->app : base_name(p->dir);
+}
+
 static int legacy_app(const Port *p)
 {
 	char a[600];
-	snprintf(a, sizeof a, "%s/App/%s/launch.sh", SD, base_name(p->dir));
+	snprintf(a, sizeof a, "%s/App/%s/launch.sh", SD, app_name(p));
 	return !strcmp(p->layout, "app-to-ports") && file_exists(a);
 }
 
@@ -1174,8 +1183,15 @@ static void map_cb(const char *rel, void *ctx)
 			map_add(m, M_GAME, src, dst);
 		}
 	}
-	else if (!strncmp(rel, "Roms/PORTS/Imgs/", 16))
-		map_add(m, M_IMG, src, rel);
+	else if (!strncmp(rel, "Roms/PORTS/Imgs/", 16)) {
+		/* a second port of one game: its picture goes by the entry's name, like its shortcut */
+		char dst[700];
+		if (app && *p->app && ends_with(rel, ".png"))
+			snprintf(dst, sizeof dst, "Roms/PORTS/Imgs/%s.png", p->name);
+		else
+			snprintf(dst, sizeof dst, "%s", rel);
+		map_add(m, M_IMG, src, dst);
+	}
 	else if (!strncmp(rel, "Roms/PORTS/Shortcuts/", 21) && (strstr(rel, ".port") || ends_with(rel, ".notfound"))) {
 		char bn[256];
 		snprintf(bn, sizeof bn, "%s", base_name(rel));
@@ -1218,7 +1234,7 @@ static int shortcut_from(const Port *p, const char *tpl, const char *out)
 	char text[4096], g[600];
 	snprintf(g, sizeof g, "%s", gdir(p));
 	char name[256];
-	snprintf(name, sizeof name, "%s", base_name(tpl));
+	snprintf(name, sizeof name, "%s", *p->app ? p->name : base_name(tpl));
 	char *dot = strstr(name, ".port");
 	if (dot)
 		*dot = 0;
@@ -1234,7 +1250,8 @@ static int shortcut_from(const Port *p, const char *tpl, const char *out)
 			(k && line[k] >= '0' && line[k] <= '9'))
 			k++;
 		if (!k || line[k] != '=' || strstr(line, "App/") || !strncmp(line, "APP=", 4) ||
-			!strncmp(line, "GameDir=", 8) || !strncmp(line, "GameDataFile=", 13))
+			!strncmp(line, "GameDir=", 8) || !strncmp(line, "GameDataFile=", 13) ||
+			(*p->app && !strncmp(line, "GameName=", 9)))
 			continue;
 		/* Reject control characters or backticks in lines copied from template */
 		if (strpbrk(line, "`$;|"))
@@ -1247,6 +1264,13 @@ static int shortcut_from(const Port *p, const char *tpl, const char *out)
 		n += w;
 	}
 	free(t);
+	/* a second port of one game is listed under the entry's name */
+	if (*p->app && !strpbrk(p->name, "\"`$\\")) {
+		int w = snprintf(text + n, sizeof text - n, "GameName=\"%s\"\n", p->name);
+		if (w < 0 || w >= (int)(sizeof text - n))
+			return -1;
+		n += w;
+	}
 	int w = snprintf(text + n, sizeof text - n, "GameDir=\"%s\"\nGameDataFile=\"%s\"\ncd \"%s\" || exit 1\nexec sh \"%s/%s\"\n",
 		base_name(p->dir), p->sc_gdf, g, g, p->sc_run);
 	if (w < 0 || w >= (int)(sizeof text - n))
@@ -1343,7 +1367,7 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 	snprintf(bk_stage, sizeof bk_stage, "%s/bk_stage", WORK);
 	remove_tree(bk_stage);
 
-	const char *base = base_name(p->dir);
+	const char *base = app_name(p);
 	char basebuf[256];
 	snprintf(basebuf, sizeof basebuf, "%s", base);
 	base = basebuf;
@@ -1421,9 +1445,13 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 			char tpl[700];
 			snprintf(tpl, sizeof tpl, "%s", m.e[i].src);
 			if (shortcut_from(p, tpl, gen) == 0) {
-				Find f = {NULL, base, ""};
+				/* ours is found by its GameDir; with `app` it is named after the entry, so it
+				 * doesn't take the other port's shortcut */
+				Find f = {NULL, base_name(p->dir), ""};
 				walk_files(SC, find_cb, &f);
-				if (!*f.found)
+				if (!*f.found && *p->app)
+					snprintf(f.found, sizeof f.found, "Roms/PORTS/Shortcuts/%s/%s.port", p->category, p->name);
+				else if (!*f.found)
 					snprintf(f.found, sizeof f.found, "Roms/PORTS/Shortcuts/%s/%s", p->category, base_name(tpl));
 				map_add(&m, M_SHORTCUT, gen, f.found);
 			}
@@ -2132,7 +2160,7 @@ int pm_uninstall(Port *p, int keep_data)
 		remove_game_folder(g);
 		if (legacy_app(p)) {
 			char app[600];
-			snprintf(app, sizeof app, "%s/App/%s", SD, base_name(p->dir));
+			snprintf(app, sizeof app, "%s/App/%s", SD, app_name(p));
 			remove_tree(app);
 		}
 	} else {
@@ -2140,7 +2168,7 @@ int pm_uninstall(Port *p, int keep_data)
 		clean_port_files(p);
 		if (legacy_app(p)) {
 			char app[600];
-			snprintf(app, sizeof app, "%s/App/%s", SD, base_name(p->dir));
+			snprintf(app, sizeof app, "%s/App/%s", SD, app_name(p));
 			remove_tree(app);
 		}
 	}

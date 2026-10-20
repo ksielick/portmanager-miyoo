@@ -54,6 +54,7 @@ asset by a regex.
 | `repo` | `owner/name` on GitHub; the latest release is used; the owner is shown as the port's author |
 | `asset` | regex for the release file; `null` = no releases yet |
 | `layout` | `sdcard-root`: the zip mirrors the card (`Roms/PORTS/...`); its shortcuts go to `category` (a `.notfound` one as `.port`, unless the zip has the `.port` too); `app-to-ports`: the zip has `App/<dir>/` (miyoo64), which goes to `Roms/PORTS/Games/<dir>/`, and its `App`-pointing shortcut is replaced by our own |
+| `app` | optional, `app-to-ports` only: the zip's folder under `App/` when it isn't `dir`'s last part. For a second port of a game already in the catalog (miyoo64's Mario Kart 64 next to cacuracaptors'): its own `dir`, and the shortcut, picture and `GameName` go by `name`, so neither port touches the other's |
 | `skip` | zip paths not installed (e.g. miyoo64's MinUI folders) |
 | `dir` | the game folder on the card |
 | `data` | what the player supplies: `required`, `required_any`, `optional`, `forbidden` (paths in `dir`, case-insensitive, `*` allowed), `rom`, `disc` |
@@ -77,7 +78,7 @@ Categories (Onion's names, plus RPG; confirmed by the owner 2026-10-17):
 
 | Category | Games |
 |---|---|
-| Racing | Mario Kart 64, Diddy Kong Racing, F-Zero X |
+| Racing | Mario Kart 64, Mario Kart 64 (mr-finster), Diddy Kong Racing, F-Zero X |
 | FPS | GoldenEye 007, Perfect Dark, Hexen II |
 | Platform | Super Mario 64, Tomb Raider |
 | Action | Ocarina of Time, Majora's Mask, Star Fox 64, Super Smash Bros. |

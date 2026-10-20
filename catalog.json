@@ -332,6 +332,48 @@
       }
     },
     {
+      "id": "miyoo64-mariokart64",
+      "name": "Mario Kart 64 (mr-finster)",
+      "category": "Racing",
+      "status": "playable",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^MarioKart64-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "app": "MarioKart64",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/MarioKart64-mrfinster",
+      "backup": [
+        "data/",
+        "eeprom.bin"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "Mario Kart 64 (USA)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "579c48e211ae952530ffc8738709f078d5dd215e",
+          "size": 12582912
+        },
+        "built": [
+          "assets.bin"
+        ]
+      },
+      "get": "Mario Kart 64 (USA) dump as rom.z64 (SHA-1: 579c48e211ae952530ffc8738709f078d5dd215e, 12 MB). Save as Roms/PORTS/Games/MarioKart64-mrfinster/rom.z64. Any .z64, .v64 or .n64 works (game data built on first start). This is mr-finster's port (miyoo64); the other Mario Kart 64 in the list is a separate port with its own folder and saves.",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
       "id": "miyoo64-ocarinaoftime",
       "name": "Ocarina of Time",
       "category": "Action",

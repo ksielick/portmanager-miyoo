@@ -8,6 +8,7 @@
 typedef struct {
 	char *id, *name, *dir, *layout, *repo, *asset, *category, *get;
 	char *status; /* playable, experimental, prerelease, or "" */
+	char *app;    /* app-to-ports: the zip's App/<app> when not dir's last part, or "" */
 	char *rom, *rom_name, *sc_gdf, *sc_run;
 	char **skip, **backup, **required, **required_any, **built;
 	int nskip, nbackup, nrequired, nrequired_any, nbuilt;

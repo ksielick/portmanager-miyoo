@@ -1,0 +1,32 @@
+# Two ports of one game: miyoo64's Mario Kart 64 goes in next to cacuracaptors' (already on the
+# card) with its own folder, shortcut, picture and name; the other one stays untouched
+file "Roms/PORTS/Games/MarioKart64/mk64" cacuracaptors
+file "Roms/PORTS/Games/MarioKart64/dc_data/setup.ok" ok
+file "Roms/PORTS/Shortcuts/Racing/Mario Kart 64.port" 'GameDir="MarioKart64"'
+file "Roms/PORTS/Imgs/Mario Kart 64.png" theirs
+press 1 X        # all ports, A-Z
+press 2 DOWN / press 3 DOWN / press 4 DOWN / press 5 DOWN / press 6 DOWN / press 7 DOWN
+press 8 DOWN / press 9 DOWN / press 10 DOWN / press 11 DOWN / press 12 DOWN
+press 13 A       # details: Mario Kart 64 (mr-finster)
+press 14 A       # check
+press 15 A       # install
+press 16 A       # yes
+press 17 B       # result
+press 18 B       # details
+press 19 B       # all ports
+press 20 B       # exit
+timeout 600
+shots every:1
+nonblank 13
+min_frames 15
+assert_exists Roms/PORTS/Games/MarioKart64-mrfinster/mk64
+assert_exists Roms/PORTS/Games/MarioKart64-mrfinster/.pm_version
+assert_exists "Roms/PORTS/Shortcuts/Racing/Mario Kart 64 (mr-finster).port"
+assert_contains "Roms/PORTS/Shortcuts/Racing/Mario Kart 64 (mr-finster).port" 'GameDir="MarioKart64-mrfinster"'
+assert_contains "Roms/PORTS/Shortcuts/Racing/Mario Kart 64 (mr-finster).port" 'GameName="Mario Kart 64 (mr-finster)"'
+assert_exists "Roms/PORTS/Imgs/Mario Kart 64 (mr-finster).png"
+assert_contains "Roms/PORTS/Shortcuts/Racing/Mario Kart 64.port" 'GameDir="MarioKart64"'
+assert_contains "Roms/PORTS/Imgs/Mario Kart 64.png" theirs
+assert_contains Roms/PORTS/Games/MarioKart64/mk64 cacuracaptors
+assert_not_exists Roms/PORTS/Games/MarioKart64/.pm_version
+assert_not_exists App/MarioKart64
