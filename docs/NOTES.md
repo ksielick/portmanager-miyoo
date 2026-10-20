@@ -578,7 +578,8 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
   - Majora's Mask and Harvest Moon 64 installed (the owner, 1.2.0), with ROMs added from
     `G:\Emulacja\n64\` (SHA-1 checked on the device). Harvest Moon's dump was a byte-swapped
     v64 named `.n64`, converted to z64 with `dd conv=swab`. Not started yet.
-  - Mario Kart 64 (mr-finster) installed, no ROM yet.
+  - Mario Kart 64 (mr-finster) installed, with `rom.z64` from `G:\Emulacja\n64\`
+    (already z64, SHA-1 checked on the device). Not started yet.
   - The other miyoo64 games updated to 1.2.0 by the owner.
   - `App/PortManager/catalog.local.json` on the card still has 8 entries (5 copies of entries
     now public, plus the mk64 one); the PC copy has the 3 private ones. The next deploy fixes it.
