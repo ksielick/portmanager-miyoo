@@ -923,8 +923,8 @@ static void do_backups(void)
 			size_text(sz, sizeof sz, bk[i].bytes);
 			/* made before updating to `tag`: it holds the older version */
 			snprintf(items[i].label, sizeof items[i].label, "%s <%s", bk[i].name, bk[i].tag);
-			snprintf(items[i].right, sizeof items[i].right, "%s%s", bk[i].is_dir ? "folder " : "", sz);
-			items[i].right_clr = bk[i].is_dir ? C_WARN : C_DIM;
+			snprintf(items[i].right, sizeof items[i].right, "%s", sz);
+			items[i].right_clr = C_DIM;
 		}
 		char right[32];
 		size_text(right, sizeof right, total);
