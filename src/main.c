@@ -52,6 +52,23 @@ static void footer(const char *hints)
 	gfx_text(16, SCR_H - FOOTH + (FOOTH - CW) / 2, hints, COLS + 1, C_DIM);
 }
 
+/* hints split at spaces, spread edge to edge with equal gaps */
+static void footer_spread(const char *hints)
+{
+	char buf[64];
+	snprintf(buf, sizeof buf, "%s", hints);
+	char *item[8];
+	int n = 0, chars = 0;
+	for (char *s = strtok(buf, " "); s && n < 8; s = strtok(NULL, " ")) {
+		item[n++] = s;
+		chars += strlen(s);
+	}
+	gfx_fill(0, SCR_H - FOOTH, SCR_W, FOOTH, C_BAR);
+	int gap = n > 1 ? (SCR_W - 32 - chars * CW) / (n - 1) : 0, x = 16;
+	for (int i = 0; i < n; i++)
+		x = gfx_text(x, SCR_H - FOOTH + (FOOTH - CW) / 2, item[i], COLS, C_DIM) + gap;
+}
+
 static void scrollbar(int top, int shown, int total, int y0, int h)
 {
 	if (total <= shown)
@@ -1398,7 +1415,7 @@ static int run_list(int all)
 		else if (nr == 0)
 			footer(CLR_GOOD "X: get ports" CLR_DIM "   Y: check   B: exit");
 		else /* Port Manager's own update comes first under Y; B exits everywhere */
-			footer(nup ? "A:info X:all Y:chk St:upd Sel:backups" : "A:info X:all Y:check Sel:backups");
+			footer_spread(nup ? "A:info X:all Y:chk St:upd Sel:backups" : "A:info X:all Y:check Sel:backups");
 		gfx_flip();
 
 		int k = list_key(scrolls);
