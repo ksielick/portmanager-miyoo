@@ -1,0 +1,31 @@
+# A .7z port (Onion's Ports Collection: Hocoslamfy) over a copy installed without Port Manager:
+# the bar counts the archive's files, "Checking files" while comparing, a backup first, the
+# player's highscore (data.optional) and own shortcut kept, Manuals/ left out
+file Roms/PORTS/Games/Hocoslamfy/hocoslamfy "old program"
+file Roms/PORTS/Games/Hocoslamfy/.hocoslamfy/highscore mine
+file "Roms/PORTS/Shortcuts/Reflex/Hocoslamfy.port" 'GameDir="Hocoslamfy"'
+press 1 X        # all ports, A-Z
+press 2 DOWN / press 3 DOWN / press 4 DOWN / press 5 DOWN / press 6 DOWN / press 7 DOWN
+press 8 DOWN / press 9 DOWN / press 10 DOWN / press 11 DOWN / press 12 DOWN / press 13 DOWN
+press 14 A       # details: Hocoslamfy
+press 15 A       # check
+press 16 A       # install over it
+press 17 A       # yes
+press 18 B       # result
+press 19 B       # details
+press 20 B       # all ports
+press 21 B       # exit
+timeout 600
+shots every:1
+nonblank 14
+min_frames 18
+assert_log "Hocoslamfy: unpacking..."
+assert_log "file(s) replaced"
+assert_exists Roms/PORTS/Games/Hocoslamfy/.pm_version
+assert_not_contains Roms/PORTS/Games/Hocoslamfy/hocoslamfy "old program"
+assert_contains Roms/PORTS/Games/Hocoslamfy/.hocoslamfy/highscore mine
+assert_contains "Roms/PORTS/Shortcuts/Reflex/Hocoslamfy.port" 'GameDir="Hocoslamfy"'
+assert_exists Roms/PORTS/Imgs/Hocoslamfy.png
+assert_exists Backups/PortManager/*hocoslamfy*
+assert_not_exists Roms/PORTS/Manuals
+assert_not_exists .pm_work/stage

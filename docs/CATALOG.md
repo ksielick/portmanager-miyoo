@@ -80,13 +80,31 @@ Categories (Onion's names, plus RPG; confirmed by the owner 2026-10-17):
 |---|---|
 | Racing | Mario Kart 64, Mario Kart 64 (mr-finster), Diddy Kong Racing, F-Zero X |
 | FPS | GoldenEye 007, Perfect Dark, Hexen II |
-| Platform | Super Mario 64, Tomb Raider |
-| Action | Ocarina of Time, Majora's Mask, Star Fox 64, Super Smash Bros. |
+| Platform | Super Mario 64, Tomb Raider, Cave Story (NXEngine) |
+| Action | Ocarina of Time, Majora's Mask, Star Fox 64, Super Smash Bros., C-Dogs, OpenTyrian |
 | RPG | Fallout, Fallout 2, Paper Mario, Mines of Moria, Monk Tower |
 | Arcade | 3D Pinball Space Cadet, SkiFree, Tennis Vs Zombies |
 | Strategy | Plants vs. Zombies |
 | Simulation | Harvest Moon 64 (added with the owner's OK, 2026-10-20) |
-| Puzzle games | Frozen Bubble, Panel Attack, Zuma Deluxe |
+| Puzzle games | Frozen Bubble, Panel Attack, Wizznic, Dinothawr, Zuma Deluxe |
+| Reflex | Hocoslamfy |
+
+### Onion's Ports Collection (OnionUI/Ports-Collection, 2026-10-22)
+
+- One release (v1.1.0, 2024-04) with one `.7z` per port in Onion's card layout
+  (`Roms/PORTS/Games|Shortcuts|Imgs|Manuals`): `layout: sdcard-root`, `asset: ^<Name>\.7z$`,
+  names exactly as Onion's (shortcut and picture file names), Onion's categories.
+  `Manuals/` (PDFs) isn't installed (outside the Ports folders). Shortcuts are `.notfound`
+  only, so they go in as `.port`.
+- Same game folders as Onion's Package Manager, so a copy installed from there shows as
+  installed, version unknown; installing over it keeps the player's files (`data.optional`).
+- `launch_standalone.sh` runs a port with `HOME=<game folder>`: its saves are in there
+  (`.config/`, `.hocoslamfy/`, Wizznic's `highscores/`, `settings.ini`). `launch_retroarch.sh`
+  ports (Cave Story's `nxengine`, `dinothawr` cores, shipped with Onion's RetroArch) save in
+  RetroArch's folders; Onion keeps per-game settings in `.game_config/`.
+- First batch (owner, 2026-10-22): free, complete games with open engines. Left out for now:
+  PyGame ports (need Python), and ports needing the player's game data (Doom, Duke, Quake,
+  Diablo, Blood...): their required files to be taken from the owner's console.
 
 ## miyoo64 outside App/ (checked in its sources, 2026-10-17)
 

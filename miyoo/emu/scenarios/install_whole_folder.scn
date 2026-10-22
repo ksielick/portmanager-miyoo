@@ -1,18 +1,19 @@
 # A new game folder goes in whole (Frozen Bubble, 3300 files), and its shortcut, shipped only
 # as .notfound, goes in as .port in our category
 press 1 X        # all ports, A-Z
-press 2 DOWN / press 3 DOWN / press 4 DOWN / press 5 DOWN / press 6 DOWN
-press 7 A        # details: Frozen Bubble
-press 8 A        # check
-press 9 A        # install
-press 10 A       # yes
-press 11 B       # result
-press 12 B       # details
-press 13 B       # all ports
-press 14 B       # exit
+press 2 DOWN / press 3 DOWN / press 4 DOWN / press 5 DOWN / press 6 DOWN / press 7 DOWN
+press 8 DOWN / press 9 DOWN
+press 10 A       # details: Frozen Bubble
+press 11 A       # check
+press 12 A       # install
+press 13 A       # yes
+press 14 B       # result
+press 15 B       # details
+press 16 B       # all ports
+press 17 B       # exit
 timeout 900
 shots every:1
-min_frames 10
+min_frames 13
 assert_exists "Roms/PORTS/Games/Frozen Bubble/frozen-bubble-sdl2"
 assert_exists "Roms/PORTS/Games/Frozen Bubble/.pm_manifest"
 assert_exists "Roms/PORTS/Shortcuts/Puzzle games/Frozen Bubble.port"

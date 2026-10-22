@@ -403,6 +403,55 @@ int run(const char *const argv[], const char *out)
 	return run_wait(run_bg(argv, out));
 }
 
+int run_read(const char *const argv[], void (*cb)(const char *piece, void *ctx), void *ctx)
+{
+	int fds[2];
+	if (pipe(fds))
+		return -1;
+	pid_t pid = fork();
+	if (pid < 0) {
+		close(fds[0]);
+		close(fds[1]);
+		return -1;
+	}
+	if (pid == 0) {
+		int nul = open("/dev/null", O_RDWR);
+		dup2(fds[1], 1);
+		if (nul >= 0) {
+			dup2(nul, 0);
+			dup2(nul, 2);
+		}
+		close(fds[0]);
+		close(fds[1]);
+		execvp(argv[0], (char *const *)argv);
+		_exit(127);
+	}
+	close(fds[1]);
+	char buf[4096], piece[1024];
+	size_t n = 0;
+	ssize_t got;
+	while ((got = read(fds[0], buf, sizeof buf)) > 0 || (got < 0 && errno == EINTR)) {
+		for (ssize_t i = 0; i < got; i++) {
+			char c = buf[i];
+			if (c == '\n' || c == '\r' || c == '\b') {
+				if (n) {
+					piece[n] = 0;
+					cb(piece, ctx);
+					n = 0;
+				}
+			}
+			else if (n < sizeof piece - 1)
+				piece[n++] = c;
+		}
+	}
+	if (n) {
+		piece[n] = 0;
+		cb(piece, ctx);
+	}
+	close(fds[0]);
+	return run_wait(pid);
+}
+
 const char *wget_bin(void)
 {
 	static char path[512];

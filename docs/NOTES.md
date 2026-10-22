@@ -2,6 +2,31 @@
 
 Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 
+## Onion's Ports Collection, the .7z bar, GitHub's answers (2026-10-22, v1.2.8)
+
+- Six ports from OnionUI/Ports-Collection in the catalog (C-Dogs, OpenTyrian, Cave Story
+  (NXEngine), Hocoslamfy, Wizznic, Dinothawr); details in `CATALOG.md`. Each was installed by
+  Port Manager on the owner's console over the copy from Onion's Package Manager (0-1 files
+  replaced, versions set) and started with Start.
+- Unpacking a `.7z` showed "0/1 files" for minutes (C-Dogs, 1300 entries), and a zip ended
+  on "1/1" too: the callers wrapped `unpack()` in (0,1)/(1,1). Now `unpack()` reports itself:
+  zip by files (directories not counted), `.7z` by `7z l -ba` (0.09 s for Wizznic's 557
+  entries; attr `D....` = folder) and then `7z x -bsp1 -bso0`, read through a pipe
+  (`run_read()`), whose "NN% <entries> - name" is scaled from entries to files. Checked on
+  the device: Wizznic 8/496 ... 496/496 in ~22 s. Onion's 7z is 22.01, CI's p7zip 16.02.
+- Over an installed copy every file is read to compare it (Wizznic: 13 s with the screen
+  still on "2/3 Unpacking 100%"): now a "Checking files" stage with its own bar.
+- "no release info" said nothing: Quake (TyrQuake-Miyoo) failed because the owner's
+  fine-grained token didn't include the new private repo (404, like a missing repo). GitHub's
+  error answer is now kept per repo and shown in player terms: no access for the token, not on
+  GitHub / private without a token, wrong or expired token, the hourly limit. Testing a token
+  on the device without showing it: `curl -s -o /dev/null -w "%{http_code}"` with the token in
+  a shell variable; `tokens.txt` may have spaces around `=` (Port Manager trims them).
+- Scenarios: `install_7z_over` (Hocoslamfy over a copy: backup, highscore and shortcut kept,
+  no `Manuals/`), `release_not_found`; the A-Z Down counts moved by the new names
+  (first_install, install_new_port, install_whole_folder, install_port_and_notfound,
+  install_majoras_mask, install_mk64_two_ports).
+
 ## Start on a game's page (2026-10-22, v1.2.6 and v1.2.7)
 
 - Onion's runtime (`.tmp_update/runtime.sh`) loops: MainUI, then `cmd_to_run.sh`, then

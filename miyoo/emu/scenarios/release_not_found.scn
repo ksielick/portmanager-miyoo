@@ -1,0 +1,14 @@
+# A repo GitHub doesn't know (or private, without a token): the page says why, not "no connection"
+file app/catalog.local.json '{"ports":[{"id":"pm-test-missing","name":"0 Missing repo","category":"Arcade","repo":"ksielick/pm-test-no-such-repo","asset":"^x\\.zip$","layout":"sdcard-root","dir":"Roms/PORTS/Games/PmTestMissing","data":null}]}'
+press 1 X        # all ports, A-Z: "0 Missing repo" first
+press 2 A        # details
+press 3 A        # check
+press 4 B
+press 5 B
+press 6 B
+press 7 B
+shots every:1
+nonblank 3
+min_frames 4
+assert_log "ksielick/pm-test-no-such-repo isn't on GitHub, or it's private and needs a token in tokens.txt."
+assert_log_not "no release info"

@@ -785,7 +785,27 @@ static int net_check(int needed)
 typedef struct {
 	char repo[128];
 	cJSON *json;
+	char why[200]; /* json NULL: what GitHub said, in player terms ("" = no answer) */
 } Release;
+
+/* GitHub's error answer ({"message": ...}) for a repo, in player terms; "" when it isn't one */
+static void release_why(const char *file, const char *repo, const char *tok, char *why, size_t size)
+{
+	why[0] = 0;
+	cJSON *j = read_json(file);
+	const cJSON *msg = cJSON_GetObjectItemCaseSensitive(j, "message");
+	if (cJSON_IsString(msg)) {
+		const char *s = msg->valuestring;
+		if (strstr(s, "rate limit"))
+			snprintf(why, size, "GitHub's limit of 60 checks an hour is used up. Try again later.");
+		else if (strstr(s, "Bad credentials"))
+			snprintf(why, size, "the GitHub token for %s (tokens.txt) is wrong or expired.", repo);
+		else if (!strcmp(s, "Not Found"))
+			snprintf(why, size, tok ? "your GitHub token (tokens.txt) has no access to %s: add it to the token."
+				: "%s isn't on GitHub, or it's private and needs a token in tokens.txt.", repo);
+	}
+	cJSON_Delete(j);
+}
 static Release rels[64];
 static int nrels;
 
@@ -958,6 +978,9 @@ static void fetch_releases(char **repos, const char **names, int n)
 		if (r) {
 			cJSON_Delete(r->json);
 			r->json = j;
+			r->why[0] = 0;
+			if (!j)
+				release_why(f[i], repos[i], tok[i], r->why, sizeof r->why);
 		}
 		else
 			cJSON_Delete(j);
@@ -1112,6 +1135,11 @@ int pm_check(const Port *only)
 			/* Repo checked, but this release has no matching asset for this port */
 			p->checked = 1;
 			p->latest[0] = 0;
+		} else if (r && *r->why) {
+			say("ERROR %s: %s", p->name, r->why);
+			if (!pm_error[0])
+				snprintf(pm_error, sizeof pm_error, "%s: %s", p->name, r->why);
+			failed++;
 		} else {
 			say("ERROR %s: no release info", p->name);
 			failed++;
@@ -1280,6 +1308,41 @@ static int shortcut_from(const Port *p, const char *tpl, const char *out)
 	return write_file(out, text, n);
 }
 
+/* 7z's listing ("date time attr size packed name"): entries and files (attr not D....) */
+typedef struct {
+	long entries, files, done;
+} Count7;
+
+static void list7_cb(const char *s, void *ctx)
+{
+	Count7 *c = ctx;
+	for (const char *a = s; *a; a++)
+		if ((a == s || a[-1] == ' ') && strspn(a, "DRHSA.") == 5 && a[5] == ' ') {
+			c->entries++;
+			if (*a != 'D')
+				c->files++;
+			return;
+		}
+}
+
+/* 7z -bsp1 prints "NN% <entries done> - <name>": the bar counts files, so entries are scaled */
+static void x7_cb(const char *s, void *ctx)
+{
+	Count7 *c = ctx;
+	const char *p = strchr(s, '%');
+	char *e;
+	long n = p ? strtol(p + 1, &e, 10) : 0;
+	if (!p || e == p + 1 || c->entries <= 0)
+		return;
+	n = n >= c->entries ? c->files : n * c->files / c->entries;
+	if (n > c->done) {
+		c->done = n;
+		if (on_extract_progress)
+			on_extract_progress(n, c->files);
+	}
+}
+
+/* the bar follows every format: file by file in a zip, 7z's own progress for a .7z */
 static int unpack(const char *file, const char *to)
 {
 	mkdirs(to);
@@ -1289,7 +1352,12 @@ static int unpack(const char *file, const char *to)
 		if (!mz_zip_reader_init_file(&z, file, 0))
 			return -1;
 		int ok = 1;
-		mz_uint total_zip = mz_zip_reader_get_num_files(&z);
+		mz_uint total_zip = mz_zip_reader_get_num_files(&z), nfiles = 0;
+		for (mz_uint i = 0; i < total_zip; i++)
+			if (!mz_zip_reader_is_file_a_directory(&z, i))
+				nfiles++;
+		if (on_extract_progress)
+			on_extract_progress(0, nfiles);
 		mz_uint extracted = 0;
 		for (mz_uint i = 0; i < total_zip; i++) {
 			mz_zip_archive_file_stat st;
@@ -1304,23 +1372,38 @@ static int unpack(const char *file, const char *to)
 				ok = 0;
 			extracted++;
 			if (on_extract_progress)
-				on_extract_progress(extracted, total_zip);
+				on_extract_progress(extracted, nfiles);
 		}
 		mz_zip_reader_end(&z);
 		return ok ? 0 : -1;
 	}
 	char o[1100];
 	snprintf(o, sizeof o, "-o%s", to);
-	const char *x7[] = {"7z", "x", "-y", o, file, NULL};
+	if (ends_with(file, ".7z")) {
+		const char *l7[] = {"7z", "l", "-ba", file, NULL};
+		const char *x7[] = {"7z", "x", "-y", "-bsp1", "-bso0", o, file, NULL};
+		Count7 c = {0, 0, 0};
+		run_read(l7, list7_cb, &c);
+		if (on_extract_progress)
+			on_extract_progress(0, c.files > 0 ? c.files : 1);
+		if (run_read(x7, x7_cb, &c))
+			return -1;
+		if (on_extract_progress)
+			on_extract_progress(c.files > 0 ? c.files : 1, c.files > 0 ? c.files : 1);
+		return 0;
+	}
 	const char *tgz[] = {"tar", "-xzf", file, "-C", to, NULL};
 	const char *tar[] = {"tar", "-xf", file, "-C", to, NULL};
-	if (ends_with(file, ".7z"))
-		return run(x7, NULL) ? -1 : 0;
+	int r = -1;
+	if (on_extract_progress)
+		on_extract_progress(0, 1);
 	if (ends_with(file, ".tar.gz") || ends_with(file, ".tgz"))
-		return run(tgz, NULL) ? -1 : 0;
-	if (ends_with(file, ".tar"))
-		return run(tar, NULL) ? -1 : 0;
-	return -1;
+		r = run(tgz, NULL) ? -1 : 0;
+	else if (ends_with(file, ".tar"))
+		r = run(tar, NULL) ? -1 : 0;
+	if (r == 0 && on_extract_progress)
+		on_extract_progress(1, 1);
+	return r;
 }
 
 static int manifest_has(const char *manifest, const char *hash, const char *dst)
@@ -1412,14 +1495,10 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 	remove_tree(stage);
 	set_stage("2/3 Unpacking");
 	say_log("%s: unpacking...", p->name);
-	if (on_extract_progress)
-		on_extract_progress(0, 1);
 	if (unpack(zip, stage)) {
 		del_file(zip);
 		return fail("%s: can't unpack the download", p->name);
 	}
-	if (on_extract_progress)
-		on_extract_progress(1, 1);
 	del_file(zip);
 
 	/* an older install in App/ (miyoo64's own layout): moved to the Ports folder first */
@@ -1468,8 +1547,14 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 	/* first what changes: files already the same, and the player's own edits, stay as they are */
 	char *replace = calloc(m.n + 1, 1);
 	int total_to_copy = 0;
+	/* over an installed copy every file is read to compare it: Wizznic's 496 took 13 s */
+	int over = is_dir(g);
+	if (over)
+		set_stage("Checking files");
 	for (int i = 0; i < m.n; i++) {
 		MapEntry *e = &m.e[i];
+		if (over && on_copy_progress)
+			on_copy_progress(i + 1, m.n);
 		if (e->kind == M_TEMPLATE)
 			continue;
 		char d[1000], h[65];
@@ -1697,6 +1782,11 @@ int pm_update(Port *p)
 			return -1;
 		fetch_releases(repo, NULL, 1);
 		r = release_of(p->repo);
+		if (r && !r->json && *r->why) {
+			snprintf(pm_error, sizeof pm_error, "%s: %s", p->name, r->why);
+			say("ERROR %s", pm_error);
+			return -1;
+		}
 		if (!r || !r->json)
 			return fail("%s: no release info (no connection?)", p->name);
 	}
@@ -2540,15 +2630,11 @@ int pm_self_update(void)
 	remove_tree(stage);
 	mkdirs(stage);
 	say("Port Manager: extracting files...");
-	if (on_extract_progress)
-		on_extract_progress(0, 1);
 	if (unpack(zip, stage) != 0) {
 		del_file(zip);
 		remove_tree(stage);
 		return fail("%s: could not unpack update archive", "Port Manager");
 	}
-	if (on_extract_progress)
-		on_extract_progress(1, 1);
 	del_file(zip);
 
 

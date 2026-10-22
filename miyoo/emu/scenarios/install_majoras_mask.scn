@@ -2,19 +2,20 @@
 # App/ folder goes to the Ports list with our shortcut, MinUI/Apps folders stay out, no ROM yet
 press 1 X        # all ports, A-Z
 press 2 DOWN / press 3 DOWN / press 4 DOWN / press 5 DOWN / press 6 DOWN / press 7 DOWN
-press 8 DOWN / press 9 DOWN / press 10 DOWN
-press 11 A       # details: Majora's Mask ("Test version" on the page)
-press 12 A       # check
-press 13 A       # install
-press 14 A       # yes
-press 15 B       # result
-press 16 B       # details: ROM still missing
-press 17 B       # all ports
-press 18 B       # exit
+press 8 DOWN / press 9 DOWN / press 10 DOWN / press 11 DOWN / press 12 DOWN / press 13 DOWN
+press 14 DOWN
+press 15 A       # details: Majora's Mask ("Test version" on the page)
+press 16 A       # check
+press 17 A       # install
+press 18 A       # yes
+press 19 B       # result
+press 20 B       # details: ROM still missing
+press 21 B       # all ports
+press 22 B       # exit
 timeout 600
 shots every:1
-nonblank 11
-min_frames 13
+nonblank 15
+min_frames 17
 assert_exists Roms/PORTS/Games/MajorasMask/mm
 assert_exists Roms/PORTS/Games/MajorasMask/launch.sh
 assert_exists Roms/PORTS/Games/MajorasMask/.pm_version

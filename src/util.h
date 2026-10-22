@@ -41,6 +41,9 @@ int sha256_file(const char *path, char hex[65]);
 int run(const char *const argv[], const char *out);
 int run_bg(const char *const argv[], const char *out);
 int run_wait(int pid);
+/* runs argv (no shell) and hands each piece of its stdout to cb as it comes, split at
+ * \n, \r and \b (progress lines that redraw themselves); stderr is discarded */
+int run_read(const char *const argv[], void (*cb)(const char *piece, void *ctx), void *ctx);
 
 /* Onion's wget/curl, or PM_SD/.tmp_update/bin/, or from PATH */
 const char *wget_bin(void);

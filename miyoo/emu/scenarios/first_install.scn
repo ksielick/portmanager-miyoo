@@ -1,18 +1,18 @@
 # A new player's first run: empty list, all ports (A-Z), F-Zero X installed, back on the list
 rm Roms/PORTS/Games
 rm Roms/PORTS/Shortcuts
-press 1 X        # all ports, A-Z: 3D Pinball, Diddy Kong Racing, F-Zero X
-press 2 DOWN / press 3 DOWN
-press 4 A        # details: F-Zero X
-press 5 A        # check
-press 6 A        # install
-press 7 A        # yes
-press 8 B        # result
-press 9 B        # details
-press 10 B       # all ports
-press 11 B       # exit
+press 1 X        # all ports, A-Z: 3D Pinball, C-Dogs, Cave Story, Diddy Kong Racing, Dinothawr, F-Zero X
+press 2 DOWN / press 3 DOWN / press 4 DOWN / press 5 DOWN / press 6 DOWN
+press 7 A        # details: F-Zero X
+press 8 A        # check
+press 9 A        # install
+press 10 A       # yes
+press 11 B       # result
+press 12 B       # details
+press 13 B       # all ports
+press 14 B       # exit
 shots every:1
-min_frames 8
+min_frames 11
 assert_exists Roms/PORTS/Games/FZeroX/fzerox
 assert_exists "Roms/PORTS/Shortcuts/Racing/F-Zero X.port"
 assert_log "F-Zero X: installed "

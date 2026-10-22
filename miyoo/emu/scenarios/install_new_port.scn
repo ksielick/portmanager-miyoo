@@ -1,16 +1,16 @@
 # Install a port that is not on the card (F-Zero X from the whole catalog): no backup needed
 press 1 X        # all ports, A-Z
-press 2 DOWN / press 3 DOWN
-press 4 A        # details: F-Zero X
-press 5 A        # check
-press 6 A        # install
-press 7 A        # yes
-press 8 B        # result
-press 9 B        # details
-press 10 B       # all ports
-press 11 B       # exit
+press 2 DOWN / press 3 DOWN / press 4 DOWN / press 5 DOWN / press 6 DOWN
+press 7 A        # details: F-Zero X
+press 8 A        # check
+press 9 A        # install
+press 10 A       # yes
+press 11 B       # result
+press 12 B       # details
+press 13 B       # all ports
+press 14 B       # exit
 shots every:1
-min_frames 8
+min_frames 11
 assert_exists Roms/PORTS/Games/FZeroX/fzerox
 assert_exists Roms/PORTS/Games/FZeroX/.pm_version
 assert_exists "Roms/PORTS/Shortcuts/Racing/F-Zero X.port"
