@@ -158,7 +158,9 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
   right; color-coded layout: Installed version, Latest version highlighted with amber for
   not-checked/updates or green for up-to-date, Location on SD card, ROM name & Game files status,
   Source repo, and Instructions; A checks when unchecked or updates/installs when available;
-  Y also checks; X uninstalls), X all ports (by category, headings), Y check for updates
+  Y also checks; X uninstalls; Start plays it when its game files are OK: Port Manager writes
+  Onion's `.tmp_update/cmd_to_run.sh` and `/tmp/quick_switch`, exits, and Onion starts the port
+  without MainUI), X all ports (by category, headings), Y check for updates
   (progress page with download size in MB/KB), Start update all,
   B back/exit. Held buttons repeat only for Up/Down/Left/Right/L1/R1.
 - Inline download progress bar: during asset downloads, an ASCII progress bar (`[====>  ]  54%  1.0/1.8 MB`)

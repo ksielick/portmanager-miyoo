@@ -53,6 +53,8 @@ const char *pm_release_notes(const Port *p);
 /* a port's details and how to add its game files */
 void pm_info(const Port *p, char *buf, int size);
 void pm_details(const Port *p, char *buf, int size);
+/* starts the installed port through Onion once Port Manager exits; 0, or -1 with pm_error */
+int pm_launch(const Port *p);
 
 /* backup management */
 typedef struct {

@@ -42,7 +42,7 @@ The owner's guideline (2026-10-20): Port Manager stays **light, clear and fast**
    - Header: title on left, port category on right in `C_DIM`.
    - Labels padded to 11 characters (`Installed: `, `Latest:    `, `Location:  `, `ROM:       `, `Files:     `, `Source:    `, `Instructions:`).
    - `Latest` highlighted in amber `CLR_WARN` if unchecked (`not checked (A:check)`) or update available (`%s (update available)`), and green `CLR_GOOD` if up-to-date.
-   - Button mapping: `A` performs the primary action (`A:check` when unchecked or up-to-date, `A:update` / `A:install` when available); `Y` also checks; `X` uninstalls.
+   - Button mapping: `A` performs the primary action (`A:check` when unchecked or up-to-date, `A:update` / `A:install` when available); `Y` restores; `X` uninstalls; `Start` plays it (`pm_launch()`: Onion's `cmd_to_run.sh` + `/tmp/quick_switch`, then Port Manager exits).
 3. **Download Progress Bar**:
    - ASCII progress bar (`[====>  ]  54%  1.0/1.8 MB`) appears as an inline line in the progress log right under `downloading ...`.
    - Updates in place via `Lines progress` and remains permanently in the scrollable log at 100% after download finishes.

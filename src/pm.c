@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -2253,7 +2254,38 @@ void pm_info(const Port *p, char *buf, int size)
 				strlen(p->dir) + 1 + strlen(need) > 37 ? "\n" : "", need);
 	}
 
-	append_info(buf, size, &n, "\n" CLR_DIM "Select: more info\n");
+	append_info(buf, size, &n, "\n");
+	if (p->installed && !*need)
+		append_info(buf, size, &n, CLR_GOOD "Start: play\n");
+	append_info(buf, size, &n, CLR_DIM "Select: more info\n");
+}
+
+/* Onion's runtime runs .tmp_update/cmd_to_run.sh once Port Manager exits; /tmp/quick_switch
+ * makes it skip MainUI (like its startup apps), so the game starts right away and MainUI
+ * comes back after it. The command is the one MainUI writes for a port. */
+int pm_launch(const Port *p)
+{
+	char sc[700];
+	find_shortcut(p, sc, sizeof sc);
+	if (!*sc) {
+		snprintf(pm_error, sizeof pm_error, "%s: no shortcut in the Ports list. Install it again (A).", p->name);
+		return -1;
+	}
+	char f[700];
+	snprintf(f, sizeof f, "%s/.tmp_update/cmd_to_run.sh", SD);
+	FILE *o = fopen(f, "w");
+	if (!o) {
+		snprintf(pm_error, sizeof pm_error, "Can't start %s (%s).", p->name, strerror(errno));
+		return -1;
+	}
+	fprintf(o, "LD_PRELOAD=%s/miyoo/app/../lib/libpadsp.so \"%s/Emu/PORTS/launch.sh\" \"%s/Emu/PORTS/../../%s\"\n",
+		SD, SD, SD, sc);
+	fclose(o);
+	o = fopen("/tmp/quick_switch", "w");
+	if (o)
+		fclose(o);
+	say_log("--- start %s: %s", p->id, sc);
+	return 0;
 }
 
 /* everything about the port, under Select on its page */

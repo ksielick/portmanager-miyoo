@@ -1,0 +1,8 @@
+# Start on a port's page: Port Manager closes and leaves Onion the port's launch command
+press 1 A        # details: Diddy Kong Racing (game files OK: "Start: play")
+press 2 START    # Port Manager exits, the game is set to run
+shots every:1
+min_frames 1
+assert_contains .tmp_update/cmd_to_run.sh "/Emu/PORTS/launch.sh"
+assert_contains .tmp_update/cmd_to_run.sh "Roms/PORTS/Shortcuts/Racing/Diddy Kong Racing.port"
+assert_log "--- start"

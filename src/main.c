@@ -19,6 +19,8 @@ static char g_self_bin[512] = {0};
 /* the check runs right away: 1 = --check, started again after a self-update; 2 = no catalog
  * on the card yet (Port Manager is checked first, as with Y) */
 static int g_check_at_start;
+/* Start on a port's page: the game is set to run, so every screen closes */
+static int g_launch;
 /* the check page's first line: what became of Port Manager itself */
 static char g_pm_line[120];
 
@@ -986,7 +988,8 @@ static void details(Port *p)
 		int unknown = p->installed && p->checked && !*p->version;
 		int installable = !p->installed && p->checked && *p->latest;
 		int has_action = (p->update || unknown || installable);
-		int keys[5] = {0}, nk = 0;
+		int playable = p->installed && !*p->missing;
+		int keys[6] = {0}, nk = 0;
 		keys[nk++] = K_SELECT;
 		if (*p->asset || has_action)
 			keys[nk++] = K_A;
@@ -994,6 +997,8 @@ static void details(Port *p)
 			keys[nk++] = K_Y;
 		if (p->installed)
 			keys[nk++] = K_X;
+		if (playable)
+			keys[nk++] = K_START;
 		const char *hints =
 			p->installed && p->update ? "A:update  Y:restore  X:delete  B:back" :
 			p->installed && unknown   ? "A:install  Y:restore  X:delete  B:back" :
@@ -1020,6 +1025,17 @@ static void details(Port *p)
 		}
 		else if (k == K_Y && (p->installed || *p->asset)) {
 			do_restore(p);
+		}
+		else if (k == K_START && playable) {
+			if (pm_launch(p) == 0) {
+				g_launch = 1; /* Port Manager closes and Onion starts the game */
+				return;
+			}
+			Lines e = {0};
+			lines_add(&e, CLR_BAD "Can't start the game." CLR_TEXT);
+			lines_add(&e, pm_error);
+			view(p->name, p->category, &e, "B: back", NULL);
+			lines_free(&e);
 		}
 		else if (k == K_X && p->installed) {
 			char q1[256];
@@ -1241,6 +1257,8 @@ static int run_list(int all)
 		}
 		if (k == K_A && nr && rows[sel].port >= 0)
 			details(&ports[rows[sel].port]);
+		if (g_launch)
+			return 0;
 		if (all && k == K_SELECT) {
 			keep = nr ? rows[sel].port : -1;
 			g_by_category = !g_by_category;
@@ -1248,6 +1266,8 @@ static int run_list(int all)
 		}
 		if (!all && k == K_X)
 			run_list(1);
+		if (g_launch)
+			return 0;
 		if (!all && k == K_Y)
 			check_all(1);
 		if (!all && k == K_SELECT && pm_self_update_available)

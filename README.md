@@ -33,6 +33,7 @@ updates.
 | **A** | a game's page: install or update it, and see which file you need to add and where |
 | **Y** | check your installed ports (and Port Manager) for updates |
 | **Start** | update all (after a check) |
+| **Start** on a game's page | play it (when its game files are in place) |
 | **Select** on a game's page | all details: where to get the files, checksums, source |
 | **Y** on a game's page | restore a backup or install an older version |
 | **X** on a game's page | remove it (you can keep your game data and saves) |
