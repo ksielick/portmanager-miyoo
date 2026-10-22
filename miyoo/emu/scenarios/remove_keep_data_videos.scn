@@ -1,0 +1,24 @@
+# Remove Tomb Raider keeping data: the videos in a deeper FMV/ folder, the save file and the music stay
+# (on 2026-10-18 "keep data" deleted OpenLara's Tomb Raider 1/FMV/*.RPL and could delete savegame.dat)
+file "Roms/PORTS/Games/OpenLara/Tomb Raider 1/FMV/CAFE.RPL" "video"
+file "Roms/PORTS/Games/OpenLara/Tomb Raider 1/DATA/LEVEL1.PHD" "level"
+file "Roms/PORTS/Games/OpenLara/Tomb Raider 1/savegame.dat" "save"
+file "Roms/PORTS/Games/OpenLara/Tomb Raider 1/03.mp3" "music"
+press 1 DOWN
+press 2 DOWN
+press 3 DOWN
+press 4 A        # details: Tomb Raider
+press 5 X        # remove
+press 6 A        # yes
+press 7 A        # keep data
+press 8 B        # result
+press 9 B        # exit
+shots every:1
+min_frames 9
+assert_exists "Roms/PORTS/Games/OpenLara/Tomb Raider 1/FMV/CAFE.RPL"
+assert_exists "Roms/PORTS/Games/OpenLara/Tomb Raider 1/DATA/LEVEL1.PHD"
+assert_exists "Roms/PORTS/Games/OpenLara/Tomb Raider 1/savegame.dat"
+assert_exists "Roms/PORTS/Games/OpenLara/Tomb Raider 1/03.mp3"
+assert_not_exists Roms/PORTS/Games/OpenLara/launch.sh
+assert_not_exists "Roms/PORTS/Shortcuts/Platform/Tomb Raider.port"
+assert_log "Tomb Raider: removing launch.sh"

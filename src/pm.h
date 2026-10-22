@@ -10,8 +10,8 @@ typedef struct {
 	char *status; /* playable, experimental, prerelease, or "" */
 	char *app;    /* app-to-ports: the zip's App/<app> when not dir's last part, or "" */
 	char *rom, *rom_name, *sc_gdf, *sc_run;
-	char **skip, **backup, **required, **required_any, **built;
-	int nskip, nbackup, nrequired, nrequired_any, nbuilt;
+	char **skip, **backup, **required, **required_any, **built, **optional;
+	int nskip, nbackup, nrequired, nrequired_any, nbuilt, noptional;
 
 	/* on the card (pm_scan) */
 	int installed;
@@ -85,7 +85,7 @@ void pm_free_remote_releases(RemoteRelease *items, int n);
 int pm_install_release(Port *p, const RemoteRelease *rel);
 
 /* self-update (Port Manager updating itself) */
-#define PM_VERSION "1.2.4"
+#define PM_VERSION "1.2.5"
 #define PM_REPO "ksielick/portmanager-miyoo"
 
 extern int pm_self_update_available;

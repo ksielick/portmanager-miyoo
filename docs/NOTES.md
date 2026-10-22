@@ -43,7 +43,8 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
     `update_single` (details: check, update, installed files; data kept, backup before
     copying), `restore_backup` (files and version back), `delete_backup`, `older_release`
     (GitHub list, second release), `install_new_port` (F-Zero X from all ports, no backup),
-    `remove_keep_data_rom` (miyoo64: `rom.z64`, `data/` stay), `remove_cancel` (each step),
+    `remove_keep_data_rom` (miyoo64: `rom.z64`, `data/` stay), `remove_keep_data_videos`
+    (OpenLara: `Tomb Raider 1/FMV/`, `savegame.dat`, music stay), `remove_cancel` (each step),
     `self_update` (old Port Manager updated first, backup, restart with --check),
     `self_update_later`, `start_check` (`--check`), `offline`, `broken_catalog`,
     `already_running`, `kept_shortcut` (the player's own shortcut kept).

@@ -55,7 +55,9 @@
           "Tomb Raider 1/DATA/"
         ],
         "optional": [
-          "Tomb Raider 1/02.mp3"
+          "Tomb Raider 1/*.mp3",
+          "Tomb Raider 1/FMV/",
+          "Tomb Raider 1/savegame.dat"
         ]
       },
       "get": "Tomb Raider 1+2+3, GOG version (https://www.gog.com/en/game/tomb_raider_123). From its Tomb Raider 1 folder (GOG Galaxy: settings next to Play > Manage installation > Show folder) copy GAME.GOG and, for music (optional), 02.mp3 to 10.mp3 into Roms/PORTS/Games/OpenLara/Tomb Raider 1/. The first start unpacks GAME.GOG into DATA/ and FMV/ (about a minute, needs ~170 MB free) and deletes it."

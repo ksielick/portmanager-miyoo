@@ -184,6 +184,9 @@ static int validate_port(const Port *p)
 	for (int i = 0; i < p->nbuilt; i++)
 		if (!is_safe_rel_path(p->built[i]))
 			return 0;
+	for (int i = 0; i < p->noptional; i++)
+		if (!is_safe_rel_path(p->optional[i]))
+			return 0;
 	return 1;
 }
 
@@ -211,6 +214,7 @@ static void parse_port(const cJSON *e, Port *p)
 	p->required = strs(data, "required", &p->nrequired);
 	p->required_any = strs(data, "required_any", &p->nrequired_any);
 	p->built = strs(data, "built", &p->nbuilt);
+	p->optional = strs(data, "optional", &p->noptional);
 }
 
 static cJSON *read_json(const char *path)
@@ -407,6 +411,33 @@ static void find_shortcut(const Port *p, char *found, size_t size)
 		snprintf(found, size, "%s", f2.found);
 }
 
+/* rel matches a catalog entry: a folder ("x/": everything in it), a path or a file name pattern */
+static int in_list(char **list, int n, const char *rel)
+{
+	for (int i = 0; i < n; i++) {
+		const char *e = list[i];
+		size_t len = strlen(e);
+		if (len > 0 && e[len - 1] == '/' && !strncasecmp(rel, e, len))
+			return 1;
+		if (!fnmatch(e, rel, FNM_CASEFOLD) || !fnmatch(e, base_name(rel), FNM_CASEFOLD))
+			return 1;
+	}
+	return 0;
+}
+
+/* rel lies in a folder named dir (any letter case), at any depth */
+static int has_dir(const char *rel, const char *dir)
+{
+	size_t len = strlen(dir);
+	for (const char *s = rel; s; s = strchr(s, '/')) {
+		if (*s == '/')
+			s++;
+		if (!strncasecmp(s, dir, len) && s[len] == '/')
+			return 1;
+	}
+	return 0;
+}
+
 static int is_data_file(const Port *p, const char *rel)
 {
 	/* Metadata files are never data */
@@ -421,54 +452,21 @@ static int is_data_file(const Port *p, const char *rel)
 	if (*p->rom && (!strcasecmp(rel, p->rom) || !strcasecmp(base_name(rel), p->rom)))
 		return 1;
 
-	/* 3. Catalog required files */
-	for (int i = 0; i < p->nrequired; i++) {
-		const char *req = p->required[i];
-		size_t reqlen = strlen(req);
-		if (reqlen > 0 && req[reqlen - 1] == '/' && !strncasecmp(rel, req, reqlen))
-			return 1;
-		if (!fnmatch(req, rel, FNM_CASEFOLD) || !fnmatch(req, base_name(rel), FNM_CASEFOLD))
-			return 1;
-	}
-
-	/* 4. Catalog required_any files */
-	for (int i = 0; i < p->nrequired_any; i++) {
-		const char *req = p->required_any[i];
-		size_t reqlen = strlen(req);
-		if (reqlen > 0 && req[reqlen - 1] == '/' && !strncasecmp(rel, req, reqlen))
-			return 1;
-		if (!fnmatch(req, rel, FNM_CASEFOLD) || !fnmatch(req, base_name(rel), FNM_CASEFOLD))
-			return 1;
-	}
-
-	/* 5. Catalog backup directories / files (e.g. saves, config) */
-	for (int i = 0; i < p->nbackup; i++) {
-		const char *bk = p->backup[i];
-		size_t bklen = strlen(bk);
-		if (bklen > 0 && bk[bklen - 1] == '/' && !strncasecmp(rel, bk, bklen))
-			return 1;
-		if (!fnmatch(bk, rel, FNM_CASEFOLD) || !fnmatch(bk, base_name(rel), FNM_CASEFOLD))
-			return 1;
-	}
-
-	/* 6. Catalog built files / folders */
-	for (int i = 0; i < p->nbuilt; i++) {
-		const char *bk = p->built[i];
-		size_t bklen = strlen(bk);
-		if (bklen > 0 && bk[bklen - 1] == '/' && !strncasecmp(rel, bk, bklen))
-			return 1;
-		if (!fnmatch(bk, rel, FNM_CASEFOLD) || !fnmatch(bk, base_name(rel), FNM_CASEFOLD))
-			return 1;
-	}
-
-	/* 7. Standard save / data folder names */
-	if (!strncasecmp(rel, "data/", 5) || !strncasecmp(rel, "data1/", 6) ||
-	    !strncasecmp(rel, "dc_data/", 8) ||
-	    !strncasecmp(rel, "save/", 5) || !strncasecmp(rel, "saves/", 6) ||
-	    !strncasecmp(rel, "music/", 6) || !strncasecmp(rel, "sound/", 6) ||
-	    !strncasecmp(rel, "sounds/", 7) || !strncasecmp(rel, "movies/", 7) ||
-	    !strncasecmp(rel, "fmv/", 4))
+	/* 3-6. The catalog's data: required, required_any, optional, backup and built */
+	if (in_list(p->required, p->nrequired, rel) || in_list(p->required_any, p->nrequired_any, rel) ||
+	    in_list(p->optional, p->noptional, rel) || in_list(p->backup, p->nbackup, rel) ||
+	    in_list(p->built, p->nbuilt, rel))
 		return 1;
+
+	/* 7. Standard save / data folder names, at any depth: OpenLara keeps its videos in
+	 * "Tomb Raider 1/FMV/", and "remove, keep data" deleted them (2026-10-18) */
+	static const char *dirs[] = {
+		"data", "data1", "dc_data", "save", "saves", "music", "sound", "sounds",
+		"movies", "fmv", "video", "videos"
+	};
+	for (size_t i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++)
+		if (has_dir(rel, dirs[i]))
+			return 1;
 
 	/* Scripts, libraries, and binaries are never data */
 	if (ends_with(rel, ".sh") || ends_with(rel, ".so") || strstr(rel, ".so."))
@@ -485,7 +483,9 @@ static int is_data_file(const Port *p, const char *rel)
 	const char *exts[] = {
 		".z64", ".n64", ".v64", ".iso", ".cue", ".chd", ".pbp", ".rom",
 		".sav", ".srm", ".eep", ".fla", ".mpk", ".state", ".cfg", ".ini",
-		".mp3", ".ogg", ".wav", ".mid", ".midi", ".flac"
+		".mp3", ".ogg", ".wav", ".mid", ".midi", ".flac",
+		/* videos and game data files (OpenLara: the .RPL videos, savegame.dat) */
+		".rpl", ".str", ".fmv", ".mp4", ".avi", ".bik", ".mpg", ".dat"
 	};
 	for (size_t i = 0; i < sizeof(exts) / sizeof(exts[0]); i++)
 		if (ends_with(rel, exts[i]))
@@ -2059,6 +2059,7 @@ static void clean_port_files(const Port *p)
 	if (on_copy_progress)
 		on_copy_progress(0, ctx.n);
 	for (int i = 0; i < ctx.n; i++) {
+		say_log("%s: removing %s", p->name, ctx.to_delete[i] + strlen(g) + 1);
 		del_file(ctx.to_delete[i]);
 		free(ctx.to_delete[i]);
 		if (on_copy_progress)

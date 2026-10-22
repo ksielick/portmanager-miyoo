@@ -57,7 +57,7 @@ asset by a regex.
 | `app` | optional, `app-to-ports` only: the zip's folder under `App/` when it isn't `dir`'s last part. For a second port of a game already in the catalog (miyoo64's Mario Kart 64 next to cacuracaptors'): its own `dir`, and the shortcut, picture and `GameName` go by `name`, so neither port touches the other's |
 | `skip` | zip paths not installed (e.g. miyoo64's MinUI folders) |
 | `dir` | the game folder on the card |
-| `data` | what the player supplies: `required`, `required_any`, `optional`, `forbidden` (paths in `dir`, case-insensitive, `*` allowed), `rom`, `disc` |
+| `data` | what the player supplies: `required`, `required_any`, `optional`, `forbidden` (paths in `dir`, case-insensitive, `*` allowed), `rom`, `disc`. Everything named in `required`, `required_any`, `optional`, `built` and `backup` is game data: "remove, keep data" never deletes it (since v1.2.5 also `optional`: list there what the game makes or unpacks on the card, e.g. OpenLara's `FMV/` and `savegame.dat`) |
 | `shortcut` | for `app-to-ports`: `GameDataFile` and the script to run |
 | `get` | instructions for the player |
 
