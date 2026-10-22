@@ -836,8 +836,8 @@ static void alert_box(const char *msg)
 static void do_restore(Port *p)
 {
 	MenuItem options[2] = {
-		{"Restore from local backup", "Backups/", C_DIM},
-		{"Install older release (GitHub)", "GitHub", C_DIM}
+		{"Restore a backup", "Backups/", C_DIM},
+		{"Install an older version", "GitHub", C_DIM}
 	};
 	int choice = choose_menu("Restore / Rollback", p->name, options, 2, "A: select   B: cancel", 0);
 	if (choice < 0)
