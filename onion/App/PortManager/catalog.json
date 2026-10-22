@@ -691,6 +691,72 @@
       "layout": "sdcard-root",
       "dir": "Roms/PORTS/Games/MonkTower",
       "data": null
+    },
+    {
+      "id": "cdogs",
+      "name": "C-Dogs",
+      "category": "Action",
+      "status": "playable",
+      "repo": "OnionUI/Ports-Collection",
+      "asset": "^C-Dogs\\.7z$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/C-Dogs",
+      "data": {"optional": [".config/"]}
+    },
+    {
+      "id": "opentyrian",
+      "name": "OpenTyrian",
+      "category": "Action",
+      "status": "playable",
+      "repo": "OnionUI/Ports-Collection",
+      "asset": "^OpenTyrian\\.7z$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/OpenTyrian",
+      "data": {"optional": [".config/"]}
+    },
+    {
+      "id": "cavestory",
+      "name": "Cave Story (NXEngine)",
+      "category": "Platform",
+      "status": "playable",
+      "repo": "OnionUI/Ports-Collection",
+      "asset": "^Cave\\.Story\\.NXEngine\\.7z$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Cave Story (NXEngine)",
+      "data": {"optional": ["settings.dat", ".game_config/"]}
+    },
+    {
+      "id": "hocoslamfy",
+      "name": "Hocoslamfy",
+      "category": "Reflex",
+      "status": "playable",
+      "repo": "OnionUI/Ports-Collection",
+      "asset": "^Hocoslamfy\\.7z$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Hocoslamfy",
+      "data": {"optional": [".hocoslamfy/"]}
+    },
+    {
+      "id": "wizznic",
+      "name": "Wizznic",
+      "category": "Puzzle games",
+      "status": "playable",
+      "repo": "OnionUI/Ports-Collection",
+      "asset": "^Wizznic\\.7z$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Wizznic",
+      "data": {"optional": ["highscores/", "settings.ini", "editorlevels/"]}
+    },
+    {
+      "id": "dinothawr",
+      "name": "Dinothawr",
+      "category": "Puzzle games",
+      "status": "playable",
+      "repo": "OnionUI/Ports-Collection",
+      "asset": "^Dinothawr\\.7z$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Dinothawr",
+      "data": {"optional": [".game_config/"]}
     }
   ]
 }
