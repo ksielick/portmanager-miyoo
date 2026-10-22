@@ -55,7 +55,9 @@ updates.
 - Removing a port can keep your game data and saves.
 - Port Manager only writes to and deletes from the Ports folders (`Roms/PORTS/Games`,
   `Shortcuts`, `Imgs`), its backups and its own folder. Anything else on the card (other
-  ROMs, saves, BIOS, Onion, other apps) is off limits.
+  ROMs, saves, BIOS, Onion, other apps) is off limits. The one exception is **Start** on a
+  game's page: it tells Onion which game to start (`.tmp_update/cmd_to_run.sh`) and adds the
+  game to Onion's recently played list (`Roms/recentlist.json`), as Onion's menu does.
 - It checks free space before installing or updating, and stops without changing anything
   if the card is too full.
 - **Secure downloads:** everything comes over HTTPS straight from GitHub. The server's
