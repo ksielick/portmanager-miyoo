@@ -1,0 +1,26 @@
+# A backup leaves out what the game rebuilds from the ROM (nobackup), logs and rejected save
+# states; older backups stay (only the player removes them, on the backups screen)
+file Roms/PORTS/Games/DiddyKongRacing/data/dkr_assets.bin pack
+file Roms/PORTS/Games/DiddyKongRacing/data/console.log log
+file Roms/PORTS/Games/DiddyKongRacing/data/state_quick.sav.rejected old
+file Backups/PortManager/20260101-000000-miyoo64-diddykongracing-before-1.0.0.tar oldest
+file Backups/PortManager/20260102-000000-miyoo64-diddykongracing-before-1.0.1.tar older
+press 1 A        # details: Diddy Kong Racing
+press 2 A        # check
+press 3 A        # update
+press 4 A        # yes
+press 5 B        # result
+press 6 B        # details
+press 7 B        # exit
+timeout 600
+shots every:1
+min_frames 5
+assert_log "Diddy Kong Racing: not in the backup: data/dkr_assets.bin"
+assert_log "Diddy Kong Racing: not in the backup: data/console.log"
+assert_log "Diddy Kong Racing: not in the backup: data/state_quick.sav.rejected"
+assert_log "saved Roms/PORTS/Games/DiddyKongRacing/data/ to the backup (without what is rebuilt, and logs)"
+assert_exists Backups/PortManager/20260101-000000-miyoo64-diddykongracing-before-1.0.0.tar
+assert_exists Backups/PortManager/20260102-000000-miyoo64-diddykongracing-before-1.0.1.tar
+assert_log "backup: Backups/PortManager/"
+assert_exists Roms/PORTS/Games/DiddyKongRacing/data/dkr_assets.bin
+assert_exists Roms/PORTS/Games/DiddyKongRacing/data/save.bin

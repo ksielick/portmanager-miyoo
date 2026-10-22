@@ -167,6 +167,7 @@
       "backup": [
         "data/"
       ],
+      "nobackup": ["data/dkr_assets.bin"],
       "data": {
         "rom": {
           "system": "n64",
@@ -276,6 +277,7 @@
       "backup": [
         "data/"
       ],
+      "nobackup": ["data/hm64-pack.bin"],
       "data": {
         "rom": {
           "system": "n64",
@@ -313,6 +315,7 @@
       "backup": [
         "data/"
       ],
+      "nobackup": ["data/mm_pack.bin", "data/mm_pack.id"],
       "data": {
         "rom": {
           "system": "n64",
@@ -352,6 +355,7 @@
         "data/",
         "eeprom.bin"
       ],
+      "nobackup": ["data/assets.bin"],
       "data": {
         "rom": {
           "system": "n64",
@@ -391,6 +395,7 @@
       "backup": [
         "data/"
       ],
+      "nobackup": ["data/data/segments/oot_psp_assets.bin", "data/data/segments/oot_psp_assets.id"],
       "data": {
         "rom": {
           "system": "n64",
@@ -427,6 +432,7 @@
       "backup": [
         "data/"
       ],
+      "nobackup": ["data/assets.bin"],
       "data": {
         "rom": {
           "system": "n64",
@@ -500,6 +506,7 @@
       "backup": [
         "data/"
       ],
+      "nobackup": ["data/sf64.rom"],
       "data": {
         "rom": {
           "system": "n64",
@@ -536,6 +543,7 @@
       "backup": [
         "data/"
       ],
+      "nobackup": ["data/assets.bin"],
       "data": {
         "rom": {
           "system": "n64",
@@ -572,6 +580,7 @@
       "backup": [
         "data/"
       ],
+      "nobackup": ["data/romdata.bin"],
       "data": {
         "rom": {
           "system": "n64",

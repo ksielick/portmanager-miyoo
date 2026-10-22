@@ -176,6 +176,9 @@ static int validate_port(const Port *p)
 	for (int i = 0; i < p->nbackup; i++)
 		if (!is_safe_rel_path(p->backup[i]))
 			return 0;
+	for (int i = 0; i < p->nnobackup; i++)
+		if (!is_safe_rel_path(p->nobackup[i]))
+			return 0;
 	for (int i = 0; i < p->nrequired; i++)
 		if (!is_safe_rel_path(p->required[i]))
 			return 0;
@@ -212,6 +215,7 @@ static void parse_port(const cJSON *e, Port *p)
 	p->sc_run = str(sc, "run");
 	p->skip = strs(e, "skip", &p->nskip);
 	p->backup = strs(e, "backup", &p->nbackup);
+	p->nobackup = strs(e, "nobackup", &p->nnobackup);
 	p->required = strs(data, "required", &p->nrequired);
 	p->required_any = strs(data, "required_any", &p->nrequired_any);
 	p->built = strs(data, "built", &p->nbuilt);
@@ -1424,6 +1428,34 @@ static int fail(const char *fmt, const char *a)
 	return -1;
 }
 
+/* a backup folder (catalog `backup`) into the backup, without logs, rejected save states and
+ * what the game rebuilds from the ROM (`nobackup`): miyoo64's packs were 80% of the backups
+ * (Ocarina of Time: 53 of 63 MB a backup) */
+typedef struct {
+	const Port *p;
+	const char *from, *to, *entry; /* entry: the catalog's `backup` item, e.g. "data/" */
+	int left_out, failed;
+} BackupCopy;
+
+static void backup_cb(const char *rel, void *ctx)
+{
+	BackupCopy *c = ctx;
+	char game_rel[800], src[1100], dst[1400];
+	size_t el = strlen(c->entry);
+	snprintf(game_rel, sizeof game_rel, "%.*s/%s", (int)(el && c->entry[el - 1] == '/' ? el - 1 : el), c->entry, rel);
+	if (ends_with(rel, ".log") || ends_with(rel, ".rejected") ||
+	    in_list(c->p->nobackup, c->p->nnobackup, game_rel)) {
+		say_log("%s: not in the backup: %s", c->p->name, game_rel);
+		c->left_out++;
+		return;
+	}
+	snprintf(src, sizeof src, "%s/%s", c->from, rel);
+	snprintf(dst, sizeof dst, "%s/%s", c->to, rel);
+	if (copy_file(src, dst))
+		c->failed++;
+}
+
+
 /* before a new folder is moved in whole: what the catalog doesn't install (skip, App's
  * config.json) leaves it first */
 typedef struct {
@@ -1658,8 +1690,14 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 			snprintf(to, sizeof to, "%s/%s/%s", bk_stage, p->dir, p->backup[b]);
 			if (to[strlen(to) - 1] == '/')
 				to[strlen(to) - 1] = 0;
-			if (is_dir(from) && copy_tree(from, to) == 0)
-				say_log("%s: saved %s/%s to the backup", p->name, p->dir, p->backup[b]);
+			BackupCopy bc = {p, from, to, p->backup[b], 0, 0};
+			if (is_dir(from))
+				walk_files(from, backup_cb, &bc);
+			else if (file_exists(from) && copy_file(from, to)) /* a file, e.g. tyrquake.opt */
+				bc.failed++;
+			if (!bc.failed && (is_dir(from) || file_exists(from)))
+				say_log("%s: saved %s/%s to the backup%s", p->name, p->dir, p->backup[b],
+					bc.left_out ? " (without what is rebuilt, and logs)" : "");
 		}
 		for (int i = 0; i < m.n; i++) {
 			char d[1000], b[1100];
@@ -1916,6 +1954,231 @@ void pm_free_backups(BackupItem *items, int n)
 {
 	(void)n;
 	free(items);
+}
+
+/* --- the backups screen (owner, 2026-10-22: the player sees and decides; nothing is removed
+ * on its own) --- */
+
+static const Port *port_by_id(const char *id)
+{
+	for (int i = 0; i < nports; i++)
+		if (!strcmp(ports[i].id, id))
+			return &ports[i];
+	return NULL;
+}
+
+static int by_game_newest(const void *a, const void *b)
+{
+	const Backup *x = a, *y = b;
+	int c = strcasecmp(x->name, y->name);
+	return c ? c : strcmp(y->file, x->file);
+}
+
+int pm_backups_all(Backup **items, int *n, long long *total)
+{
+	*items = NULL;
+	*n = 0;
+	*total = 0;
+	char dir[600];
+	snprintf(dir, sizeof dir, "%s/Backups/PortManager", SD);
+	DIR *d = opendir(dir);
+	if (!d)
+		return 0;
+	int cap = 0;
+	struct dirent *e;
+	while ((e = readdir(d))) {
+		/* "<stamp>-<id>-before-<version>[.tar]" */
+		const char *s = e->d_name, *bef = strlen(s) > 16 && s[15] == '-' ? strstr(s + 16, "-before-") : NULL;
+		char full[900];
+		snprintf(full, sizeof full, "%s/%s", dir, s);
+		int isd = is_dir(full);
+		if (!bef || (!isd && !ends_with(s, ".tar")))
+			continue;
+		if (*n == cap)
+			*items = realloc(*items, (cap = cap ? cap * 2 : 32) * sizeof **items);
+		Backup *b = &(*items)[(*n)++];
+		memset(b, 0, sizeof *b);
+		snprintf(b->path, sizeof b->path, "%s", full);
+		snprintf(b->file, sizeof b->file, "%s", s);
+		snprintf(b->id, sizeof b->id, "%.*s", (int)(bef - s - 16), s + 16);
+		snprintf(b->tag, sizeof b->tag, "%s", bef + 8);
+		if (ends_with(b->tag, ".tar"))
+			b->tag[strlen(b->tag) - 4] = 0;
+		snprintf(b->date, sizeof b->date, "%.4s-%.2s-%.2s", s, s + 4, s + 6);
+		const Port *p = port_by_id(b->id);
+		snprintf(b->name, sizeof b->name, "%s", !strcmp(b->id, "PortManager") ? "Port Manager" : p ? p->name : b->id);
+		b->is_dir = isd;
+		b->bytes = isd ? tree_bytes(full) : file_size(full);
+		*total += b->bytes;
+	}
+	closedir(d);
+	if (*n)
+		qsort(*items, *n, sizeof **items, by_game_newest);
+	return 0;
+}
+
+int pm_backup_delete(const Backup *b)
+{
+	pm_error[0] = 0;
+	if ((b->is_dir ? remove_tree(b->path) : del_file(b->path)) != 0)
+		return fail("%s: can't delete the backup", b->name);
+	say_log("backup deleted: %s", b->file);
+	return 0;
+}
+
+/* what a backup doesn't need: logs, rejected save states, what the game rebuilds from the ROM
+ * (catalog nobackup), and in Port Manager's own: tokens.txt and its logs. rel: in the backup */
+static int backup_unneeded(const Backup *b, const Port *p, const char *rel)
+{
+	if (!strncmp(rel, "./", 2))
+		rel += 2;
+	const char *bn = base_name(rel);
+	if (ends_with(bn, ".log") || ends_with(bn, ".rejected"))
+		return 1;
+	if (!strcmp(b->id, "PortManager"))
+		return !strchr(rel, '/') && (!strcmp(rel, "tokens.txt") || (!strncmp(rel, "log", 3) && ends_with(rel, ".txt")));
+	size_t dl = p ? strlen(p->dir) : 0;
+	return p && !strncmp(rel, p->dir, dl) && rel[dl] == '/' && in_list(p->nobackup, p->nnobackup, rel + dl + 1);
+}
+
+typedef struct {
+	const Backup *b;
+	const Port *p;
+	const char *from, *to; /* to: NULL = leave out in place (an unpacked .tar) */
+	long done, total, kept, dropped;
+	int failed;
+} Compact;
+
+static void compact_cb(const char *rel, void *ctx)
+{
+	Compact *c = ctx;
+	char src[1200], dst[1200];
+	snprintf(src, sizeof src, "%s/%s", c->from, rel);
+	if (c->to && on_copy_progress)
+		on_copy_progress(++c->done, c->total);
+	if (backup_unneeded(c->b, c->p, rel)) {
+		c->dropped++;
+		say_log("%s: left out of the backup: %s", c->b->name, rel);
+		if (!c->to)
+			del_file(src);
+		return;
+	}
+	c->kept++;
+	snprintf(dst, sizeof dst, "%s/%s", c->to ? c->to : "", rel);
+	if (c->to && copy_file(src, dst))
+		c->failed++;
+}
+
+static void count_files_cb(const char *rel, void *ctx)
+{
+	(void)rel;
+	(*(long *)ctx)++;
+}
+
+/* tar -tvf: "mode owner size date time name"; its files' bytes, and those the backup doesn't need */
+typedef struct {
+	const Backup *b;
+	const Port *p;
+	long long bytes;
+	long unneeded;
+} TarList;
+
+static void tar_list_cb(const char *s, void *ctx)
+{
+	TarList *t = ctx;
+	long long size = 0;
+	int at = 0;
+	if (sscanf(s, "%*s %*s %lld %*s %*s %n", &size, &at) < 1 || !at || ends_with(s, "/"))
+		return;
+	t->bytes += size;
+	t->unneeded += backup_unneeded(t->b, t->p, s + at);
+}
+
+/* runs tar and moves the bar by what it has written so far (a folder or a file): Onion's tar
+ * buffers its -v lines into a pipe until the end, and one 53 MB pack is most of a backup */
+static int run_watched(const char *const argv[], const char *watch, long long total)
+{
+	int pid = run_bg(argv, NULL);
+	if (pid < 0)
+		return -1;
+	for (;;) {
+		int st;
+		pid_t r = waitpid(pid, &st, WNOHANG);
+		long long now = is_dir(watch) ? tree_bytes(watch) : file_size(watch);
+		if (on_download_progress)
+			on_download_progress(now < total ? now : total, total);
+		if (r == pid)
+			return WIFEXITED(st) ? WEXITSTATUS(st) : -1;
+		if (r < 0)
+			return -1;
+		usleep(250000);
+	}
+}
+
+int pm_backup_compact(const Backup *b, long long *saved)
+{
+	pm_error[0] = 0;
+	*saved = 0;
+	const Port *p = port_by_id(b->id);
+	char stage[600];
+	snprintf(stage, sizeof stage, "%s/compact_stage", WORK);
+	remove_tree(stage);
+	Compact c = {b, p, NULL, NULL, 0, 0, 0, 0, 0};
+	if (!b->is_dir) {
+		/* a .tar with nothing to leave out stays as it is: no writes */
+		TarList t = {b, p, 0, 0};
+		const char *ls[] = {"tar", "-tvf", b->path, NULL};
+		if (run_read(ls, tar_list_cb, &t))
+			return fail("%s: can't read the backup", b->name);
+		if (!t.unneeded) {
+			say_log("%s: %s is already compact", b->name, b->file);
+			return 0;
+		}
+		if (no_space(b->name, 2 * b->bytes))
+			return -1;
+		mkdirs(stage);
+		set_stage("1/2 Unpacking");
+		const char *x[] = {"tar", "-xf", b->path, "-C", stage, NULL};
+		if (run_watched(x, stage, t.bytes)) {
+			remove_tree(stage);
+			return fail("%s: can't unpack the backup", b->name);
+		}
+		c.from = stage;
+		walk_files(stage, compact_cb, &c);
+	}
+	else {
+		if (no_space(b->name, b->bytes))
+			return -1;
+		mkdirs(stage);
+		set_stage("1/2 Sorting files");
+		walk_files(b->path, count_files_cb, &c.total);
+		c.from = b->path;
+		c.to = stage;
+		walk_files(b->path, compact_cb, &c);
+		if (c.failed) {
+			remove_tree(stage);
+			return fail("%s: can't copy the backup's files", b->name);
+		}
+	}
+
+	char out[900];
+	snprintf(out, sizeof out, b->is_dir ? "%s.tar" : "%s.new", b->path);
+	set_stage("2/2 Packing");
+	const char *cf[] = {"tar", "-cf", out, "-C", stage, ".", NULL};
+	int r = run_watched(cf, out, tree_bytes(stage));
+	remove_tree(stage);
+	if (r) {
+		del_file(out);
+		return fail("%s: can't pack the backup: it stays as it was", b->name);
+	}
+	long long now = file_size(out);
+	if (b->is_dir ? remove_tree(b->path) : rename(out, b->path)) {
+		del_file(out);
+		return fail("%s: can't replace the backup: it stays as it was", b->name);
+	}
+	*saved = b->bytes > now ? b->bytes - now : 0;
+	say_log("%s: %s compacted, %ld file(s) left out, %lld KB freed", b->name, b->file, c.dropped, *saved / 1024);
+	return 0;
 }
 
 static void restore_check_cb(const char *rel, void *ctx)
@@ -2605,11 +2868,31 @@ int pm_self_update(void)
 		SD, STAMP, cur_ver);
 	mkdirs_for(bk_tar);
 	say("Port Manager: creating backup %s...", base_name(bk_tar));
-	const char *tar_cmd[] = {"tar", "-cf", bk_tar, "-C", HERE, ".", NULL};
-	if (run(tar_cmd, NULL) == 0)
+	/* the folder without tokens.txt (GitHub tokens stay out of backups, owner 2026-10-22) and
+	 * the logs; both stay in place, so a restore doesn't need them */
+	const char *tar_cmd[80] = {"tar", "-cf", bk_tar, "-C", HERE};
+	int ta = 5;
+	char *names[72];
+	int nn = 0;
+	DIR *hd = opendir(HERE);
+	struct dirent *he;
+	while (hd && (he = readdir(hd)) && nn < 72) {
+		const char *s = he->d_name;
+		if (!strcmp(s, ".") || !strcmp(s, "..") || !strcmp(s, "tokens.txt") ||
+		    (!strncmp(s, "log", 3) && ends_with(s, ".txt")))
+			continue;
+		names[nn] = strdup(s);
+		tar_cmd[ta++] = names[nn++];
+	}
+	if (hd)
+		closedir(hd);
+	tar_cmd[ta] = NULL;
+	if (nn && run(tar_cmd, NULL) == 0)
 		say("backup: %s", bk_tar + strlen(SD) + 1);
 	else
 		say("Port Manager: warning: could not create backup archive");
+	for (int i = 0; i < nn; i++)
+		free(names[i]);
 
 	/* 2. Download release archive */
 	char zip[600];

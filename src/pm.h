@@ -12,6 +12,8 @@ typedef struct {
 	char *rom, *rom_name, *sc_gdf, *sc_run;
 	char **skip, **backup, **required, **required_any, **built, **optional;
 	int nskip, nbackup, nrequired, nrequired_any, nbuilt, noptional;
+	char **nobackup; /* in the backup folders, but not in a backup (rebuilt from the ROM) */
+	int nnobackup;
 
 	/* on the card (pm_scan) */
 	int installed;
@@ -70,6 +72,25 @@ int pm_list_backups(const Port *p, BackupItem **items, int *n);
 void pm_free_backups(BackupItem *items, int n);
 int pm_restore_backup(Port *p, const BackupItem *b);
 
+/* every backup in Backups/PortManager (also of removed ports), by game, newest first */
+typedef struct {
+	char path[800];
+	char file[256];
+	char id[96];      /* the port's id, or "PortManager" */
+	char name[128];   /* the game's name, "Port Manager", or the id when not in the catalog */
+	char tag[64];     /* the version it was made before */
+	char date[16];    /* YYYY-MM-DD */
+	long long bytes;
+	int is_dir;       /* the first backups (2026-10-17) were folders, not .tar */
+} Backup;
+
+int pm_backups_all(Backup **items, int *n, long long *total);
+/* repacks a backup without what it doesn't need (logs, rejected save states, data the game
+ * rebuilds from the ROM, Port Manager's tokens.txt and log); a folder becomes a .tar.
+ * *saved: bytes freed. 0, or -1 with pm_error */
+int pm_backup_compact(const Backup *b, long long *saved);
+int pm_backup_delete(const Backup *b);
+
 /* remote releases */
 typedef struct {
 	char tag[64];
@@ -87,7 +108,7 @@ void pm_free_remote_releases(RemoteRelease *items, int n);
 int pm_install_release(Port *p, const RemoteRelease *rel);
 
 /* self-update (Port Manager updating itself) */
-#define PM_VERSION "1.2.8"
+#define PM_VERSION "1.2.9"
 #define PM_REPO "ksielick/portmanager-miyoo"
 
 extern int pm_self_update_available;

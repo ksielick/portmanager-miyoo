@@ -457,16 +457,25 @@ static int progress_end(const char *hints, const int *keys)
 static int port_ok;
 
 /* one port's install or update: its name once, then lines without it */
-static void port_begin(const Port *p)
+static char item_name[200];
+
+/* a port, or anything else worked on in turn (a backup), in accent colour */
+static void item_begin(const char *name)
 {
 	if (progress.n)
 		lines_add(&progress, "");
-	char s[200];
-	snprintf(s, sizeof s, CLR_ACCENT "%s", p->name);
+	snprintf(item_name, sizeof item_name, "%s", name);
+	char s[220];
+	snprintf(s, sizeof s, CLR_ACCENT "%s", item_name);
 	lines_add(&progress, s);
-	screen_prefix = p->name;
+	screen_prefix = item_name;
 	port_ok = 1;
 	progress_draw("Please wait...");
+}
+
+static void port_begin(const Port *p)
+{
+	item_begin(p->name);
 }
 
 static void port_failed(void)
@@ -757,7 +766,16 @@ typedef struct {
 	uint32_t right_clr;
 } MenuItem;
 
+/* also returns on `keys` (0-ended), with the key in *out_key */
+static int choose_menu_keys(const char *title, const char *right_hdr, const MenuItem *items, int n, const char *hints, int initial_sel, const int *keys, int *out_key);
+
 static int choose_menu_key(const char *title, const char *right_hdr, const MenuItem *items, int n, const char *hints, int initial_sel, int *out_key)
+{
+	static const int x[] = {K_X, 0};
+	return choose_menu_keys(title, right_hdr, items, n, hints, initial_sel, out_key ? x : NULL, out_key);
+}
+
+static int choose_menu_keys(const char *title, const char *right_hdr, const MenuItem *items, int n, const char *hints, int initial_sel, const int *keys, int *out_key)
 {
 	if (n <= 0)
 		return -1;
@@ -794,10 +812,11 @@ static int choose_menu_key(const char *title, const char *right_hdr, const MenuI
 			if (out_key) *out_key = k;
 			return sel;
 		}
-		if (out_key && k == K_X) {
-			*out_key = k;
-			return sel;
-		}
+		for (const int *c = keys; out_key && c && *c; c++)
+			if (k == *c) {
+				*out_key = k;
+				return sel;
+			}
 		if (k == K_UP && sel > 0) sel--;
 		if (k == K_DOWN && sel < n - 1) sel++;
 		if (k == K_L1 || k == K_LEFT) {
@@ -830,6 +849,116 @@ static void alert_box(const char *msg)
 		int k = input_key(NULL);
 		if (k < 0 || k == K_B || k == K_A || k == K_MENU)
 			break;
+	}
+}
+
+static void size_text(char *s, size_t size, long long bytes)
+{
+	if (bytes >= 1024LL * 1024 * 1024)
+		snprintf(s, size, "%.1f GB", bytes / (1024.0 * 1024 * 1024));
+	else if (bytes >= 1024 * 1024)
+		snprintf(s, size, "%.1f MB", bytes / (1024.0 * 1024));
+	else
+		snprintf(s, size, "%lld KB", (bytes + 1023) / 1024);
+}
+
+/* one backup or all of them, each with the bar; the screen says what was freed */
+static void compact_backups(const Backup *b, int n)
+{
+	progress_begin(n > 1 ? "Compacting backups" : "Compacting a backup");
+	long long freed = 0;
+	int bad = 0;
+	for (int i = 0; i < n; i++) {
+		if (n > 1)
+			snprintf(progress_right, sizeof progress_right, "%d/%d", i + 1, n);
+		item_begin(b[i].name);
+		char s[200], sz[32];
+		snprintf(s, sizeof s, CLR_DIM "before %s, %s", b[i].tag, b[i].date);
+		lines_add(&progress, s);
+		long long saved = 0;
+		if (pm_backup_compact(&b[i], &saved)) {
+			port_failed();
+			bad++;
+		}
+		else {
+			size_text(sz, sizeof sz, saved);
+			snprintf(s, sizeof s, saved ? "%s freed" : "nothing to leave out", sz);
+			lines_add(&progress, s);
+			freed += saved;
+		}
+		port_end();
+	}
+	progress_right[0] = 0;
+	char s[120], sz[32];
+	size_text(sz, sizeof sz, freed);
+	lines_add(&progress, "");
+	snprintf(s, sizeof s, CLR_GOOD "Done: %s freed.", sz);
+	lines_add(&progress, s);
+	if (bad) {
+		snprintf(s, sizeof s, CLR_BAD "%d failed (see above).", bad);
+		lines_add(&progress, s);
+	}
+	progress_end(NULL, NULL);
+}
+
+/* Select on the main list: every backup (also of removed games) with what it takes; the player
+ * compacts or deletes them, Port Manager never does on its own (owner, 2026-10-22) */
+static void do_backups(void)
+{
+	static const int keys[] = {K_X, K_Y, 0};
+	int sel = 0;
+	for (;;) {
+		Backup *bk = NULL;
+		int n = 0;
+		long long total = 0;
+		pm_backups_all(&bk, &n, &total);
+		if (!n) {
+			free(bk);
+			alert_box("No backups.\n\nBefore an update replaces a game's files, Port Manager keeps them and the saves in Backups/PortManager.");
+			return;
+		}
+		MenuItem *items = calloc(n, sizeof *items);
+		for (int i = 0; i < n; i++) {
+			char sz[32];
+			size_text(sz, sizeof sz, bk[i].bytes);
+			/* made before updating to `tag`: it holds the older version */
+			snprintf(items[i].label, sizeof items[i].label, "%s <%s", bk[i].name, bk[i].tag);
+			snprintf(items[i].right, sizeof items[i].right, "%s%s", bk[i].is_dir ? "folder " : "", sz);
+			items[i].right_clr = bk[i].is_dir ? C_WARN : C_DIM;
+		}
+		char right[32];
+		size_text(right, sizeof right, total);
+		if (sel >= n)
+			sel = n - 1;
+		int key = 0;
+		int s = choose_menu_keys("Backups", right, items, n, "A:compact X:delete Y:all B:back", sel, keys, &key);
+		free(items);
+		if (s < 0) {
+			free(bk);
+			return;
+		}
+		sel = s;
+		char q[600], sz[32];
+		size_text(sz, sizeof sz, bk[s].bytes);
+		if (key == K_X) {
+			snprintf(q, sizeof q, "Delete this backup?\n\n%s, before %s\n%s, %s\n\nIts saves and files will be gone for good.",
+				bk[s].name, bk[s].tag, bk[s].date, sz);
+			if (confirm_choice(q, "A: delete   B: cancel") == 1 && pm_backup_delete(&bk[s]))
+				alert_box(pm_error);
+		}
+		else if (key == K_Y) {
+			size_text(sz, sizeof sz, total);
+			snprintf(q, sizeof q, "Compact all %d backups?\n%s now\n\nLeaves out logs and data the games build again from their ROMs. Saves stay.", n, sz);
+			if (confirm(q))
+				compact_backups(bk, n);
+		}
+		else {
+			snprintf(q, sizeof q, "Compact this backup?\n\n%s, before %s\n%s, %s\n\nLeaves out logs and data the game builds again from its ROM. Saves stay.",
+				bk[s].name, bk[s].tag, bk[s].date, sz);
+			if (confirm(q))
+				compact_backups(&bk[s], 1);
+		}
+		free(bk);
 	}
 }
 
@@ -1231,10 +1360,8 @@ static int run_list(int all)
 			footer(grouped ? "A: details  Sel: A-Z  B: back" : "A: details  Sel: categories  B: back");
 		else if (nr == 0)
 			footer(CLR_GOOD "X: get ports" CLR_DIM "   Y: check   B: exit");
-		else if (pm_self_update_available)
-			footer(nup ? "A:Info X:All Y:Chk Sel:UpdPM St:Upd" : "A:Info X:All Y:Check Sel:Update PM B:Exit");
-		else
-			footer(nup ? "A:Info X:All Y:Check St:Update B:Exit" : "A: info  X: all  Y: check  B: exit");
+		else /* Port Manager's own update comes first under Y; B exits everywhere */
+			footer(nup ? "A:info X:all Y:chk St:upd Sel:backups" : "A:info X:all Y:check Sel:backups");
 		gfx_flip();
 
 		int k = input_key(NULL);
@@ -1270,8 +1397,8 @@ static int run_list(int all)
 			return 0;
 		if (!all && k == K_Y)
 			check_all(1);
-		if (!all && k == K_SELECT && pm_self_update_available)
-			do_pm_self_update(1, 0);
+		if (!all && k == K_SELECT)
+			do_backups();
 		if (!all && k == K_START && nup)
 			do_update(NULL);
 	}

@@ -1,5 +1,6 @@
 # Port Manager is checked before the ports; an old one updates itself first (backup, then restart with --check)
 file app/.pm_version 1.0.0
+file app/tokens.txt "nobody/*=not-a-token"
 press 1 Y        # check
 press 2 A        # update Port Manager now
 shots every:1
@@ -9,4 +10,5 @@ assert_contains app/.pm_version v
 assert_not_contains app/.pm_version 1.0.0
 assert_exists app/portmanager
 assert_exists Backups/PortManager/*-PortManager-before-1.0.0.tar
+assert_exists app/tokens.txt
 assert_log_not "Checking installed ports"

@@ -1,0 +1,29 @@
+# Select on the main list: every backup with its size; Y compacts them all (a folder backup
+# becomes a .tar, logs, ROM-built packs and Port Manager's tokens.txt left out), X deletes one
+file Backups/PortManager/20260101-000000-miyoo64-diddykongracing-before-1.0.0/Roms/PORTS/Games/DiddyKongRacing/data/save.bin mysave
+file Backups/PortManager/20260101-000000-miyoo64-diddykongracing-before-1.0.0/Roms/PORTS/Games/DiddyKongRacing/data/dkr_assets.bin pack
+file Backups/PortManager/20260101-000000-miyoo64-diddykongracing-before-1.0.0/Roms/PORTS/Games/DiddyKongRacing/data/console.log log
+file Backups/PortManager/20260102-000000-PortManager-before-1.0.0/portmanager program
+file Backups/PortManager/20260102-000000-PortManager-before-1.0.0/tokens.txt "nobody/*=not-a-token"
+file Backups/PortManager/20260102-000000-PortManager-before-1.0.0/log.txt log
+press 1 SELECT   # backups: Diddy Kong Racing 1.0.0 (folder), Port Manager 1.0.0 (folder)
+press 2 Y        # compact all
+press 3 A        # yes
+press 4 B        # result: both compacted
+press 5 X        # delete the first (Diddy Kong Racing)
+press 6 A        # delete
+press 7 B        # main list
+press 8 B        # exit
+shots every:1
+nonblank 1 4
+min_frames 7
+assert_log "Diddy Kong Racing: left out of the backup: Roms/PORTS/Games/DiddyKongRacing/data/dkr_assets.bin"
+assert_log "Diddy Kong Racing: left out of the backup: Roms/PORTS/Games/DiddyKongRacing/data/console.log"
+assert_log "Port Manager: left out of the backup: tokens.txt"
+assert_log "Port Manager: left out of the backup: log.txt"
+assert_log "backup deleted: 20260101-000000-miyoo64-diddykongracing-before-1.0.0.tar"
+assert_not_exists Backups/PortManager/20260101-000000-miyoo64-diddykongracing-before-1.0.0
+assert_not_exists Backups/PortManager/20260101-000000-miyoo64-diddykongracing-before-1.0.0.tar
+assert_not_exists Backups/PortManager/20260102-000000-PortManager-before-1.0.0
+assert_exists Backups/PortManager/20260102-000000-PortManager-before-1.0.0.tar
+assert_not_exists .pm_work/compact_stage

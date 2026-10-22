@@ -33,6 +33,7 @@ updates.
 | **A** | a game's page: install or update it, and see which file you need to add and where |
 | **Y** | check your installed ports (and Port Manager) for updates |
 | **Start** | update all (after a check) |
+| **Select** | your backups: how much space each one takes; compact them (logs and data rebuilt from your ROM left out, saves kept) or delete them |
 | **Start** on a game's page | play it (when its game files are in place) |
 | **Select** on a game's page | all details: where to get the files, checksums, source |
 | **Y** on a game's page | restore a backup or install an older version |
@@ -51,7 +52,8 @@ updates.
 ## Safe by design
 
 - Your saves and the files you added are never overwritten. Before an update, everything it
-  replaces is backed up to `Backups/PortManager/`.
+  replaces is backed up to `Backups/PortManager/`. Backups are never removed on their own:
+  you see and manage them with **Select**.
 - Removing a port can keep your game data and saves.
 - Port Manager only writes to and deletes from the Ports folders (`Roms/PORTS/Games`,
   `Shortcuts`, `Imgs`), its backups and its own folder. Anything else on the card (other

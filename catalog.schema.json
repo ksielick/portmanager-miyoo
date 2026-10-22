@@ -62,6 +62,7 @@
         "skip": {"$ref": "#/definitions/relpaths"},
         "dir": {"type": "string", "pattern": "^Roms/PORTS/Games/[^/\\\\](?!.*\\.\\.)[^\\\\]*$"},
         "backup": {"$ref": "#/definitions/relpaths"},
+        "nobackup": {"$ref": "#/definitions/relpaths", "description": "Files in the backup folders left out of a backup: what the game rebuilds from the ROM (miyoo64's packs). Logs and *.rejected are always left out."},
         "data": {
           "type": ["object", "null"],
           "additionalProperties": false,

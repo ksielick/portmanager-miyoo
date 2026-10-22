@@ -2,6 +2,44 @@
 
 Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 
+## Backups trimmed (2026-10-22, v1.2.9)
+
+- On the owner's card the backups were ~1 GB (57 in `Backups/PortManager`, 184 MB more in
+  `Backups/miyoo64` from the hand migration of 10-17): nothing ever removed them, and each
+  miyoo64 update copied the whole `data/` folder (catalog `backup`), whose pack built from the
+  ROM is 11-53 MB (`oot_psp_assets.bin`, `mm_pack.bin`, `sf64.rom`, `assets.bin`,
+  `dkr_assets.bin`, `romdata.bin`, `hm64-pack.bin`), next to logs and `*.rejected` states.
+- Owner's choices: new backups leave out the packs (new catalog field `nobackup`), logs and
+  `*.rejected`. Restoring an older backup leaves the current pack; the game rebuilds it if it
+  doesn't match (`mm_pack.id`, `oot_psp_assets.id` are left out too, so they always describe
+  the pack on the card).
+- **Nothing is removed without the player** (owner: "we promised the players' backups are
+  safe"). An automatic "keep the 2 newest" was written and dropped before the release. Instead
+  a **backups screen** under Select on the main list (`do_backups()`, `pm_backups_all()`):
+  every backup in `Backups/PortManager` by game, newest first, also of removed games or games
+  no longer in the catalog (then the id is shown), with its size and the total in the header;
+  A compacts one, Y all (confirmed), X deletes one (confirmed). Compacting
+  (`pm_backup_compact()`): a `.tar` is listed first (`tar -tf`) and left untouched when nothing
+  is to leave out; else unpacked (`tar -xvf`, its lines drive the bar), the unneeded files
+  deleted, packed again (`tar -cvf` into `.new`, renamed over). A folder backup (the first
+  ones, 2026-10-17) is copied without the unneeded files, packed into `<folder>.tar`, and the
+  folder removed. Unneeded: `*.log`, `*.rejected`, the port's `nobackup`, and in Port
+  Manager's own backups `tokens.txt` and `log*.txt`. Stages "1/2 Unpacking" (or "1/2 Sorting
+  files"), "2/2 Packing", the item's name in accent, "N/M" in the header for "all".
+- Select used to install Port Manager's update when one was out; that update is the first
+  step of Y anyway since v1.2.3, so Select is now always the backups (owner's choice). Footer:
+  "A:info X:all Y:check Sel:backups" ("B: exit" dropped: B exits everywhere), with updates
+  "A:info X:all Y:chk St:upd Sel:backups" (37 columns).
+- `Backups/miyoo64` (184 MB on the owner's card, from the hand migration before Port Manager)
+  is outside Port Manager's folders and not shown.
+- A `backup` entry that is a file (`tyrquake.opt`) was never backed up: only folders were.
+- Port Manager's backup was the whole folder with `tokens.txt` (the owner's GitHub token was in
+  10 backups) and `log.txt`: now a named list without them. The 10 backups on the owner's card
+  were repacked without `tokens.txt` (each lost exactly that file).
+- Scenarios: `backup_trim` (left out files logged, older backups kept), `backups_screen`
+  (folder backups compacted into .tar without logs, pack, tokens.txt; one deleted),
+  `self_update` (tokens.txt stays in place).
+
 ## Onion's Ports Collection, the .7z bar, GitHub's answers (2026-10-22, v1.2.8)
 
 - Six ports from OnionUI/Ports-Collection in the catalog (C-Dogs, OpenTyrian, Cave Story
