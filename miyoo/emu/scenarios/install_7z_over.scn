@@ -29,3 +29,4 @@ assert_exists Roms/PORTS/Imgs/Hocoslamfy.png
 assert_exists Backups/PortManager/*hocoslamfy*
 assert_not_exists Roms/PORTS/Manuals
 assert_not_exists .pm_work/stage
+assert_log "Hocoslamfy: kept your Roms/PORTS/Games/Hocoslamfy/.hocoslamfy/highscore"

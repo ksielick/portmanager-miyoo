@@ -22,6 +22,14 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
   GitHub / private without a token, wrong or expired token, the hourly limit. Testing a token
   on the device without showing it: `curl -s -o /dev/null -w "%{http_code}"` with the token in
   a shell variable; `tokens.txt` may have spaces around `=` (Port Manager trims them).
+- **An update overwrote the player's data files when the release ships defaults**: the
+  compare loop replaced every differing game file (after a backup), and `is_data_file()` only
+  guarded removing. Ports Collection archives ship an empty `.hocoslamfy/highscore`, C-Dogs'
+  `options.cnf`, Wizznic's `settings.ini` and `highscores/`. Found by `install_7z_over` in CI
+  (the owner's own files were still identical to the archive's). Now what the catalog names as
+  data (`catalog_data()`: ROM, required, required_any, optional, backup, built) is never
+  overwritten ("kept your ..." in the log). Checked on the device: Hocoslamfy reinstalled,
+  the owner's played highscore unchanged.
 - Scenarios: `install_7z_over` (Hocoslamfy over a copy: backup, highscore and shortcut kept,
   no `Manuals/`), `release_not_found`; the A-Z Down counts moved by the new names
   (first_install, install_new_port, install_whole_folder, install_port_and_notfound,

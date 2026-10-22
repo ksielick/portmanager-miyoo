@@ -439,24 +439,28 @@ static int has_dir(const char *rel, const char *dir)
 	return 0;
 }
 
+/* what the catalog names as the player's data: the ROM, required, required_any, optional,
+ * backup and built; an update never overwrites these (a release may ship defaults: Ports
+ * Collection's Hocoslamfy has an empty .hocoslamfy/highscore) */
+static int catalog_data(const Port *p, const char *rel)
+{
+	if (*p->rom && (!strcasecmp(rel, p->rom) || !strcasecmp(base_name(rel), p->rom)))
+		return 1;
+	return in_list(p->required, p->nrequired, rel) || in_list(p->required_any, p->nrequired_any, rel) ||
+	       in_list(p->optional, p->noptional, rel) || in_list(p->backup, p->nbackup, rel) ||
+	       in_list(p->built, p->nbuilt, rel);
+}
+
 static int is_data_file(const Port *p, const char *rel)
 {
 	/* Metadata files are never data */
 	if (!strcmp(rel, ".pm_version") || !strcmp(rel, ".miyoo64_version") || !strcmp(rel, ".pm_manifest"))
 		return 0;
 
-	/* What the catalog names as data (1, 3-7) comes before the guesses about code (on the
-	 * card's FAT every file looks executable: a check of that once deleted F-Zero X's ROM and
-	 * saves, 2026-10-17) */
-
-	/* 1. ROM file */
-	if (*p->rom && (!strcasecmp(rel, p->rom) || !strcasecmp(base_name(rel), p->rom)))
-		return 1;
-
-	/* 3-6. The catalog's data: required, required_any, optional, backup and built */
-	if (in_list(p->required, p->nrequired, rel) || in_list(p->required_any, p->nrequired_any, rel) ||
-	    in_list(p->optional, p->noptional, rel) || in_list(p->backup, p->nbackup, rel) ||
-	    in_list(p->built, p->nbuilt, rel))
+	/* What the catalog names as data comes before the guesses about code (on the card's FAT
+	 * every file looks executable: a check of that once deleted F-Zero X's ROM and saves,
+	 * 2026-10-17) */
+	if (catalog_data(p, rel))
 		return 1;
 
 	/* 7. Standard save / data folder names, at any depth: OpenLara keeps its videos in
@@ -1566,6 +1570,12 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 				if (mlen + strlen(e->dst) + 80 > mcap)
 					newman = realloc(newman, mcap *= 2);
 				mlen += sprintf(newman + mlen, "%s %s\n", h, e->dst);
+				continue;
+			}
+			size_t dl = strlen(p->dir);
+			if (e->kind == M_GAME && !strncmp(e->dst, p->dir, dl) && e->dst[dl] == '/' &&
+			    catalog_data(p, e->dst + dl + 1)) {
+				say_log("%s: kept your %s", p->name, e->dst);
 				continue;
 			}
 			if (e->kind != M_GAME) {
