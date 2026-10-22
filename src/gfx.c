@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <linux/fb.h>
 #include <linux/input.h>
+#include <poll.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -96,8 +97,18 @@ void gfx_flip(void)
 
 int input_key(int *repeat)
 {
+	return input_key_wait(repeat, -1);
+}
+
+int input_key_wait(int *repeat, int ms)
+{
 	struct input_event ev;
-	while (read(in, &ev, sizeof ev) == sizeof ev) {
+	struct pollfd pf = {in, POLLIN, 0};
+	for (;;) {
+		if (ms >= 0 && poll(&pf, 1, ms) == 0)
+			return 0;
+		if (read(in, &ev, sizeof ev) != sizeof ev)
+			break;
 		if (ev.type != EV_KEY || ev.value == 0)
 			continue;
 		/* a held button repeats only when it moves something */

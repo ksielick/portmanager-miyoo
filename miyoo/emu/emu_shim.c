@@ -1,7 +1,7 @@
 /* The Miyoo Mini (Plus) hardware the port manager touches, emulated for tests under qemu-arm.
  *
  * Linked into the emulator build (src/build.sh with EMU=1) together with
- * -Wl,--wrap=open,--wrap=open64,--wrap=ioctl,--wrap=read -lm -lpthread, so the port manager runs unchanged:
+ * -Wl,--wrap=open,--wrap=open64,--wrap=ioctl,--wrap=read,--wrap=poll -lm -lpthread, so the port manager runs unchanged:
  *   - /dev/fb0: a 640x480x32 panel with two pages in fb0.raw; each FBIOPAN_DISPLAY is one frame,
  *   - /dev/input/event0: a pipe; button events from a script are dispatched on-demand when the UI waits for input,
  *   - screenshots of the page shown at chosen frames (PPM, turned back upright),
@@ -47,6 +47,7 @@ int __real_open(const char* path, int flags, ...);
 int __real_open64(const char* path, int flags, ...);
 int __real_ioctl(int fd, unsigned long req, ...);
 ssize_t __real_read(int fd, void* buf, size_t count);
+int __real_poll(struct pollfd* fds, nfds_t nfds, int timeout);
 
 static int s_fbFd = -1;
 static uint32_t* s_fbMem;			/* the shim's own view of the panel file */
@@ -555,32 +556,43 @@ int __wrap_ioctl(int fd, unsigned long req, ...)
 	return __real_ioctl(fd, req, arg);
 }
 
+/* the UI waits for a button: when none is queued, the script's next one is pressed */
+static void DispatchWhenIdle(void)
+{
+	struct pollfd pfd = { .fd = s_inRead, .events = POLLIN };
+	if (__real_poll(&pfd, 1, 0) != 0)
+		return;
+	if (s_scriptPos >= s_scriptCount)
+	{
+		fprintf(stderr, "emu: all scripted events consumed (frame %u): exiting cleanly\n", s_frame);
+		_exit(0);
+	}
+	/* Dispatch next event */
+	unsigned target_frame = s_script[s_scriptPos].frame;
+	while (s_scriptPos < s_scriptCount)
+	{
+		fprintf(stderr, "emu: frame %u (input wait): key %d %s\n", s_frame, s_script[s_scriptPos].code, s_script[s_scriptPos].down ? "down" : "up");
+		SendKey(s_script[s_scriptPos].code, s_script[s_scriptPos].down);
+		s_scriptPos++;
+		if (s_scriptPos < s_scriptCount && s_script[s_scriptPos].frame == target_frame)
+			continue;
+		break;
+	}
+}
+
 ssize_t __wrap_read(int fd, void* buf, size_t count)
 {
 	if (fd >= 0 && fd == s_inRead)
-	{
-		struct pollfd pfd = { .fd = s_inRead, .events = POLLIN };
-		if (poll(&pfd, 1, 0) == 0)
-		{
-			if (s_scriptPos >= s_scriptCount)
-			{
-				fprintf(stderr, "emu: all scripted events consumed (frame %u): exiting cleanly\n", s_frame);
-				_exit(0);
-			}
-			/* Dispatch next event */
-			unsigned target_frame = s_script[s_scriptPos].frame;
-			while (s_scriptPos < s_scriptCount)
-			{
-				fprintf(stderr, "emu: frame %u (input wait): key %d %s\n", s_frame, s_script[s_scriptPos].code, s_script[s_scriptPos].down ? "down" : "up");
-				SendKey(s_script[s_scriptPos].code, s_script[s_scriptPos].down);
-				s_scriptPos++;
-				if (s_scriptPos < s_scriptCount && s_script[s_scriptPos].frame == target_frame)
-					continue;
-				break;
-			}
-		}
-	}
+		DispatchWhenIdle();
 	return __real_read(fd, buf, count);
+}
+
+/* a wait with a timeout (a scrolling name) gets the script's next button at once, so runs stay the same */
+int __wrap_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+	if (nfds == 1 && fds[0].fd >= 0 && fds[0].fd == s_inRead)
+		DispatchWhenIdle();
+	return __real_poll(fds, nfds, timeout);
 }
 
 //----------------------------------------------------------------------------------------

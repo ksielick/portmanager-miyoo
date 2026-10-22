@@ -46,5 +46,7 @@ void gfx_flip(void);
 
 /* blocks until a button is pressed (or repeats while held); *repeat says which */
 int input_key(int *repeat);
+/* the same, but gives up after ms milliseconds (ms < 0: waits) and returns 0 */
+int input_key_wait(int *repeat, int ms);
 
 #endif

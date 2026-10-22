@@ -766,6 +766,30 @@ typedef struct {
 	uint32_t right_clr;
 } MenuItem;
 
+/* a selected name too long for its row scrolls: a pause, one letter a tick, a pause, back */
+#define MARQUEE_MS 200
+static int marquee_tick;
+
+static const char *marquee(const char *s, int max)
+{
+	int over = (int)strlen(s) - max, pause = 5;
+	if (over <= 0)
+		return s;
+	int t = marquee_tick % (over + 2 * pause);
+	return s + (t < pause ? 0 : t < pause + over ? t - pause : over);
+}
+
+/* waits for a key; while `scrolls`, gives the selected name its next tick (and returns 0) */
+static int list_key(int scrolls)
+{
+	int k = input_key_wait(NULL, scrolls ? MARQUEE_MS : -1);
+	if (k == 0)
+		marquee_tick++;
+	else
+		marquee_tick = 0;
+	return k;
+}
+
 /* also returns on `keys` (0-ended), with the key in *out_key */
 static int choose_menu_keys(const char *title, const char *right_hdr, const MenuItem *items, int n, const char *hints, int initial_sel, const int *keys, int *out_key);
 
@@ -787,15 +811,20 @@ static int choose_menu_keys(const char *title, const char *right_hdr, const Menu
 			top = sel;
 		if (sel >= top + LIST_ROWS)
 			top = sel - LIST_ROWS + 1;
+		int scrolls = 0;
 		for (int r = 0; r < LIST_ROWS && top + r < n; r++) {
 			const MenuItem *item = &items[top + r];
 			int y = LIST_Y + r * ROWH;
-			if (top + r == sel)
-				gfx_fill(8, y, SCR_W - 28, ROWH, C_SEL);
 			int sl = item->right[0] ? (int)strlen(item->right) : 0;
 			int max_len = COLS - sl - 2;
 			if (max_len < 10) max_len = 10;
-			gfx_text(16, y + (ROWH - CW) / 2, item->label, max_len, C_TEXT);
+			const char *label = item->label;
+			if (top + r == sel) {
+				gfx_fill(8, y, SCR_W - 28, ROWH, C_SEL);
+				scrolls = (int)strlen(label) > max_len;
+				label = marquee(label, max_len);
+			}
+			gfx_text(16, y + (ROWH - CW) / 2, label, max_len, C_TEXT);
 			if (sl > 0)
 				gfx_text(SCR_W - 28 - sl * CW, y + (ROWH - CW) / 2, item->right, sl, item->right_clr);
 		}
@@ -803,7 +832,9 @@ static int choose_menu_keys(const char *title, const char *right_hdr, const Menu
 		footer(hints ? hints : "A: select   B: cancel");
 		gfx_flip();
 
-		int k = input_key(NULL);
+		int k = list_key(scrolls);
+		if (k == 0)
+			continue;
 		if (k < 0 || k == K_B || k == K_MENU) {
 			if (out_key) *out_key = k;
 			return -1;
@@ -1316,6 +1347,7 @@ static int run_list(int all)
 		else
 			snprintf(right, sizeof right, all ? "%d ports" : "%d installed", n);
 		header(all ? "All ports" : "Port Manager", right);
+		int scrolls = 0;
 		if (sel < top)
 			top = sel;
 		if (sel >= top + LIST_ROWS)
@@ -1349,9 +1381,14 @@ static int run_list(int all)
 				uint32_t c;
 				const char *s = status(p, all, &c);
 				int sl = strlen(s);
-				if (top + r == sel)
+				int max_len = COLS - sl - 2 - (grouped ? 1 : 0);
+				const char *name = p->name;
+				if (top + r == sel) {
 					gfx_fill(8, y, SCR_W - 28, ROWH, C_SEL);
-				gfx_text(grouped ? 32 : 16, y + (ROWH - CW) / 2, p->name, COLS - sl - 2 - (grouped ? 1 : 0), C_TEXT);
+					scrolls = (int)strlen(name) > max_len;
+					name = marquee(name, max_len);
+				}
+				gfx_text(grouped ? 32 : 16, y + (ROWH - CW) / 2, name, max_len, C_TEXT);
 				gfx_text(SCR_W - 28 - sl * CW, y + (ROWH - CW) / 2, s, sl, c);
 			}
 			scrollbar(top, LIST_ROWS, nr, LIST_Y, LIST_ROWS * ROWH);
@@ -1364,7 +1401,9 @@ static int run_list(int all)
 			footer(nup ? "A:info X:all Y:chk St:upd Sel:backups" : "A:info X:all Y:check Sel:backups");
 		gfx_flip();
 
-		int k = input_key(NULL);
+		int k = list_key(scrolls);
+		if (k == 0)
+			continue;
 		if (k < 0 || k == K_B || k == K_MENU)
 			return 0;
 		int step = 0;

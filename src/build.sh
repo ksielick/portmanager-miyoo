@@ -40,7 +40,7 @@ CFLAGS="-O2 -Wall -Wextra -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -static -mcpu=cor
 if [ "$EMU" = "1" ]; then
 	OUT=${OUT:-../build/miyoo_emu/portmanager_emu}
 	mkdir -p "$(dirname "$OUT")"
-	"$CC" $CFLAGS -Wl,--wrap=open,--wrap=open64,--wrap=ioctl,--wrap=read \
+	"$CC" $CFLAGS -Wl,--wrap=open,--wrap=open64,--wrap=ioctl,--wrap=read,--wrap=poll \
 		-o "$OUT" $SRCS ../miyoo/emu/emu_shim.c -lm -lpthread &&
 	cp -f ../catalog.json "$(dirname "$OUT")/catalog.json" &&
 	[ -f ../onion/App/PortManager/cacert.pem ] && cp -f ../onion/App/PortManager/cacert.pem "$(dirname "$OUT")/cacert.pem"
