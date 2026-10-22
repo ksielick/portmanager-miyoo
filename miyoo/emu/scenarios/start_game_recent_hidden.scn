@@ -1,0 +1,9 @@
+# Recents hidden in Onion (only recentlist-hidden.json): Start puts the game there, no recentlist.json is made
+file Roms/recentlist-hidden.json '{"label":"Tomb Raider","rompath":"/mnt/SDCARD/Emu/PORTS/../../Roms/PORTS/Shortcuts/Platform/Tomb Raider.port","imgpath":"/mnt/SDCARD/Emu/PORTS/../../Roms/PORTS/Imgs/Tomb Raider.png","launch":"/mnt/SDCARD/Emu/PORTS/launch.sh","type":5}\n'
+press 1 A        # details: Diddy Kong Racing
+press 2 START    # Port Manager exits, the game is set to run
+shots every:1
+min_frames 1
+assert_not_exists Roms/recentlist.json
+assert_contains Roms/recentlist-hidden.json '{"label":"Diddy Kong Racing","rompath":"'
+assert_contains Roms/recentlist-hidden.json '"type":5}\n{"label":"Tomb Raider",'

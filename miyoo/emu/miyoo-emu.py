@@ -116,7 +116,7 @@ class Scenario:
             elif d == "assert_exists":
                 self.assert_exists.append(a[0])
             elif d == "assert_contains":
-                self.assert_contains.append((a[0], " ".join(a[1:])))
+                self.assert_contains.append((a[0], " ".join(a[1:]).replace("\\n", "\n")))
             elif d == "assert_not_exists":
                 self.assert_not_exists.append(a[0])
             elif d == "assert_not_contains":

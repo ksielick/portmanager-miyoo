@@ -1,4 +1,5 @@
 # Start on a port's page: Port Manager closes and leaves Onion the port's launch command
+# and puts the game on Onion's recent list (none on the card yet: it is made)
 press 1 A        # details: Diddy Kong Racing (game files OK: "Start: play")
 press 2 START    # Port Manager exits, the game is set to run
 shots every:1
@@ -6,3 +7,8 @@ min_frames 1
 assert_contains .tmp_update/cmd_to_run.sh "/Emu/PORTS/launch.sh"
 assert_contains .tmp_update/cmd_to_run.sh "Roms/PORTS/Shortcuts/Racing/Diddy Kong Racing.port"
 assert_log "--- start"
+assert_contains Roms/recentlist.json '{"label":"Diddy Kong Racing","rompath":"'
+assert_contains Roms/recentlist.json '/Emu/PORTS/../../Roms/PORTS/Shortcuts/Racing/Diddy Kong Racing.port","imgpath":"'
+assert_contains Roms/recentlist.json '/Emu/PORTS/../../Roms/PORTS/Imgs/Diddy Kong Racing.png","launch":"'
+assert_contains Roms/recentlist.json '/Emu/PORTS/launch.sh","type":5}\n'
+assert_not_exists Roms/recentlist.json.pm_tmp

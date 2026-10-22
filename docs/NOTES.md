@@ -2,6 +2,34 @@
 
 Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 
+## Start on a game's page (2026-10-22, v1.2.6 and v1.2.7)
+
+- Onion's runtime (`.tmp_update/runtime.sh`) loops: MainUI, then `cmd_to_run.sh`, then
+  `check_switcher`, which deletes `cmd_to_run.sh` unless `/tmp/quick_switch` exists. So Port
+  Manager writes `.tmp_update/cmd_to_run.sh` with the line MainUI writes for a port
+  (`LD_PRELOAD=/mnt/SDCARD/miyoo/app/../lib/libpadsp.so "/mnt/SDCARD/Emu/PORTS/launch.sh"
+  "/mnt/SDCARD/Emu/PORTS/../../Roms/PORTS/Shortcuts/<cat>/<name>.port"`), touches
+  `/tmp/quick_switch` and exits: the game starts without MainUI, MainUI comes back after it.
+  The path has `/Roms/`, so Onion treats it as a game (playActivity, services stopped).
+- MainUI is closed and takes no commands; only it writes the recent list, when the player picks
+  a game. runtime.sh never adds to it (`check_hide_recents` only hides/restores it, and for
+  `.miyoocmd` it even removes MainUI's line). So `pm_launch()` puts the game's line on top of
+  `Roms/recentlist.json` itself (same format: label, rompath, imgpath, launch, `"type":5`), or
+  of `recentlist-hidden.json` when only that exists (recents hidden: no `.showRecents` in
+  `.tmp_update/config`). An older line of the game goes (matched by the rompath's
+  `/Roms/PORTS/Shortcuts/<rel>"` end: MainUI also writes it as `/mnt/SDCARD/Roms/PORTS/...`);
+  other lines are copied byte for byte (MainUI leaves odd bytes in App lines). Written to
+  `<list>.pm_tmp`, then renamed.
+- Checked on the device (Mario Kart 64 (mr-finster)): the game starts, its line on top, the
+  other 10 lines identical; MainUI's Recents shows it and starts it from there; a second Start
+  leaves one line; with recents hidden the line goes into `recentlist-hidden.json` and comes
+  back when they are shown again. Scenarios `start_game`, `start_game_recent`,
+  `start_game_recent_hidden` (`assert_contains` now takes `\n`).
+- Testing a game over SSH: Onion stops dropbear when a game starts. Create
+  `.tmp_update/config/.keepServicesAlive` for the test (Tweaks keeps it as
+  `.keepServicesAlive_` when off) and delete it afterwards; quit the game with
+  `kill $(pidof <exe>)`. MainUI needs a few seconds after a game before a screenshot shows it.
+
 ## Owner's decisions (2026-10-17)
 
 - A port manager like PortMaster, but downloading every port from its **author's GitHub
@@ -160,7 +188,8 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
   Source repo, and Instructions; A checks when unchecked or updates/installs when available;
   Y also checks; X uninstalls; Start plays it when its game files are OK: Port Manager writes
   Onion's `.tmp_update/cmd_to_run.sh` and `/tmp/quick_switch`, exits, and Onion starts the port
-  without MainUI), X all ports (by category, headings), Y check for updates
+  without MainUI; it also puts the game on top of Onion's recent list, see "Start on a game's
+  page"), X all ports (by category, headings), Y check for updates
   (progress page with download size in MB/KB), Start update all,
   B back/exit. Held buttons repeat only for Up/Down/Left/Right/L1/R1.
 - Inline download progress bar: during asset downloads, an ASCII progress bar (`[====>  ]  54%  1.0/1.8 MB`)

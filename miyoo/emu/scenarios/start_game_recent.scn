@@ -1,0 +1,10 @@
+# Start puts the game on top of Onion's recent list: its older line goes, the others stay as they were
+file Roms/recentlist.json '{"label":"Port Manager","imgpath":"x\u00143","launch":"/mnt/SDCARD/App/PortManager/launch.sh","type":3}\n{"label":"Diddy OLD","rompath":"/mnt/SDCARD/Emu/PORTS/../../Roms/PORTS/Shortcuts/Racing/Diddy Kong Racing.port","imgpath":"/mnt/SDCARD/Emu/PORTS/../../Roms/PORTS/Imgs/Diddy Kong Racing.png","launch":"/mnt/SDCARD/Emu/PORTS/launch.sh","type":5}\n{"label":"Tomb Raider","rompath":"/mnt/SDCARD/Emu/PORTS/../../Roms/PORTS/Shortcuts/Platform/Tomb Raider.port","imgpath":"/mnt/SDCARD/Emu/PORTS/../../Roms/PORTS/Imgs/Tomb Raider.png","launch":"/mnt/SDCARD/Emu/PORTS/launch.sh","type":5}\n'
+press 1 A        # details: Diddy Kong Racing
+press 2 START    # Port Manager exits, the game is set to run
+shots every:1
+min_frames 1
+assert_log "recent list: Diddy Kong Racing on top"
+assert_log "its older line removed"
+assert_not_contains Roms/recentlist.json "Diddy OLD"
+assert_contains Roms/recentlist.json '"type":5}\n{"label":"Port Manager","imgpath":"x\u00143","launch":"/mnt/SDCARD/App/PortManager/launch.sh","type":3}\n{"label":"Tomb Raider","rompath":"/mnt/SDCARD/Emu/PORTS/../../Roms/PORTS/Shortcuts/Platform/Tomb Raider.port","imgpath":"/mnt/SDCARD/Emu/PORTS/../../Roms/PORTS/Imgs/Tomb Raider.png","launch":"/mnt/SDCARD/Emu/PORTS/launch.sh","type":5}\n'

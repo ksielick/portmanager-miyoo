@@ -2260,6 +2260,75 @@ void pm_info(const Port *p, char *buf, int size)
 	append_info(buf, size, &n, CLR_DIM "Select: more info\n");
 }
 
+/* MainUI puts a game it starts at the top of Onion's recent list; a game started from here
+ * skips MainUI, so its line (same format) goes on top here, and an older one of it goes.
+ * With recents hidden in Onion the list is recentlist-hidden.json. Other lines are copied
+ * byte for byte (MainUI leaves odd bytes in some). sc: Roms/PORTS/Shortcuts/... */
+static void add_recent(const char *sc)
+{
+	char list[700], tmp[720];
+	snprintf(list, sizeof list, "%s/Roms/recentlist.json", SD);
+	if (!file_exists(list)) {
+		snprintf(tmp, sizeof tmp, "%s/Roms/recentlist-hidden.json", SD);
+		if (file_exists(tmp))
+			snprintf(list, sizeof list, "%s", tmp);
+	}
+	char label[300], path[900], img[900], launch[700];
+	snprintf(label, sizeof label, "%s", base_name(sc));
+	char *dot = strrchr(label, '.');
+	if (dot)
+		*dot = 0;
+	snprintf(path, sizeof path, "%s/Emu/PORTS/../../%s", SD, sc);
+	snprintf(img, sizeof img, "%s/Emu/PORTS/../../Roms/PORTS/Imgs/%s.png", SD, label);
+	snprintf(launch, sizeof launch, "%s/Emu/PORTS/launch.sh", SD);
+	cJSON *e = cJSON_CreateObject();
+	cJSON_AddStringToObject(e, "label", label);
+	cJSON_AddStringToObject(e, "rompath", path);
+	cJSON_AddStringToObject(e, "imgpath", img);
+	cJSON_AddStringToObject(e, "launch", launch);
+	cJSON_AddNumberToObject(e, "type", 5);
+	char *line = cJSON_PrintUnformatted(e);
+	cJSON_Delete(e);
+	/* an older line of this game: its rompath ends the same, whatever the card's path */
+	cJSON *r = cJSON_CreateString(sc);
+	char *q = cJSON_PrintUnformatted(r); /* "Roms/PORTS/Shortcuts/...", escaped as in the list */
+	cJSON_Delete(r);
+	char same[900];
+	snprintf(same, sizeof same, "/%s", q ? q + 1 : sc); /* ends with the closing quote */
+	free(q);
+	size_t nsame = strlen(same);
+
+	size_t n = 0;
+	char *old = read_file(list, &n);
+	snprintf(tmp, sizeof tmp, "%s.pm_tmp", list);
+	FILE *o = line ? fopen(tmp, "w") : NULL;
+	if (!o) {
+		say_log("recent list: can't write %s", tmp);
+		free(old);
+		free(line);
+		return;
+	}
+	fprintf(o, "%s\n", line);
+	int dropped = 0;
+	for (size_t i = 0; old && i < n;) {
+		char *s = old + i, *nl = memchr(s, '\n', n - i);
+		size_t len = nl ? (size_t)(nl - s) : n - i;
+		char *rp = memmem(s, len, "\"rompath\":", 10);
+		if (rp && memmem(rp, len - (rp - s), same, nsame))
+			dropped++;
+		else if (len)
+			fwrite(s, 1, len, o), fputc('\n', o);
+		i += len + 1;
+	}
+	int ok = fclose(o) == 0 && rename(tmp, list) == 0;
+	say_log("recent list: %s on top of %s%s", label, list,
+		!ok ? " FAILED" : dropped ? ", its older line removed" : "");
+	if (!ok)
+		remove(tmp);
+	free(old);
+	free(line);
+}
+
 /* Onion's runtime runs .tmp_update/cmd_to_run.sh once Port Manager exits; /tmp/quick_switch
  * makes it skip MainUI (like its startup apps), so the game starts right away and MainUI
  * comes back after it. The command is the one MainUI writes for a port. */
@@ -2285,6 +2354,7 @@ int pm_launch(const Port *p)
 	if (o)
 		fclose(o);
 	say_log("--- start %s: %s", p->id, sc);
+	add_recent(sc);
 	return 0;
 }
 
