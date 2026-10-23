@@ -62,6 +62,7 @@ int pm_launch(const Port *p);
 typedef struct {
 	char path[800];
 	char display[192];
+	char version[64]; /* the version it holds, "" if unknown */
 	char tag[64];
 	char date[64];
 	long size;
@@ -79,6 +80,7 @@ typedef struct {
 	char id[96];      /* the port's id, or "PortManager" */
 	char name[128];   /* the game's name, "Port Manager", or the id when not in the catalog */
 	char tag[64];     /* the version it was made before */
+	char version[64]; /* the version it holds, "" if unknown */
 	char date[16];    /* YYYY-MM-DD */
 	long long bytes;
 	int is_dir;       /* the first backups (2026-10-17) were folders, not .tar */

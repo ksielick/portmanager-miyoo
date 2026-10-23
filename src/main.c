@@ -910,6 +910,17 @@ static void size_text(char *s, size_t size, long long bytes)
 		snprintf(s, size, "%lld KB", (bytes + 1023) / 1024);
 }
 
+/* the version a backup holds; one without a version file says which update it came before */
+static const char *held(const char *version, const char *tag)
+{
+	static char s[80];
+	if (*version)
+		snprintf(s, sizeof s, "%s", version);
+	else
+		snprintf(s, sizeof s, "<%s", *tag ? tag : "?");
+	return s;
+}
+
 /* one backup or all of them, each with the bar; the screen says what was freed */
 static void compact_backups(const Backup *b, int n)
 {
@@ -921,7 +932,7 @@ static void compact_backups(const Backup *b, int n)
 			snprintf(progress_right, sizeof progress_right, "%d/%d", i + 1, n);
 		item_begin(b[i].name);
 		char s[200], sz[32];
-		snprintf(s, sizeof s, CLR_DIM "before %s, %s", b[i].tag, b[i].date);
+		snprintf(s, sizeof s, CLR_DIM "%s, %s", held(b[i].version, b[i].tag), b[i].date);
 		lines_add(&progress, s);
 		long long saved = 0;
 		if (pm_backup_compact(&b[i], &saved)) {
@@ -969,8 +980,8 @@ static void do_backups(void)
 		for (int i = 0; i < n; i++) {
 			char sz[32];
 			size_text(sz, sizeof sz, bk[i].bytes);
-			/* made before updating to `tag`: it holds the older version */
-			snprintf(items[i].label, sizeof items[i].label, "%s <%s", bk[i].name, bk[i].tag);
+			/* the version it holds, which the player knows (not the update it was made before) */
+			snprintf(items[i].label, sizeof items[i].label, "%s %s", bk[i].name, held(bk[i].version, bk[i].tag));
 			snprintf(items[i].right, sizeof items[i].right, "%s", sz);
 			items[i].right_clr = C_DIM;
 		}
@@ -989,8 +1000,8 @@ static void do_backups(void)
 		char q[600], sz[32];
 		size_text(sz, sizeof sz, bk[s].bytes);
 		if (key == K_X) {
-			snprintf(q, sizeof q, "Delete this backup?\n\n%s, before %s\n%s, %s\n\nIts saves and files will be gone for good.",
-				bk[s].name, bk[s].tag, bk[s].date, sz);
+			snprintf(q, sizeof q, "Delete this backup?\n\n%s %s\n%s, %s\n\nIts saves and files will be gone for good.",
+				bk[s].name, held(bk[s].version, bk[s].tag), bk[s].date, sz);
 			if (confirm_choice(q, "A: delete   B: cancel") == 1 && pm_backup_delete(&bk[s]))
 				alert_box(pm_error);
 		}
@@ -1001,8 +1012,8 @@ static void do_backups(void)
 				compact_backups(bk, n);
 		}
 		else {
-			snprintf(q, sizeof q, "Compact this backup?\n\n%s, before %s\n%s, %s\n\nLeaves out logs and data the game builds again from its ROM. Saves stay.",
-				bk[s].name, bk[s].tag, bk[s].date, sz);
+			snprintf(q, sizeof q, "Compact this backup?\n\n%s %s\n%s, %s\n\nLeaves out logs and data the game builds again from its ROM. Saves stay.",
+				bk[s].name, held(bk[s].version, bk[s].tag), bk[s].date, sz);
 			if (confirm(q))
 				compact_backups(&bk[s], 1);
 		}
@@ -1042,13 +1053,13 @@ static void do_restore(Port *p)
 				snprintf(items[i].label, sizeof items[i].label, "%s", backups[i].date);
 				if (backups[i].size >= 1024 * 1024)
 					snprintf(items[i].right, sizeof items[i].right, "%s (%.1f MB)",
-						*backups[i].tag ? backups[i].tag : "bak", (double)backups[i].size / (1024.0 * 1024.0));
+						held(backups[i].version, backups[i].tag), (double)backups[i].size / (1024.0 * 1024.0));
 				else if (backups[i].size > 0)
 					snprintf(items[i].right, sizeof items[i].right, "%s (%ld KB)",
-						*backups[i].tag ? backups[i].tag : "bak", (backups[i].size + 1023) / 1024);
+						held(backups[i].version, backups[i].tag), (backups[i].size + 1023) / 1024);
 				else
 					snprintf(items[i].right, sizeof items[i].right, "%s (folder)",
-						*backups[i].tag ? backups[i].tag : "bak");
+						held(backups[i].version, backups[i].tag));
 				items[i].right_clr = C_ACCENT;
 			}
 
@@ -1067,6 +1078,7 @@ static void do_restore(Port *p)
 					backups[b_sel].display);
 				if (confirm_choice(q, "A: delete   B: cancel") == 1) {
 					remove_tree(backups[b_sel].path);
+					say_log("backup deleted: %s", base_name(backups[b_sel].path));
 				}
 				pm_free_backups(backups, nb);
 				continue;

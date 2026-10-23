@@ -1863,6 +1863,101 @@ int pm_install_release(Port *p, const RemoteRelease *rel)
 	return apply_release(p, rel->tag, rel->asset_name, rel->download_url, rel->api_url, rel->digest, rel->asset_size);
 }
 
+/* --- the version a backup holds (owner, 2026-10-22: the player wants to know which version
+ * it is; the file name only says which update it was made before) --- */
+
+/* rank of a version file: .pm_version first, miyoo64's own next */
+static int version_rank(const char *path)
+{
+	return ends_with(path, "/.pm_version") ? 2 : ends_with(path, "/.miyoo64_version") ? 1 : 0;
+}
+
+static void first_line(const char *s, char *out, int size)
+{
+	snprintf(out, size, "%s", s);
+	out[strcspn(out, "\r\n")] = 0;
+}
+
+/* a tar's headers one by one, each file's data skipped: a few reads even for 60 MB */
+static void tar_version(const char *tar, char *out, int size)
+{
+	FILE *f = fopen(tar, "rb");
+	if (!f)
+		return;
+	unsigned char h[512];
+	char name[300], longname[300] = "", data[64];
+	int got = 0;
+	while (got < 2 && fread(h, 1, 512, f) == 512 && h[0]) {
+		char num[13];
+		memcpy(num, h + 124, 12);
+		num[12] = 0;
+		long long sz = strtoll(num, NULL, 8);
+		long long padded = (sz + 511) / 512 * 512;
+		if (*longname)
+			snprintf(name, sizeof name, "%s", longname);
+		else if (!memcmp(h + 257, "ustar", 5) && h[345])
+			snprintf(name, sizeof name, "%.155s/%.100s", (char *)h + 345, (char *)h);
+		else
+			snprintf(name, sizeof name, "%.100s", (char *)h);
+		*longname = 0;
+		if (h[156] == 'L' && sz < (long long)sizeof longname) {
+			/* GNU long name: the next header's */
+			if (fread(longname, 1, sz, f) != (size_t)sz)
+				break;
+			longname[sz] = 0;
+			padded -= sz;
+		} else {
+			int r = version_rank(name);
+			if (r > got && sz > 0 && sz < (long long)sizeof data) {
+				if (fread(data, 1, sz, f) != (size_t)sz)
+					break;
+				data[sz] = 0;
+				first_line(data, out, size);
+				got = r;
+				padded -= sz;
+			}
+		}
+		if (fseeko(f, padded, SEEK_CUR))
+			break;
+	}
+	fclose(f);
+}
+
+typedef struct {
+	const char *root;
+	char *out;
+	int size, got;
+} DirVersion;
+
+static void dir_version_cb(const char *rel, void *ctx)
+{
+	DirVersion *dv = ctx;
+	char slash[700];
+	snprintf(slash, sizeof slash, "/%s", rel);
+	int r = version_rank(slash);
+	if (r <= dv->got)
+		return;
+	char f[1200];
+	snprintf(f, sizeof f, "%s/%s", dv->root, rel);
+	char *v = read_file(f, NULL);
+	if (v) {
+		first_line(v, dv->out, dv->size);
+		dv->got = r;
+		free(v);
+	}
+}
+
+/* "" when the backup has no version file (made before Port Manager knew it) */
+static void backup_version(const char *path, int dir, char *out, int size)
+{
+	*out = 0;
+	if (dir) {
+		DirVersion dv = {path, out, size, 0};
+		walk_files(path, dir_version_cb, &dv);
+	} else
+		tar_version(path, out, size);
+}
+
 int pm_list_backups(const Port *p, BackupItem **items, int *n)
 {
 	*items = NULL;
@@ -1926,12 +2021,19 @@ int pm_list_backups(const Port *p, BackupItem **items, int *n)
 			if (dot) *dot = 0;
 		}
 
-		if (b->size >= 1024 * 1024)
-			snprintf(b->display, sizeof b->display, "%s  before %s (%.1f MB)", b->date, *b->tag ? b->tag : "?", (double)b->size / (1024.0 * 1024.0));
-		else if (b->size > 0)
-			snprintf(b->display, sizeof b->display, "%s  before %s (%ld KB)", b->date, *b->tag ? b->tag : "?", (b->size + 1023) / 1024);
+		if (is_dir_entry || is_tar)
+			backup_version(full, is_dir_entry, b->version, sizeof b->version);
+		char what[80];
+		if (*b->version)
+			snprintf(what, sizeof what, "%s", b->version);
 		else
-			snprintf(b->display, sizeof b->display, "%s  before %s (folder)", b->date, *b->tag ? b->tag : "?");
+			snprintf(what, sizeof what, "before %s", *b->tag ? b->tag : "?");
+		if (b->size >= 1024 * 1024)
+			snprintf(b->display, sizeof b->display, "%s  %s (%.1f MB)", b->date, what, (double)b->size / (1024.0 * 1024.0));
+		else if (b->size > 0)
+			snprintf(b->display, sizeof b->display, "%s  %s (%ld KB)", b->date, what, (b->size + 1023) / 1024);
+		else
+			snprintf(b->display, sizeof b->display, "%s  %s", b->date, what);
 	}
 	closedir(d);
 
@@ -2009,6 +2111,7 @@ int pm_backups_all(Backup **items, int *n, long long *total)
 		snprintf(b->name, sizeof b->name, "%s", !strcmp(b->id, "PortManager") ? "Port Manager" : p ? p->name : b->id);
 		b->is_dir = isd;
 		b->bytes = isd ? tree_bytes(full) : file_size(full);
+		backup_version(full, isd, b->version, sizeof b->version);
 		*total += b->bytes;
 	}
 	closedir(d);
@@ -2257,7 +2360,10 @@ int pm_restore_backup(Port *p, const BackupItem *b)
 		closedir(d);
 
 	pm_scan();
-	say("%s: restored from backup (%s)", p->name, *b->tag ? b->tag : b->date);
+	if (*b->version)
+		say("%s: %s restored from the backup of %s", p->name, b->version, b->date);
+	else
+		say("%s: restored from the backup of %s", p->name, b->date);
 	return 0;
 }
 

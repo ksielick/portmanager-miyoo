@@ -30,6 +30,18 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
   step of Y anyway since v1.2.3, so Select is now always the backups (owner's choice). Footer:
   "A:info X:all Y:check Sel:backups" ("B: exit" dropped: B exits everywhere), with updates
   "A:info X:all Y:chk St:upd Sel:backups" (37 columns).
+- **A backup is shown by the version it holds** (owner, 2026-10-23: "nazywamy backupy numerami
+  nowej wersji; gracz chciałby wiedzieć, KTÓREJ wersji to jest backup"). The file name keeps
+  `before-<new>` (the update it was made before; also what "Install an older version" makes,
+  e.g. `before-1.2.0` holding 1.3.2), but screens and the restore message show the backup's own
+  `.pm_version` (or `.miyoo64_version`). In a `.tar` it is found by reading the 512-byte headers
+  and seeking over each file's data (`tar_version()`), a few reads even for 60 MB, so the
+  screens stay instant; a backup without one shows `<new>`. Found on the owner's card: they
+  restored "1.3.0" thinking it was 1.3.0, it held 1.2.0.
+- miyoo64 save states are tied to the exact build: after an update the game refuses an older
+  state ("another build ...") and keeps it as `state_quick.sav.rejected`; the in-game save
+  (`eeprom.bin`) carries over. Install an older version never restores a backup: it installs
+  the release and keeps the current saves.
 - `Backups/miyoo64` (184 MB on the owner's card, from the hand migration before Port Manager)
   is outside Port Manager's folders and not shown.
 - A `backup` entry that is a file (`tyrquake.opt`) was never backed up: only folders were.

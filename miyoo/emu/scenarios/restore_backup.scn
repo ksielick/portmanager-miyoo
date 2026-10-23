@@ -13,7 +13,7 @@ press 11 B       # details
 press 12 B       # exit
 shots every:1
 min_frames 10
-assert_log "Diddy Kong Racing: restored from backup"
+assert_log "Diddy Kong Racing: 1.1.2 restored from the backup of"
 assert_not_contains Roms/PORTS/Games/DiddyKongRacing/launch.sh miyoo_pack
 assert_contains Roms/PORTS/Games/DiddyKongRacing/.miyoo64_version 1.1.2
 assert_not_exists Roms/PORTS/Games/DiddyKongRacing/.pm_version
