@@ -17,3 +17,4 @@ NOTES updated after each step. Catalog: `catalog.json`, format in `docs/CATALOG.
   - Capture screenshot from device: `tools/screenshot_miyoo.bat` (double-click; saves to `screenshots/` and opens it) or `powershell -ExecutionPolicy Bypass -File tools/screenshot_miyoo.ps1 [out.png] [-Open]` (dumps `/dev/fb0`, converts with ffmpeg using pan offset).
   - Low-level tools (`mssh`/`mscp`, SMB share `\\192.168.0.246\Roms`) live in `G:\Emulacja\redriver2-miyoo\repos\REDRIVER2\miyoo\tools\`.
 - Repo files in English; chat with the owner in Polish.
+- Shared Miyoo knowledge for all projects: the `miyoo` skill (`~/.claude/skills/miyoo/SKILL.md`: owner rules, device facts, shared tools) and `G:\Emulacja\miyoo.md` (the full measured notes). Add cross-project findings there.
