@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir
 $GitSh = "G:\Git\bin\sh.exe"
-$AskPass = "/g/Emulacja/redriver2-miyoo/repos/REDRIVER2/miyoo/tools/askpass.sh"
+$AskPass = "/g/Emulacja/tools-miyoo/device/askpass.sh"
 $Ffmpeg = "d:\Program Files\ffmpeg\bin\ffmpeg.exe"
 
 if (-not (Test-Path $Ffmpeg)) {
