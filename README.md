@@ -80,7 +80,7 @@ updates.
 ## Ports
 
 Racing: Mario Kart 64 (two ports: cacuracaptors' and mr-finster's), Diddy Kong Racing, F-Zero X ·
-FPS: GoldenEye 007, Perfect Dark, Hexen II · Platform: Super Mario 64, Tomb Raider, Cave Story
+FPS: Quake, Quake II, GoldenEye 007, Perfect Dark, Hexen II · Platform: Super Mario 64, Tomb Raider, Cave Story
 (NXEngine) · Action: Ocarina of Time, Majora's Mask, Star Fox 64, Super Smash Bros., C-Dogs,
 OpenTyrian · RPG: Fallout, Fallout 2, Paper Mario, Mines of Moria, Monk Tower · Arcade: 3D
 Pinball Space Cadet, SkiFree, Tennis Vs Zombies · Puzzle games: Frozen Bubble, Panel Attack,

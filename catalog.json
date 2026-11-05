@@ -766,6 +766,55 @@
       "layout": "sdcard-root",
       "dir": "Roms/PORTS/Games/Dinothawr",
       "data": {"optional": [".game_config/"]}
+    },
+    {
+      "id": "tyrquake-miyoo",
+      "name": "Quake",
+      "category": "FPS",
+      "status": "playable",
+      "repo": "ksielick/tyrquake-miyoo",
+      "asset": "^TyrQuake-Miyoo-Standalone-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/TyrQuake-Miyoo",
+      "backup": [
+        "saves/",
+        "tyrquake.opt"
+      ],
+      "data": {
+        "optional": [
+          "id1/pak0.pak",
+          "id1/pak1.pak",
+          "id1/music/"
+        ]
+      },
+      "get": "Quake (DOS, Steam or GOG). Copy pak0.pak and pak1.pak from its id1 folder into Roms/PORTS/Games/TyrQuake-Miyoo/id1/; music (optional) as id1/music/track02.ogg ... track11.ogg. If Quake is already set up in Onion's Ports Collection (Roms/PORTS/Games/Quake Collection (TyrQuake)/id1), that one is used."
+    },
+    {
+      "id": "quake2",
+      "name": "Quake II",
+      "category": "FPS",
+      "status": "playable",
+      "repo": "ksielick/quake2-miyoomini",
+      "asset": "^Quake2-Miyoo-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Quake2",
+      "backup": [
+        ".yq2/"
+      ],
+      "data": {
+        "optional": [
+          "baseq2/pak0.pak",
+          "baseq2/pak1.pak",
+          "baseq2/pak2.pak",
+          "baseq2/video/",
+          "xatrix/pak0.pak",
+          "xatrix/video/",
+          "rogue/pak0.pak",
+          "rogue/video/",
+          "music/"
+        ]
+      },
+      "get": "Quake II (PC / Steam / GOG). Copy pak0.pak (and optional pak1.pak, pak2.pak, video/*.cin) into Roms/PORTS/Games/Quake2/baseq2/. Mission packs: copy data into xatrix/ or rogue/. Soundtrack: copy OGG tracks into music/."
     }
   ]
 }
