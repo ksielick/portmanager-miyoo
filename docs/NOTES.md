@@ -738,11 +738,11 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
 ## Prehistorik (1991): prehistorik-miyoo in the catalog (2026-11-06, catalog only, on main the same day)
 
 - ksielick/prehistorik-miyoo: the Miyoo port of Olduvai (ksokolowski/olduvai) under its own name
-  (Olduvai's name and logo are its author's marks). sdcard-root zip ,
-  Platform, playable;  (play.json, quicksave); game files required in .
-  Its shortcut names the program as , so it always shows; the launcher takes the
-  files from  and the DOS box art when they are on the card.
-- Tried first from  with the repo private (token ): the owner
+  (Olduvai's name and logo are its author's marks). sdcard-root zip `Prehistorik-Miyoo-<ver>.zip`,
+  Platform, playable; `backup: conf/` (play.json, quicksave); game files required in `game/`.
+  Its shortcut names the program as `GameDataFile`, so it always shows; the launcher takes the
+  files from `Roms/DOS/Prehistorik (1991).zip` and the DOS box art when they are on the card.
+- Tried first from `catalog.local.json` with the repo private (token `ksielick/*`): the owner
   installed v0.9.11-1 and updated to v0.9.11-2 with Port Manager, both fine. Then the repo went
   public and the entry moved here; the local copies (PC, card) lost it.
 - No new fields: no Port Manager release needed. A-Z list: it lands between Plants vs. Zombies
