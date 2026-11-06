@@ -2,6 +2,12 @@
 
 Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 
+## v1.2.10: catalog-only release (2026-11-06)
+
+- No program change since v1.2.9: `PM_VERSION` 1.2.10 so the release zip carries the new
+  catalog (Quake, Quake II, Banjo-Kazooie, Pilotwings 64, The New Tetris, cacuracaptors' OoT).
+  Notes in `docs/releases/v1.2.10.md`. `version_cmp` compares number by number, so 1.2.10 > 1.2.9.
+
 ## Four new ports: Banjo-Kazooie, Pilotwings 64, The New Tetris, cacuracaptors' Ocarina of Time (2026-11-06, catalog only)
 
 - miyoo64 1.4.7 (2026-11-06) has three games not yet in the catalog: `BanjoKazooie-miyoo.zip`,
