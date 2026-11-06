@@ -82,7 +82,7 @@ Categories (Onion's names, plus RPG; confirmed by the owner 2026-10-17):
 |---|---|
 | Racing | Mario Kart 64, Mario Kart 64 (mr-finster), Diddy Kong Racing, F-Zero X |
 | FPS | Quake, Quake II, GoldenEye 007, Perfect Dark, Hexen II |
-| Platform | Super Mario 64, Banjo-Kazooie, Tomb Raider, Cave Story (NXEngine) |
+| Platform | Super Mario 64, Banjo-Kazooie, Tomb Raider, Cave Story (NXEngine), Prehistorik (1991) |
 | Action | Ocarina of Time, Zelda - Ocarina of Time (cacuracaptors), Majora's Mask, Star Fox 64, Super Smash Bros., C-Dogs, OpenTyrian |
 | RPG | Fallout, Fallout 2, Paper Mario, Mines of Moria, Monk Tower |
 | Arcade | 3D Pinball Space Cadet, SkiFree, Tennis Vs Zombies |

@@ -81,7 +81,7 @@ updates.
 
 Racing: Mario Kart 64 (two ports: cacuracaptors' and mr-finster's), Diddy Kong Racing, F-Zero X ·
 FPS: Quake, Quake II, GoldenEye 007, Perfect Dark, Hexen II · Platform: Super Mario 64, Banjo-Kazooie,
-Tomb Raider, Cave Story (NXEngine) · Action: Ocarina of Time (two ports: cacuracaptors' and
+Tomb Raider, Cave Story (NXEngine), Prehistorik (1991) · Action: Ocarina of Time (two ports: cacuracaptors' and
 mr-finster's), Majora's Mask, Star Fox 64, Super Smash Bros., C-Dogs, OpenTyrian · RPG: Fallout,
 Fallout 2, Paper Mario, Mines of Moria, Monk Tower · Arcade: 3D Pinball Space Cadet, SkiFree,
 Tennis Vs Zombies · Puzzle games: Frozen Bubble, Panel Attack, Wizznic, Dinothawr, The New Tetris ·

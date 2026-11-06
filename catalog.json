@@ -976,6 +976,37 @@
         ]
       },
       "get": "Quake II (PC / Steam / GOG). Copy pak0.pak (and optional pak1.pak, pak2.pak, video/*.cin) into Roms/PORTS/Games/Quake2/baseq2/. Mission packs: copy data into xatrix/ or rogue/. Soundtrack: copy OGG tracks into music/."
+    },
+    {
+      "id": "prehistorik",
+      "name": "Prehistorik (1991)",
+      "category": "Platform",
+      "status": "playable",
+      "repo": "ksielick/prehistorik-miyoo",
+      "asset": "^Prehistorik-Miyoo-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/Prehistorik",
+      "backup": [
+        "conf/"
+      ],
+      "data": {
+        "required": [
+          "game/FILESA.CUR",
+          "game/FILESB.CUR",
+          "game/FILESA.VGA",
+          "game/FILESB.VGA"
+        ],
+        "required_any": [
+          "game/HISTORIK.EXE",
+          "game/PREH.SQZ"
+        ],
+        "optional": [
+          "playlog/",
+          "playlog.on",
+          "bug_reports/"
+        ]
+      },
+      "get": "Prehistorik (GOG's Prehistorik 1+2, or the DOS original): copy FILESA.CUR, FILESB.CUR, FILESA.VGA, FILESB.VGA and HISTORIK.EXE (or PREH.SQZ) into Roms/PORTS/Games/Prehistorik/game/. If Roms/DOS/Prehistorik (1991).zip is on the card, the first launch takes them from it."
     }
   ]
 }

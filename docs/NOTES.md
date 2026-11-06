@@ -734,3 +734,17 @@ files. 34 entries are apps, not games (they install into Onion's Apps by nature)
   - `App/PortManager/catalog.local.json` on the card still has 8 entries (5 copies of entries
     now public, plus the mk64 one); the PC copy has the 3 private ones. The next deploy fixes it.
   - PC backup of the deleted catalog: `backup/20261020-before-catalog-delete/catalog.json`.
+
+## Prehistorik (1991): prehistorik-miyoo in the catalog (2026-11-06, catalog only, on main the same day)
+
+- ksielick/prehistorik-miyoo: the Miyoo port of Olduvai (ksokolowski/olduvai) under its own name
+  (Olduvai's name and logo are its author's marks). sdcard-root zip ,
+  Platform, playable;  (play.json, quicksave); game files required in .
+  Its shortcut names the program as , so it always shows; the launcher takes the
+  files from  and the DOS box art when they are on the card.
+- Tried first from  with the repo private (token ): the owner
+  installed v0.9.11-1 and updated to v0.9.11-2 with Port Manager, both fine. Then the repo went
+  public and the entry moved here; the local copies (PC, card) lost it.
+- No new fields: no Port Manager release needed. A-Z list: it lands between Plants vs. Zombies
+  and Quake (index 26); the scenarios walk at most to Panel Attack (22), unchanged.
+
