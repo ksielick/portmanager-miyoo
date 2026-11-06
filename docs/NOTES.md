@@ -2,6 +2,35 @@
 
 Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 
+## Four new ports: Banjo-Kazooie, Pilotwings 64, The New Tetris, cacuracaptors' Ocarina of Time (2026-11-06, catalog only)
+
+- miyoo64 1.4.7 (2026-11-06) has three games not yet in the catalog: `BanjoKazooie-miyoo.zip`,
+  `Pilotwings64-miyoo.zip`, `NewTetris-miyoo.zip`. Same zip layout as the other miyoo64 games
+  (checked in the zips), so `app-to-ports` with the same `skip`. ROMs from the author's README
+  (USA, .z64 order): Banjo-Kazooie 1.0 `1fe16320...` (16 MB, not Rev A), Pilotwings 64
+  `ec771aed...` (8 MB), The New Tetris `83fff25e...` (12 MB). Each game copies the ROM to
+  `data/banjo.z64` / `pw64.z64` / `tnt.z64` on first start: in `built` (the port counts as ready
+  without `rom.z64`) and `nobackup`. Saves in `data/` (`eeprom.bin`, `sram.bin`, states).
+  Status `prerelease` (the author's README calls all three Beta). Categories: Platform,
+  Simulation, Puzzle games.
+- cacuracaptors/oot-miyoomini v1.0.0 (2026-11-04): an own OoT port with its own renderer, a
+  separate entry `oot` next to miyoo64's (as with Mario Kart 64). `sdcard-root` zip
+  (`Roms/PORTS/Games/ZeldaOoT/`, shortcut and picture "Zelda - Ocarina of Time", so no clash
+  with miyoo64's "Ocarina of Time"). Needs the USA **Rev A (1.1)** ROM, SHA-1 `d3ecb253...`
+  (32 MB; MD5 `721fdcc6...` as in zeldaret/oot's `baseroms/ntsc-1.1`), any file name, zipped
+  too. It builds `oot.cart` (~73 MB) and can then drop the ROM: `built`. Optional Europe Rev A
+  ROM gives `idiomas/de.oot` and `fr.oot` (`data.optional`, kept on "remove, keep data").
+  Backup: `saves/`, `options.txt`. Its shortcut names the binary (`GameDataFile="oot"`), so it
+  always shows. No licence file in the repo (as mk64-miyoomini, kept at the owner's word).
+- A-Z: Banjo-Kazooie is 2nd and Pilotwings 64 sits before Plants vs. Zombies, so 8 emulator
+  scenarios that walk the list with Down got one more Down (targets unchanged: Cave Story 3,
+  F-Zero X 6, Frozen Bubble 9, Hocoslamfy 13, Majora's Mask 14, Mario Kart 64 (mr-finster) 16,
+  Panel Attack 21). Zuma Deluxe is still last (`details_status`: 3x R1).
+- All four SHA-1s checked against the owner's dumps in `G:\Emulacja\n64\` (2026-11-06). The
+  Banjo-Kazooie, Pilotwings 64 and New Tetris dumps there are byte-swapped (v64 data named
+  `.n64`); they match after `dd conv=swab`. miyoo64 takes any byte order.
+- Not run on the device yet.
+
 ## Backups trimmed (2026-10-22, v1.2.9)
 
 - On the owner's card the backups were ~1 GB (57 in `Backups/PortManager`, 184 MB more in

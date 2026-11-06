@@ -82,13 +82,13 @@ Categories (Onion's names, plus RPG; confirmed by the owner 2026-10-17):
 |---|---|
 | Racing | Mario Kart 64, Mario Kart 64 (mr-finster), Diddy Kong Racing, F-Zero X |
 | FPS | Quake, Quake II, GoldenEye 007, Perfect Dark, Hexen II |
-| Platform | Super Mario 64, Tomb Raider, Cave Story (NXEngine) |
-| Action | Ocarina of Time, Majora's Mask, Star Fox 64, Super Smash Bros., C-Dogs, OpenTyrian |
+| Platform | Super Mario 64, Banjo-Kazooie, Tomb Raider, Cave Story (NXEngine) |
+| Action | Ocarina of Time, Zelda - Ocarina of Time (cacuracaptors), Majora's Mask, Star Fox 64, Super Smash Bros., C-Dogs, OpenTyrian |
 | RPG | Fallout, Fallout 2, Paper Mario, Mines of Moria, Monk Tower |
 | Arcade | 3D Pinball Space Cadet, SkiFree, Tennis Vs Zombies |
 | Strategy | Plants vs. Zombies |
-| Simulation | Harvest Moon 64 (added with the owner's OK, 2026-10-20) |
-| Puzzle games | Frozen Bubble, Panel Attack, Wizznic, Dinothawr, Zuma Deluxe |
+| Simulation | Harvest Moon 64 (added with the owner's OK, 2026-10-20), Pilotwings 64 |
+| Puzzle games | Frozen Bubble, Panel Attack, Wizznic, Dinothawr, Zuma Deluxe, The New Tetris |
 | Reflex | Hocoslamfy |
 
 ### Onion's Ports Collection (OnionUI/Ports-Collection, 2026-10-22)

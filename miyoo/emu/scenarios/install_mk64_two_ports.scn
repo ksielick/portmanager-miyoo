@@ -7,19 +7,19 @@ file "Roms/PORTS/Imgs/Mario Kart 64.png" theirs
 press 1 X        # all ports, A-Z
 press 2 DOWN / press 3 DOWN / press 4 DOWN / press 5 DOWN / press 6 DOWN / press 7 DOWN
 press 8 DOWN / press 9 DOWN / press 10 DOWN / press 11 DOWN / press 12 DOWN / press 13 DOWN
-press 14 DOWN / press 15 DOWN / press 16 DOWN
-press 17 A       # details: Mario Kart 64 (mr-finster)
-press 18 A       # check
-press 19 A       # install
-press 20 A       # yes
-press 21 B       # result
-press 22 B       # details
-press 23 B       # all ports
-press 24 B       # exit
+press 14 DOWN / press 15 DOWN / press 16 DOWN / press 17 DOWN
+press 18 A       # details: Mario Kart 64 (mr-finster)
+press 19 A       # check
+press 20 A       # install
+press 21 A       # yes
+press 22 B       # result
+press 23 B       # details
+press 24 B       # all ports
+press 25 B       # exit
 timeout 600
 shots every:1
-nonblank 17
-min_frames 19
+nonblank 18
+min_frames 20
 assert_exists Roms/PORTS/Games/MarioKart64-mrfinster/mk64
 assert_exists Roms/PORTS/Games/MarioKart64-mrfinster/.pm_version
 assert_exists "Roms/PORTS/Shortcuts/Racing/Mario Kart 64 (mr-finster).port"

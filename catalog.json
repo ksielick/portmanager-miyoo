@@ -152,6 +152,85 @@
       "get": "Mario Kart 64 (USA) cartridge dump as rom.z64 (SHA-1: 579c48e211ae952530ffc8738709f078d5dd215e, 12 MB). Save in Roms/PORTS/Games/MarioKart64/rom.z64. Any .z64, .n64, .v64 or .zip dump works (game data built on first start)."
     },
     {
+      "id": "oot",
+      "name": "Zelda - Ocarina of Time",
+      "category": "Action",
+      "status": "playable",
+      "repo": "cacuracaptors/oot-miyoomini",
+      "asset": "^ZeldaOoT-miyoomini-.*\\.zip$",
+      "layout": "sdcard-root",
+      "dir": "Roms/PORTS/Games/ZeldaOoT",
+      "backup": [
+        "saves/",
+        "options.txt"
+      ],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "The Legend of Zelda: Ocarina of Time (USA) (Rev A)",
+          "formats": [
+            "z64",
+            "n64",
+            "v64",
+            "zip"
+          ],
+          "dest": "rom.z64",
+          "sha1": "d3ecb253776cd847a5aa63d859d8c89a2f37b364",
+          "size": 33554432
+        },
+        "optional": [
+          "idiomas/de.oot",
+          "idiomas/fr.oot",
+          "idiomas/rom_europeia.txt"
+        ],
+        "built": [
+          "oot.cart"
+        ]
+      },
+      "get": "The Legend of Zelda: Ocarina of Time (USA), Rev A (version 1.1) dump (SHA-1: d3ecb253776cd847a5aa63d859d8c89a2f37b364, 32 MB). Copy it into Roms/PORTS/Games/ZeldaOoT/: any file name, .z64, .n64, .v64 or zipped (game data built on first start, a few minutes; the ROM can be removed after that). Optional, for German and French: also copy the Europe (En,Fr,De) Rev A ROM there. This is cacuracaptors' port; the other Ocarina of Time in the list (mr-finster's, USA 1.0 ROM) is a separate port with its own folder and saves."
+    },
+    {
+      "id": "miyoo64-banjokazooie",
+      "name": "Banjo-Kazooie",
+      "category": "Platform",
+      "status": "prerelease",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^BanjoKazooie-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/BanjoKazooie",
+      "backup": [
+        "data/"
+      ],
+      "nobackup": ["data/banjo.z64"],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "Banjo-Kazooie (USA)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "1fe1632098865f639e22c11b9a81ee8f29c75d7a",
+          "size": 16777216
+        },
+        "built": [
+          "data/banjo.z64"
+        ]
+      },
+      "get": "Banjo-Kazooie (USA), version 1.0 (not 1.1 / Rev A) dump as rom.z64 (SHA-1: 1fe1632098865f639e22c11b9a81ee8f29c75d7a, 16 MB). Save as Roms/PORTS/Games/BanjoKazooie/rom.z64. Any .z64, .v64 or .n64 dump works.",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
       "id": "miyoo64-diddykongracing",
       "name": "Diddy Kong Racing",
       "category": "Racing",
@@ -380,6 +459,47 @@
       }
     },
     {
+      "id": "miyoo64-newtetris",
+      "name": "The New Tetris",
+      "category": "Puzzle games",
+      "status": "prerelease",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^NewTetris-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/NewTetris",
+      "backup": [
+        "data/"
+      ],
+      "nobackup": ["data/tnt.z64"],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "The New Tetris (USA)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "83fff25e82181a6993f28c91b9eeb8430396838b",
+          "size": 12582912
+        },
+        "built": [
+          "data/tnt.z64"
+        ]
+      },
+      "get": "The New Tetris (USA) dump as rom.z64 (SHA-1: 83fff25e82181a6993f28c91b9eeb8430396838b, 12 MB). Save as Roms/PORTS/Games/NewTetris/rom.z64. Any .z64, .v64 or .n64 dump works.",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
       "id": "miyoo64-ocarinaoftime",
       "name": "Ocarina of Time",
       "category": "Action",
@@ -485,6 +605,47 @@
         }
       },
       "get": "Perfect Dark (USA), Rev 1 (version 1.1) dump as rom.z64 (SHA-1: af8788ac4d1a57260eae9c53ffe851fcf2a3319b, 32 MB). Save as Roms/PORTS/Games/PerfectDark/rom.z64. Kept on card (read while playing).",
+      "shortcut": {
+        "GameDataFile": "rom.z64",
+        "run": "launch.sh"
+      }
+    },
+    {
+      "id": "miyoo64-pilotwings64",
+      "name": "Pilotwings 64",
+      "category": "Simulation",
+      "status": "prerelease",
+      "repo": "mr-finster/miyoo64",
+      "asset": "^Pilotwings64-miyoo\\.zip$",
+      "layout": "app-to-ports",
+      "skip": [
+        "Emus/",
+        "Apps/",
+        "Roms/*(*)/"
+      ],
+      "dir": "Roms/PORTS/Games/Pilotwings64",
+      "backup": [
+        "data/"
+      ],
+      "nobackup": ["data/pw64.z64"],
+      "data": {
+        "rom": {
+          "system": "n64",
+          "name": "Pilotwings 64 (USA)",
+          "formats": [
+            "z64",
+            "v64",
+            "n64"
+          ],
+          "dest": "rom.z64",
+          "sha1": "ec771aedf54ee1b214c25404fb4ec51cfd43191a",
+          "size": 8388608
+        },
+        "built": [
+          "data/pw64.z64"
+        ]
+      },
+      "get": "Pilotwings 64 (USA) dump as rom.z64 (SHA-1: ec771aedf54ee1b214c25404fb4ec51cfd43191a, 8 MB). Save as Roms/PORTS/Games/Pilotwings64/rom.z64. Any .z64, .v64 or .n64 dump works.",
       "shortcut": {
         "GameDataFile": "rom.z64",
         "run": "launch.sh"
