@@ -51,10 +51,13 @@ const char *curl_bin(void);
 void set_ca_cert(const char *path);
 const char *wget_ca_cert(void);
 
-/* fetch <url> to <file> with Onion's wget or curl (HTTPS); nothing left behind on failure.
+/* fetch <url> to <file> with Onion's curl (HTTPS; wget only when curl can't run); nothing left
+ * behind on failure.
  * If total_bytes > 0, download progress is reported to on_download_progress.
- * auth_token is optional: if provided, curl is used with Bearer authorization.
- * extra_header is optional: e.g. "Accept: application/octet-stream" for GitHub asset download */
+ * auth_token is optional: if provided, it is sent as Bearer authorization.
+ * extra_header is optional: e.g. "Accept: application/octet-stream" for GitHub asset download.
+ * On failure fetch_error holds the downloader's reason ("" if none). */
+extern char fetch_error[200];
 int fetch(const char *url, const char *file, long total_bytes);
 int fetch_auth(const char *url, const char *file, long total_bytes, const char *auth_token, const char *extra_header);
 

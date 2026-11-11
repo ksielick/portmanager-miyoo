@@ -2,6 +2,18 @@
 
 Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 
+## v1.2.11: curl for all downloads (2026-11-11)
+
+- In 2026-11 the bundled wget (uclient-fetch on mbed TLS 2.2.1 from 2015) timed out on
+  github.com release downloads (e.g. cacuracaptors' OoT 1.0.6, Port Manager self-update) while
+  curl reached it cleanly in 0.24 s. RedOnion's OTA moved to curl for the same reason.
+- `fetch_auth()` now defaults to `curl_bin()` (`-s -S -L -f --connect-timeout 15`) with a 60 s
+  stall limit (`--speed-limit 1 --speed-time 60`) for downloads with known size, falling back to
+  wget only if curl cannot be executed (exit code 126/127).
+- `fetch_error` captures stderr from curl/wget into `pm_error` on failure ("download failed (%s)").
+- Tested on device: cacuracaptors' Ocarina of Time updated 1.0.4 -> 1.0.6 (4.9 MB) in ~7 s,
+  backup and installation verified.
+
 ## v1.2.10: catalog-only release (2026-11-06)
 
 - No program change since v1.2.9: `PM_VERSION` 1.2.10 so the release zip carries the new

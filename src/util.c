@@ -504,6 +504,34 @@ const char *curl_bin(void)
 	return "curl";
 }
 
+char fetch_error[200];
+
+/* the last line the downloader wrote to its error log, for the log and the error message */
+static void read_fetch_error(const char *errlog, int status)
+{
+	fetch_error[0] = 0;
+	FILE *f = fopen(errlog, "r");
+	if (f) {
+		char line[400];
+		while (fgets(line, sizeof line, f)) {
+			line[strcspn(line, "\r\n")] = 0;
+			const char *s = line;
+			if (!strncmp(s, "curl: ", 6))
+				s += 6;
+			if (*s)
+				snprintf(fetch_error, sizeof fetch_error, "%s", s);
+		}
+		fclose(f);
+	}
+	if (!fetch_error[0] && status != 0)
+		snprintf(fetch_error, sizeof fetch_error, "exit code %d", status);
+}
+
+/* Downloads go through curl (Onion's, OpenSSL). The bundled wget (uclient-fetch, mbed TLS from
+ * 2015) stopped reaching github.com in 2026-11: "Connection timed out" on release downloads
+ * while api.github.com and raw.githubusercontent.com still answered it, and curl got the same
+ * file at once (owner's Mini Plus, 2026-11-11; RedOnion's OTA moved to curl for the same reason).
+ * wget is only used when curl cannot be run at all. */
 int fetch_auth(const char *url, const char *file, long total_bytes, const char *auth_token, const char *extra_header)
 {
 	char part[1100], errlog[1100];
@@ -511,27 +539,42 @@ int fetch_auth(const char *url, const char *file, long total_bytes, const char *
 	snprintf(errlog, sizeof errlog, "%s.err", file);
 	const char *to = total_bytes > 0 ? "60" : "15";
 	const char *ca = wget_ca_cert();
+	fetch_error[0] = 0;
 
-	/* If auth or custom headers are needed, use curl */
-	int use_curl = (auth_token && *auth_token) || (extra_header && *extra_header);
+	int use_curl = 1;
 
 	char auth_hdr[300], ca_arg[700];
 	if (auth_token && *auth_token)
 		snprintf(auth_hdr, sizeof auth_hdr, "Authorization: Bearer %s", auth_token);
-	if (ca)
-		snprintf(ca_arg, sizeof ca_arg, use_curl ? "%s" : "--ca-certificate=%s", ca);
 
 	for (int attempt = 0; attempt < 2; attempt++) {
 		unlink(part);
-		const char *argv[16];
+		unlink(errlog);
+		if (ca)
+			snprintf(ca_arg, sizeof ca_arg, use_curl ? "%s" : "--ca-certificate=%s", ca);
+		const char *argv[24];
 		int argc = 0;
 		if (use_curl) {
 			argv[argc++] = curl_bin();
 			argv[argc++] = "-s";
 			argv[argc++] = "-S";
 			argv[argc++] = "-L";
-			argv[argc++] = "-m";
-			argv[argc++] = to;
+			argv[argc++] = "--connect-timeout";
+			argv[argc++] = "15";
+			if (total_bytes > 0) {
+				/* a file: an HTTP error page must not pass for it (-f). JSON answers
+				 * (total 0) keep GitHub's error body, release_why() reads it. */
+				argv[argc++] = "-f";
+				/* a big port on slow Wi-Fi may take minutes: give up only when nothing
+				 * arrives for 60 s (wget's -T), not after a fixed total time */
+				argv[argc++] = "--speed-limit";
+				argv[argc++] = "1";
+				argv[argc++] = "--speed-time";
+				argv[argc++] = to;
+			} else {
+				argv[argc++] = "-m";
+				argv[argc++] = "30";
+			}
 			if (ca) {
 				argv[argc++] = "--cacert";
 				argv[argc++] = ca_arg;
@@ -591,12 +634,23 @@ int fetch_auth(const char *url, const char *file, long total_bytes, const char *
 			if (on_download_progress && total_bytes > 0)
 				on_download_progress(total_bytes, total_bytes);
 			unlink(errlog);
+			fetch_error[0] = 0;
 			return 0;
+		}
+		read_fetch_error(errlog, status);
+		if (use_curl && (status == 126 || status == 127)) {
+			/* no curl to run: wget, which can't send our headers (an API asset URL without
+			 * them gives JSON, so the caller falls back to the plain URL) */
+			if (extra_header && *extra_header)
+				break;
+			use_curl = 0;
+			attempt--;
 		}
 	}
 	if (on_download_progress)
 		on_download_progress(0, 0);
 	unlink(part);
+	unlink(errlog);
 	return -1;
 }
 

@@ -1428,6 +1428,17 @@ static int fail(const char *fmt, const char *a)
 	return -1;
 }
 
+/* "<name>: download failed", with the downloader's reason when it gave one */
+static int fail_download(const char *name)
+{
+	if (*fetch_error)
+		snprintf(pm_error, sizeof pm_error, "%s: download failed (%s)", name, fetch_error);
+	else
+		snprintf(pm_error, sizeof pm_error, "%s: download failed", name);
+	say("ERROR %s", pm_error);
+	return -1;
+}
+
 /* a backup folder (catalog `backup`) into the backup, without logs, rejected save states and
  * what the game rebuilds from the ROM (`nobackup`): miyoo64's packs were 80% of the backups
  * (Ocarina of Time: 53 of 63 MB a backup) */
@@ -1510,13 +1521,15 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 		const char *target_url = (api_url_str && *api_url_str) ? api_url_str : ((url_str && *url_str) ? url_str : NULL);
 		if (target_url && fetch_auth(target_url, zip, total_bytes, tok, "Accept: application/octet-stream") == 0)
 			dl_ok = 1;
+		else if (*fetch_error)
+			say_log("%s: download with the token failed (%s), trying without it", p->name, fetch_error);
 	}
 	if (!dl_ok) {
 		if (url_str && *url_str && fetch(url_str, zip, total_bytes) == 0)
 			dl_ok = 1;
 	}
 	if (!dl_ok)
-		return fail("%s: download failed", p->name);
+		return fail_download(p->name);
 	if (digest_str && !strncmp(digest_str, "sha256:", 7)) {
 		char h[65];
 		if (sha256_file(zip, h) || strcmp(h, digest_str + 7)) {
@@ -3015,7 +3028,7 @@ int pm_self_update(void)
 	const char *tok = token_for_repo(PM_REPO);
 	if (fetch_auth(pm_self_asset_url, zip, pm_self_asset_size, tok, NULL) != 0) {
 		del_file(zip);
-		return fail("%s: download failed", "Port Manager");
+		return fail_download("Port Manager");
 	}
 
 	if (pm_self_asset_size > 0 && file_size(zip) != pm_self_asset_size) {
