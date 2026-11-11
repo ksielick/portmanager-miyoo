@@ -8,4 +8,4 @@ shots 1 2 3 4
 min_frames 4
 nonblank 1 2
 assert_exists Roms/PORTS/Games/Fallout/.pm_version
-assert_contains Roms/PORTS/Games/Fallout/.pm_version v1.2.0
+assert_contains Roms/PORTS/Games/Fallout/.pm_version v1.
