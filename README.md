@@ -93,3 +93,4 @@ OpenTyrian, Cave Story, Hocoslamfy, Wizznic and Dinothawr come from Onion's
 [Ports Collection](https://github.com/OnionUI/Ports-Collection).
 
 For developers: catalog format and notes in [docs/CATALOG.md](docs/CATALOG.md).
+Release history: see [CHANGELOG.md](CHANGELOG.md).
