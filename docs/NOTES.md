@@ -10,7 +10,7 @@ The agent that ends a session rewrites this section (rules: the `handheld-ports`
 - Updated: 2026-11-13, claude (rule files and shared skill reorganised; no code changed)
 - Branch: `main`, this session's commits are pushed
 - In progress: nothing recorded
-- Uncommitted files left in the working tree: `HANGELOG.md` (changed before this session by someone else; left as found)
+- Uncommitted files left in the working tree: `CHANGELOG.md` (changed before this session by someone else; left as found)
 - Review wanted: none
 - Next step: not recorded here yet; see the plan in the sections below
 
