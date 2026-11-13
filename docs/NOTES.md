@@ -2,6 +2,18 @@
 
 Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 
+## Handoff
+
+The agent that ends a session rewrites this section (rules: the `handheld-ports` skill,
+"Working alongside the other agent").
+
+- Updated: 2026-11-13, claude (rule files and shared skill reorganised; no code changed)
+- Branch: `main`, this session's commits are pushed
+- In progress: nothing recorded
+- Uncommitted files left in the working tree: `HANGELOG.md` (changed before this session by someone else; left as found)
+- Review wanted: none
+- Next step: not recorded here yet; see the plan in the sections below
+
 ## v1.2.11: curl for all downloads (2026-11-11)
 
 - In 2026-11 the bundled wget (uclient-fetch on mbed TLS 2.2.1 from 2015) timed out on
