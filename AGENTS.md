@@ -1,5 +1,26 @@
 # AGENTS.md - Instructions for AI Agents in portmanager-miyoo
 
+## Project overview
+
+Port manager for the Miyoo Mini Plus (OnionOS), tests (public repo ksielick/portmanager-miyoo since 2026-10-17; commit as 153522713+ksielick@users.noreply.github.com, already set in the repo config).
+Read `docs/NOTES.md` (decisions, findings, the card's state) and `docs/PLAN.md` first; keep
+NOTES updated after each step. Catalog: `catalog.json`, format in `docs/CATALOG.md`.
+
+- The owner's rules: Onion's Ports list only (never `App/`), thematic Shortcuts category
+  folders, copyrighted files only through player instructions, a PC backup before changing
+  the card.
+- Project guideline (owner, 2026-10-20): Port Manager stays **light, clear and fast**.
+  - Light: one small static binary (~550 KB), no new runtimes or helper programs, nothing left running.
+  - Clear: simple screens in player terms, one status line and one bar, details in the log or under Select.
+  - Fast: few network requests and card writes (the card is `dirsync`), throttled redraws; time big ports on the device.
+  - Weigh every change against these three; say so when a feature would cost any of them.
+- Device access and automated tools:
+  - Deploy to device: `powershell -ExecutionPolicy Bypass -File tools/deploy_to_miyoo.ps1` (backs up `App/PortManager` to `backup/`, copies shortcuts/imgs to `\\192.168.0.246\Roms`, streams `App/PortManager` tar over SSH with chmod +x, removes old `portmaster`, clears `Shortcuts_cache*.db`).
+  - Capture screenshot from device: `tools/screenshot_miyoo.bat` (double-click; saves to `screenshots/` and opens it) or `powershell -ExecutionPolicy Bypass -File tools/screenshot_miyoo.ps1 [out.png] [-Open]` (dumps `/dev/fb0`, converts with ffmpeg using pan offset).
+  - Low-level tools (`mssh`/`mscp`, SMB share `\\192.168.0.246\Roms`) live in `G:\Emulacja\tools-miyoo\device\`.
+- Repo files in English; chat with the owner in Polish.
+- Shared Miyoo knowledge for all projects: the `handheld-ports` skill (`~/.claude/skills/handheld-ports/SKILL.md`: owner rules, device facts, shared tools) and its `notes/` folder (the full measured notes, the former `G:\Emulacja\miyoo.md`). Add cross-project findings there.
+
 ## Building Port Manager
 To cross-compile the binary for the Miyoo Mini Plus:
 ```powershell
@@ -74,3 +95,6 @@ The owner's guideline (2026-10-20): Port Manager stays **light, clear and fast**
 ## Commit Guidelines
 - Commit as: `153522713+ksielick@users.noreply.github.com` (configured in repo config).
 - Repo documentation and code in English; chat with owner in Polish.
+
+## Keeping the rule files small
+- Rule files (`AGENTS.md`, `.agents/rules/*.md`, the skill's `SKILL.md`) stay under 24,000 bytes (aim for 23,500: CRLF adds bytes); Antigravity truncates anything larger. Each project has one rule file, `AGENTS.md`, read by every agent; `CLAUDE.md` holds only the line `@AGENTS.md`, and there is no `GEMINI.md`. New detailed rules and lessons go into the right file of the `handheld-ports` skill (`notes/` or `ports/`), not into a rule file. The skill is one folder, `~/.claude/skills/handheld-ports` (Gemini's skill folders are junctions to it): edit it in place, then `git commit` in that folder.
