@@ -1,0 +1,28 @@
+# A zip with only App/<dir>/ and no shortcut (OpenSWOS): it goes to the Ports folder with a
+# shortcut of our own named after the entry, in its category, and the app's icon as its picture
+press 1 X        # all ports, A-Z
+press 2 R1 / press 3 R1          # a page is 13 rows: Banjo... -> index 26
+press 4 DOWN / press 5 DOWN / press 6 DOWN
+press 7 A        # details: Sensible World of Soccer (index 29, after Quake II)
+press 8 A        # check
+press 9 A        # install
+press 10 A       # yes
+press 11 B       # result
+press 12 B       # details: assets missing
+press 13 B       # all ports
+press 14 B       # exit
+timeout 900
+shots every:1
+nonblank 12
+min_frames 14
+assert_exists Roms/PORTS/Games/OpenSWOS/SWOS.miyoo
+assert_exists Roms/PORTS/Games/OpenSWOS/launch.sh
+assert_exists Roms/PORTS/Games/OpenSWOS/.pm_version
+assert_not_exists Roms/PORTS/Games/OpenSWOS/config.json
+assert_not_exists App/OpenSWOS
+assert_exists "Roms/PORTS/Shortcuts/Sports/Sensible World of Soccer.port"
+assert_contains "Roms/PORTS/Shortcuts/Sports/Sensible World of Soccer.port" 'GameDir="OpenSWOS"'
+assert_contains "Roms/PORTS/Shortcuts/Sports/Sensible World of Soccer.port" 'GameDataFile="SWOS.miyoo"'
+assert_contains "Roms/PORTS/Shortcuts/Sports/Sensible World of Soccer.port" 'GameName="Sensible World of Soccer"'
+assert_contains "Roms/PORTS/Shortcuts/Sports/Sensible World of Soccer.port" launch.sh
+assert_exists "Roms/PORTS/Imgs/Sensible World of Soccer.png"

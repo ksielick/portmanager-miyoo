@@ -85,7 +85,8 @@ Tomb Raider, Cave Story (NXEngine), Prehistorik (1991) · Action: Ocarina of Tim
 mr-finster's), Majora's Mask, Star Fox 64, Super Smash Bros., C-Dogs, OpenTyrian · RPG: Fallout,
 Fallout 2, Paper Mario, Mines of Moria, Monk Tower · Arcade: 3D Pinball Space Cadet, SkiFree,
 Tennis Vs Zombies · Puzzle games: Frozen Bubble, Panel Attack, Wizznic, Dinothawr, The New Tetris ·
-Reflex: Hocoslamfy · Strategy: Plants vs. Zombies · Simulation: Harvest Moon 64, Pilotwings 64.
+Reflex: Hocoslamfy · Strategy: Plants vs. Zombies · Simulation: Harvest Moon 64, Pilotwings 64 ·
+Sports: Sensible World of Soccer (OpenSWOS).
 Coming when its author publishes a release: Zuma Deluxe.
 
 All credit goes to the ports' authors; Port Manager only fetches their releases. C-Dogs,

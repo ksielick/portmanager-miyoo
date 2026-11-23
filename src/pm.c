@@ -1265,13 +1265,16 @@ static void map_cb(const char *rel, void *ctx)
  * App/ paths, then our GameDir and launch */
 static int shortcut_from(const Port *p, const char *tpl, const char *out)
 {
-	char *t = read_file(tpl, NULL);
+	/* no template (the zip has only App/<dir>/, like OpenSWOS): a shortcut of our own,
+	 * named after the entry */
+	char *t = tpl ? read_file(tpl, NULL) : strdup("");
 	if (!t)
 		return -1;
+	int named = *p->app || !tpl;
 	char text[4096], g[600];
 	snprintf(g, sizeof g, "%s", gdir(p));
 	char name[256];
-	snprintf(name, sizeof name, "%s", *p->app ? p->name : base_name(tpl));
+	snprintf(name, sizeof name, "%s", named ? p->name : base_name(tpl));
 	char *dot = strstr(name, ".port");
 	if (dot)
 		*dot = 0;
@@ -1288,7 +1291,7 @@ static int shortcut_from(const Port *p, const char *tpl, const char *out)
 			k++;
 		if (!k || line[k] != '=' || strstr(line, "App/") || !strncmp(line, "APP=", 4) ||
 			!strncmp(line, "GameDir=", 8) || !strncmp(line, "GameDataFile=", 13) ||
-			(*p->app && !strncmp(line, "GameName=", 9)))
+			(named && !strncmp(line, "GameName=", 9)))
 			continue;
 		/* Reject control characters or backticks in lines copied from template */
 		if (strpbrk(line, "`$;|"))
@@ -1301,8 +1304,8 @@ static int shortcut_from(const Port *p, const char *tpl, const char *out)
 		n += w;
 	}
 	free(t);
-	/* a second port of one game is listed under the entry's name */
-	if (*p->app && !strpbrk(p->name, "\"`$\\")) {
+	/* a second port of one game, or one without a template, is listed under the entry's name */
+	if (named && !strpbrk(p->name, "\"`$\\")) {
 		int w = snprintf(text + n, sizeof text - n, "GameName=\"%s\"\n", p->name);
 		if (w < 0 || w >= (int)(sizeof text - n))
 			return -1;
@@ -1567,25 +1570,41 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 
 	Map m = {p, stage, base, NULL, 0, 0};
 	walk_files(stage, map_cb, &m);
-	for (int i = 0; i < m.n; i++)
-		if (m.e[i].kind == M_TEMPLATE) {
-			char gen[400];
-			snprintf(gen, sizeof gen, "%s/shortcut.port", WORK);
-			char tpl[700];
-			snprintf(tpl, sizeof tpl, "%s", m.e[i].src);
-			if (shortcut_from(p, tpl, gen) == 0) {
-				/* ours is found by its GameDir; with `app` it is named after the entry, so it
-				 * doesn't take the other port's shortcut */
-				Find f = {NULL, base_name(p->dir), ""};
-				walk_files(SC, find_cb, &f);
-				if (!*f.found && *p->app)
-					snprintf(f.found, sizeof f.found, "Roms/PORTS/Shortcuts/%s/%s.port", p->category, p->name);
-				else if (!*f.found)
-					snprintf(f.found, sizeof f.found, "Roms/PORTS/Shortcuts/%s/%s", p->category, base_name(tpl));
-				map_add(&m, M_SHORTCUT, gen, f.found);
+	int has_tpl = 0, has_img = 0;
+	for (int i = 0; i < m.n; i++) {
+		has_tpl |= m.e[i].kind == M_TEMPLATE;
+		has_img |= m.e[i].kind == M_IMG;
+	}
+	if (!strcmp(p->layout, "app-to-ports")) {
+		char tpl[700] = "";
+		for (int i = 0; i < m.n; i++)
+			if (m.e[i].kind == M_TEMPLATE) {
+				snprintf(tpl, sizeof tpl, "%s", m.e[i].src);
+				break;
 			}
-			break;
+		char gen[400];
+		snprintf(gen, sizeof gen, "%s/shortcut.port", WORK);
+		/* a zip with only App/<dir>/ gets a shortcut of our own (needs `shortcut.run`) */
+		if ((has_tpl || *p->sc_run) && shortcut_from(p, has_tpl ? tpl : NULL, gen) == 0) {
+			/* ours is found by its GameDir; with `app` (or no template) it is named after the
+			 * entry, so it doesn't take the other port's shortcut */
+			Find f = {NULL, base_name(p->dir), ""};
+			walk_files(SC, find_cb, &f);
+			if (!*f.found && (*p->app || !has_tpl))
+				snprintf(f.found, sizeof f.found, "Roms/PORTS/Shortcuts/%s/%s.port", p->category, p->name);
+			else if (!*f.found)
+				snprintf(f.found, sizeof f.found, "Roms/PORTS/Shortcuts/%s/%s", p->category, base_name(tpl));
+			map_add(&m, M_SHORTCUT, gen, f.found);
 		}
+		/* no template and no picture in the zip: the app's own icon (App/<dir>/icon.png) */
+		char icon[900];
+		snprintf(icon, sizeof icon, "%s/App/%s/icon.png", stage, base);
+		if (!has_tpl && !has_img && file_exists(icon)) {
+			char dst[700];
+			snprintf(dst, sizeof dst, "Roms/PORTS/Imgs/%s.png", p->name);
+			map_add(&m, M_IMG, icon, dst);
+		}
+	}
 
 	char manf[700];
 	snprintf(manf, sizeof manf, "%s/.pm_manifest", g);
