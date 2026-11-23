@@ -7,14 +7,13 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 The agent that ends a session rewrites this section (rules: the `handheld-ports` skill,
 "Working alongside the other agent").
 
-- Updated: 2026-11-23, claude (OpenSWOS added; program change for v1.2.12)
-- Branch: `claude/epic-gates-vy1c8k`, pushed; not on main yet
-- In progress: v1.2.12 not tagged
+- Updated: 2026-11-23, claude (OpenSWOS added, v1.2.12 released)
+- Branch: `main` and the tag `v1.2.12` pushed together; `claude/epic-gates-vy1c8k` merged
+- In progress: nothing
 - Uncommitted files left in the working tree: none
-- Review wanted: `src/pm.c` (shortcut without a template), the emulator run of
-  `install_app_no_shortcut`
-- Next step: build, try it on the console (from `catalog.local.json` if wanted), run the
-  emulator on the branch, then push main and the v1.2.12 tag together
+- Review wanted: the owner tries Sensible World of Soccer on the console (install, shortcut
+  in Sports, picture, the game with assets/), then sets its `status`
+- Next step: see the plan in the sections below
 
 ## Sensible World of Soccer (OpenSWOS): new entry and a Sports category (2026-11-23, for v1.2.12)
 
@@ -39,8 +38,11 @@ The agent that ends a session rewrites this section (rules: the `handheld-ports`
 - A-Z list: "Sensible World of Soccer" lands between Quake II and SkiFree (index 29); the
   scenarios walk at most to Panel Attack (21); details_status's 3 R1 (13 rows each) still
   reach Zuma, the last (39). New scenario `install_app_no_shortcut`.
-- Needs v1.2.12: older versions would install it without a shortcut, so main and the tag go
-  out together.
+- Needs v1.2.12: older versions would install it without a shortcut, so main and the tag went
+  out together (2026-11-23, on the owner's word).
+- First emulator run failed: a new game folder is moved in whole (one rename), so
+  `App/<dir>/icon.png` was gone when the picture was copied, and the install stopped before
+  `.pm_version`. The icon is now copied to the work folder first.
 
 ## v1.2.11: curl for all downloads (2026-11-11)
 

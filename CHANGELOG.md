@@ -4,7 +4,7 @@ All notable changes to Port Manager are documented here. Releases are published 
 
 ---
 
-## [v1.2.12] - unreleased
+## [v1.2.12] - 2026-11-23
 
 ### Added
 - **Sensible World of Soccer (OpenSWOS)** by sakya added to the catalog in a new **Sports** category. Requires the player's own Sensible World of Soccer 96/97 (PC or Amiga), converted once with OpenSWOS Setup.
