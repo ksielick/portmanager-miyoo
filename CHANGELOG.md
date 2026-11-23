@@ -4,6 +4,14 @@ All notable changes to Port Manager are documented here. Releases are published 
 
 ---
 
+## [v1.2.12] - 2026-11-23
+
+### Added
+- **Sensible World of Soccer (OpenSWOS)** by sakya added to the catalog in a new **Sports** category. Requires the player's own Sensible World of Soccer 96/97 (PC or Amiga), converted once with OpenSWOS Setup.
+- **`app-to-ports` zips without a shortcut**: a zip with only `App/<dir>/` now gets a shortcut of its own (named after the entry, in its category, from the catalog's `shortcut`) and `App/<dir>/icon.png` as its picture.
+
+---
+
 ## [v1.2.11] - 2026-11-11
 
 ### Fixed

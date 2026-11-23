@@ -7,12 +7,42 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 The agent that ends a session rewrites this section (rules: the `handheld-ports` skill,
 "Working alongside the other agent").
 
-- Updated: 2026-11-13, claude (rule files and shared skill reorganised; no code changed)
-- Branch: `main`, this session's commits are pushed
-- In progress: nothing recorded
+- Updated: 2026-11-23, claude (OpenSWOS added, v1.2.12 released)
+- Branch: `main` and the tag `v1.2.12` pushed together; `claude/epic-gates-vy1c8k` merged
+- In progress: nothing
 - Uncommitted files left in the working tree: none
-- Review wanted: none
-- Next step: not recorded here yet; see the plan in the sections below
+- Review wanted: the owner tries Sensible World of Soccer on the console (install, shortcut
+  in Sports, picture, the game with assets/), then sets its `status`
+- Next step: see the plan in the sections below
+
+## Sensible World of Soccer (OpenSWOS): new entry and a Sports category (2026-11-23, for v1.2.12)
+
+- sakya/OpenSWOS (GPL-3.0, a Miyoo port of benbaker76's OpenSWOS, SWOS rebuilt in C from the
+  Amiga game). Releases v0.2.0 (2026-11-22) and v0.3.0 (2026-11-23): one asset
+  `OpenSWOS_miyoo_<ver>.zip` (27.4 MB) made by `miyoo/miyoo_pack.sh`: only `App/OpenSWOS/`
+  (`SWOS.miyoo`, `lib/miyoo/` SDL2, `launch.sh`, `icon.png`, `config.json`, the repo's own
+  `data/`, `grafs*/`, `sound*/` ...). No status set: not tried on the console yet.
+- `launch.sh` does `cd "$(dirname "$0")"`, `HOME=$PWD/conf`, `SWOS_ASSETS=$PWD/assets`: it runs
+  from `Roms/PORTS/Games/OpenSWOS/` as it is. `layout: app-to-ports`, `backup: conf/`
+  (`.swos/SWOS.ini`, saves), `data.required: assets/ASSETS.ini`, `data.optional: assets/`
+  (the player's converted game files, kept on "remove, keep data").
+- Needs the player's SWOS 96/97 (GOG PC or Amiga), converted on a PC with OpenSWOS Setup
+  (open source, `packaging/setup`), as the clean-ports rule allows.
+- Program change: the zip has no shortcut, and `app-to-ports` made ours only from the zip's
+  template, so the game would have had no shortcut. Now with no template and `shortcut.run`
+  set, `shortcut_from(p, NULL, ...)` writes one named after `name` (with `GameName`) in
+  `Shortcuts/<category>/`, and `App/<dir>/icon.png` becomes `Imgs/<name>.png` (only with no
+  template and no picture in the zip, so miyoo64's ports are unchanged).
+  `GameDataFile="SWOS.miyoo"`: it always shows in Onion; the page tells what's missing.
+- Category Sports (owner's OK, 2026-11-23): schema, README, CATALOG.md.
+- A-Z list: "Sensible World of Soccer" lands between Quake II and SkiFree (index 29); the
+  scenarios walk at most to Panel Attack (21); details_status's 3 R1 (13 rows each) still
+  reach Zuma, the last (39). New scenario `install_app_no_shortcut`.
+- Needs v1.2.12: older versions would install it without a shortcut, so main and the tag went
+  out together (2026-11-23, on the owner's word).
+- First emulator run failed: a new game folder is moved in whole (one rename), so
+  `App/<dir>/icon.png` was gone when the picture was copied, and the install stopped before
+  `.pm_version`. The icon is now copied to the work folder first.
 
 ## v1.2.11: curl for all downloads (2026-11-11)
 

@@ -53,14 +53,14 @@ asset by a regex.
 | `status` | optional: `playable`, `experimental` (runs, but rough) or `prerelease` (the author calls it a test version); the last two are shown on the game's page, all three in its details |
 | `repo` | `owner/name` on GitHub; the latest release is used; the owner is shown as the port's author |
 | `asset` | regex for the release file; `null` = no releases yet |
-| `layout` | `sdcard-root`: the zip mirrors the card (`Roms/PORTS/...`); its shortcuts go to `category` (a `.notfound` one as `.port`, unless the zip has the `.port` too); `app-to-ports`: the zip has `App/<dir>/` (miyoo64), which goes to `Roms/PORTS/Games/<dir>/`, and its `App`-pointing shortcut is replaced by our own |
+| `layout` | `sdcard-root`: the zip mirrors the card (`Roms/PORTS/...`); its shortcuts go to `category` (a `.notfound` one as `.port`, unless the zip has the `.port` too); `app-to-ports`: the zip has `App/<dir>/` (miyoo64), which goes to `Roms/PORTS/Games/<dir>/`, and its `App`-pointing shortcut is replaced by our own; a zip with no shortcut at all (OpenSWOS) gets one named after `name` in `category`, made from `shortcut`, and `App/<dir>/icon.png` as its picture (from v1.2.12) |
 | `app` | optional, `app-to-ports` only: the zip's folder under `App/` when it isn't `dir`'s last part. For a second port of a game already in the catalog (miyoo64's Mario Kart 64 next to cacuracaptors'): its own `dir`, and the shortcut, picture and `GameName` go by `name`, so neither port touches the other's |
 | `skip` | zip paths not installed (e.g. miyoo64's MinUI folders) |
 | `dir` | the game folder on the card |
 | `backup` | folders or files in `dir` copied into the backup before an update (saves, settings) |
 | `nobackup` | files in those folders left out of a backup: what the game rebuilds from the ROM (miyoo64's packs, 11-53 MB each). `*.log` and `*.rejected` are always left out. |
 | `data` | what the player supplies: `required`, `required_any`, `optional`, `forbidden` (paths in `dir`, case-insensitive, `*` allowed), `rom`, `disc`. Everything named in `required`, `required_any`, `optional`, `built` and `backup` is game data: "remove, keep data" never deletes it (since v1.2.5 also `optional`: list there what the game makes or unpacks on the card, e.g. OpenLara's `FMV/` and `savegame.dat`) |
-| `shortcut` | for `app-to-ports`: `GameDataFile` and the script to run |
+| `shortcut` | for `app-to-ports`: `GameDataFile` and the script to run (`run` is required when the zip has no shortcut) |
 | `get` | instructions for the player |
 
 ## Onion's Ports list (checked in OnionUI/Onion and OnionUI/Ports-Collection, 2026-10-17)
@@ -76,7 +76,7 @@ asset by a regex.
   Puzzle games, Racing, Reflex, and series folders like `FPS - Doom Collection (PrBoom)`.
   MiyooMini-Ports also has rpg, shooter, simulation, engine, app.
 
-Categories (Onion's names, plus RPG; confirmed by the owner 2026-10-17):
+Categories (Onion's names, plus RPG; confirmed by the owner 2026-10-17; Sports added 2026-11-23):
 
 | Category | Games |
 |---|---|
@@ -88,6 +88,7 @@ Categories (Onion's names, plus RPG; confirmed by the owner 2026-10-17):
 | Arcade | 3D Pinball Space Cadet, SkiFree, Tennis Vs Zombies |
 | Strategy | Plants vs. Zombies |
 | Simulation | Harvest Moon 64 (added with the owner's OK, 2026-10-20), Pilotwings 64 |
+| Sports | Sensible World of Soccer (OpenSWOS; the category added with the owner's OK, 2026-11-23) |
 | Puzzle games | Frozen Bubble, Panel Attack, Wizznic, Dinothawr, Zuma Deluxe, The New Tetris |
 | Reflex | Hocoslamfy |
 
