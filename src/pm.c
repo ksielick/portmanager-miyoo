@@ -1599,10 +1599,13 @@ static int apply_release(Port *p, const char *tag, const char *aname, const char
 		/* no template and no picture in the zip: the app's own icon (App/<dir>/icon.png) */
 		char icon[900];
 		snprintf(icon, sizeof icon, "%s/App/%s/icon.png", stage, base);
-		if (!has_tpl && !has_img && file_exists(icon)) {
+		/* a copy in the work folder: a new game folder is moved in whole, icon.png with it */
+		char icon_copy[400];
+		snprintf(icon_copy, sizeof icon_copy, "%s/icon.png", WORK);
+		if (!has_tpl && !has_img && file_exists(icon) && copy_file(icon, icon_copy) == 0) {
 			char dst[700];
 			snprintf(dst, sizeof dst, "Roms/PORTS/Imgs/%s.png", p->name);
-			map_add(&m, M_IMG, icon, dst);
+			map_add(&m, M_IMG, icon_copy, dst);
 		}
 	}
 
