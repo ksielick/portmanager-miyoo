@@ -26,3 +26,6 @@ assert_contains "Roms/PORTS/Shortcuts/Sports/Sensible World of Soccer.port" 'Gam
 assert_contains "Roms/PORTS/Shortcuts/Sports/Sensible World of Soccer.port" 'GameName="Sensible World of Soccer"'
 assert_contains "Roms/PORTS/Shortcuts/Sports/Sensible World of Soccer.port" launch.sh
 assert_exists "Roms/PORTS/Imgs/Sensible World of Soccer.png"
+# the shortcut checks the catalog's required data before the launch (assets/ is missing here)
+assert_contains "Roms/PORTS/Shortcuts/Sports/Sensible World of Soccer.port" '[ -e "assets/ASSETS.ini" ]'
+assert_contains "Roms/PORTS/Shortcuts/Sports/Sensible World of Soccer.port" infoPanel

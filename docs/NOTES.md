@@ -7,13 +7,36 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 The agent that ends a session rewrites this section (rules: the `handheld-ports` skill,
 "Working alongside the other agent").
 
-- Updated: 2026-11-23, claude (OpenSWOS added, v1.2.12 released)
-- Branch: `main` and the tag `v1.2.12` pushed together; `claude/epic-gates-vy1c8k` merged
-- In progress: nothing
-- Uncommitted files left in the working tree: none
-- Review wanted: the owner tries Sensible World of Soccer on the console (install, shortcut
-  in Sports, picture, the game with assets/), then sets its `status`
+- Updated: 2026-11-28, claude (shortcut data check for missing game files, not released)
+- Branch: `main` at v1.2.12; the data check is uncommitted (`src/pm.c`, the scenario, the
+  built `portmanager`), waiting for the owner's OK to commit, deploy and release (v1.2.13)
+- In progress: the data check below; not yet on the card, its infoPanel not yet seen on the
+  device, the emulator scenario not yet run in CI
+- Uncommitted files left in the working tree: the ones above (claude's)
+- Review wanted: the owner tries Sensible World of Soccer on the console with assets/ (the
+  card has only the 1994/95 Amiga WHDLoad install, which OpenSWOS rejects), then sets its
+  `status`
 - Next step: see the plan in the sections below
+
+## A missing-data check in our shortcuts (2026-11-28, for v1.2.13)
+
+- The owner started Sensible World of Soccer from Onion's Ports list: it flashed and went
+  back to the menu. `conf/.swos/SWOS.log` ended with `[assets] no game data ... run OpenSWOS
+  Setup` (no `assets/` on the card); Port Manager's page said "files missing", but the
+  player starts games from Onion, where nothing said so.
+- The shortcuts Port Manager writes (`shortcut_from()`, `app-to-ports` only: today just
+  OpenSWOS) now test the catalog's `data.required` / `required_any` after the `cd` and, when
+  any is missing, show Onion's `infoPanel` ("GAME FILES MISSING", the missing paths, "Port
+  Manager: this game's page says how to get them.") and exit instead of starting the game.
+  Patterns (`SOUND*.WAV`) go through `set --`; a path that can't be quoted safely is not
+  tested (a `required_any` one counts as present, so it never blocks the game). Paths are cut
+  at 40 characters (infoPanel: 42 columns, no wrap, 255 characters).
+- Light/clear/fast: no new program (infoPanel is Onion's), a few lines in the shortcut, no
+  extra card writes. `sdcard-root` ports keep the release's own shortcut, unchanged.
+- A card's existing shortcut changes only when the game is installed or updated again.
+- Tested on the PC: `pm.c` built on the host in WSL with a test `main`, the written shortcut
+  run with and without the files (it shows the panel and exits 0, or starts `launch.sh`).
+  Scenario `install_app_no_shortcut` asserts the test and `infoPanel` in the shortcut.
 
 ## Sensible World of Soccer (OpenSWOS): new entry and a Sports category (2026-11-23, for v1.2.12)
 
