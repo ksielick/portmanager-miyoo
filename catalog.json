@@ -1012,6 +1012,7 @@
       "id": "openswos",
       "name": "Sensible World of Soccer",
       "category": "Sports",
+      "status": "playable",
       "repo": "sakya/OpenSWOS",
       "asset": "^OpenSWOS_(miyoo_)?[0-9][0-9.]*\\.zip$",
       "layout": "app-to-ports",

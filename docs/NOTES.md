@@ -13,8 +13,9 @@ The agent that ends a session rewrites this section (rules: the `handheld-ports`
 - In progress: nothing; the card has the branch's build (same code, shows v1.2.12), so
   Port Manager there offers v1.2.13 as an update
 - Uncommitted files left in the working tree: none
-- Review wanted: the owner plays Sensible World of Soccer on the console, then sets its
-  `status`. Its `assets/` is on the card since 2026-11-28, made by OpenSWOS's `swosdata`
+- Review wanted: nothing. Sensible World of Soccer is `status: playable` (the owner played
+  it, 2026-11-28; first only VIEW MATCH: a friendly's team pressed A once is the computer's,
+  twice is the player's). Its `assets/` is on the card since 2026-11-28, made by OpenSWOS's `swosdata`
   CLI (built in WSL, `/root/openswos-check`) from the owner's Amiga 96/97 ADFs (season 96/97
   recognised, Amiga parts only, no PC game, so no commentary); a 30 s run through Onion
   showed the intro, the title and a loading screen
