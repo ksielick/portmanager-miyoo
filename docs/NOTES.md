@@ -16,7 +16,7 @@ The agent that ends a session rewrites this section (rules: the `handheld-ports`
 - Review wanted: nothing. Sensible World of Soccer is `status: playable` (the owner played
   it, 2026-11-28; first only VIEW MATCH: a friendly's team pressed A once is the computer's,
   twice is the player's). Its `assets/` is on the card since 2026-11-28, made by OpenSWOS's `swosdata`
-  CLI (built in WSL, `/root/openswos-check`) from the owner's Amiga 96/97 ADFs (season 96/97
+  CLI (built in WSL from benbaker76/OpenSWOS, the clone removed afterwards) from the owner's Amiga 96/97 ADFs (season 96/97
   recognised, Amiga parts only, no PC game, so no commentary); a 30 s run through Onion
   showed the intro, the title and a loading screen
 - The 1994/95 WHDLoad `.lha` on the card (Roms/AMIGA) is refused by OpenSWOS (too old)
