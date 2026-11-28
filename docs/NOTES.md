@@ -8,11 +8,12 @@ The agent that ends a session rewrites this section (rules: the `handheld-ports`
 "Working alongside the other agent").
 
 - Updated: 2026-11-28, claude (shortcut data check for missing game files, not released)
-- Branch: `main` at v1.2.12; the data check is uncommitted (`src/pm.c`, the scenario, the
-  built `portmanager`), waiting for the owner's OK to commit, deploy and release (v1.2.13)
-- In progress: the data check below; not yet on the card, its infoPanel not yet seen on the
-  device, the emulator scenario not yet run in CI
-- Uncommitted files left in the working tree: the ones above (claude's)
+- Branch: `shortcut-data-check` (pushed, CI green) holds the data check; `main` has only the
+  OpenSWOS catalog fix (1f411b0). Rebase the branch on main before merging (both add the
+  same NOTES section), then release v1.2.13 (version bump, `docs/releases/v1.2.13.md`)
+- In progress: nothing; the branch's build is on the card (deployed 2026-11-28, SWOS updated
+  to v0.4.0 with it, the panel seen)
+- Uncommitted files left in the working tree: none
 - Review wanted: the owner tries Sensible World of Soccer on the console with assets/ (the
   card has only the 1994/95 Amiga WHDLoad install, which OpenSWOS rejects), then sets its
   `status`
@@ -45,6 +46,14 @@ The agent that ends a session rewrites this section (rules: the `handheld-ports`
 - Tested on the PC: `pm.c` built on the host in WSL with a test `main`, the written shortcut
   run with and without the files (it shows the panel and exits 0, or starts `launch.sh`).
   Scenario `install_app_no_shortcut` asserts the test and `infoPanel` in the shortcut.
+- On the device (2026-11-28): the branch's build deployed, SWOS updated v0.3.0 -> v0.4.0 from
+  Port Manager (2 files replaced, the shortcut rewritten with the check). The shortcut run as
+  Onion runs it (`/tmp/cmd_to_run.sh`, MainUI killed) showed the panel (Onion's look, title,
+  "Missing: assets/ASSETS.ini", A OK / B CANCEL), SWOS.miyoo not started, exit 0, menu back.
+  `sendkeys` A/B did **not** close infoPanel (it has event0 open; PM's list takes the same
+  keys), so it was closed with `kill`; a real button press is still to be seen.
+- Screenshots: Port Manager redraws late, so a fb0 dump right after `sendkeys` can show the
+  screen before the key; wait ~2 s, or dump all three pages.
 
 ## Sensible World of Soccer (OpenSWOS): new entry and a Sports category (2026-11-23, for v1.2.12)
 
