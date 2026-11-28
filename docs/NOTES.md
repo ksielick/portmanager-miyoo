@@ -15,6 +15,14 @@ The agent that ends a session rewrites this section (rules: the `handheld-ports`
   in Sports, picture, the game with assets/), then sets its `status`
 - Next step: see the plan in the sections below
 
+## OpenSWOS v0.4.0 renamed its zip (2026-11-28, catalog)
+
+- sakya/OpenSWOS v0.4.0 (2026-11-25) ships `OpenSWOS_0.4.0.zip` (32.4 MB) instead of
+  `OpenSWOS_miyoo_<ver>.zip`: "the release has no matching file" (found by the emulator's
+  `install_app_no_shortcut`). Same layout inside (only `App/OpenSWOS/`, same `launch.sh`).
+  The pattern is now `^OpenSWOS_(miyoo_)?[0-9][0-9.]*\.zip$` (POSIX ERE, as `regcomp`):
+  both names, not a future `OpenSWOS_<platform>_<ver>.zip`.
+
 ## Sensible World of Soccer (OpenSWOS): new entry and a Sports category (2026-11-23, for v1.2.12)
 
 - sakya/OpenSWOS (GPL-3.0, a Miyoo port of benbaker76's OpenSWOS, SWOS rebuilt in C from the
