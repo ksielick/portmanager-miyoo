@@ -13,9 +13,12 @@ The agent that ends a session rewrites this section (rules: the `handheld-ports`
 - In progress: nothing; the card has the branch's build (same code, shows v1.2.12), so
   Port Manager there offers v1.2.13 as an update
 - Uncommitted files left in the working tree: none
-- Review wanted: the owner tries Sensible World of Soccer on the console with assets/ (the
-  card has only the 1994/95 Amiga WHDLoad install, which OpenSWOS rejects), then sets its
-  `status`
+- Review wanted: the owner plays Sensible World of Soccer on the console, then sets its
+  `status`. Its `assets/` is on the card since 2026-11-28, made by OpenSWOS's `swosdata`
+  CLI (built in WSL, `/root/openswos-check`) from the owner's Amiga 96/97 ADFs (season 96/97
+  recognised, Amiga parts only, no PC game, so no commentary); a 30 s run through Onion
+  showed the intro, the title and a loading screen
+- The 1994/95 WHDLoad `.lha` on the card (Roms/AMIGA) is refused by OpenSWOS (too old)
 - Next step: see the plan in the sections below
 
 ## OpenSWOS v0.4.0 renamed its zip (2026-11-28, catalog)
