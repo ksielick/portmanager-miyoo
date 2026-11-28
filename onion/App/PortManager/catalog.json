@@ -1013,7 +1013,7 @@
       "name": "Sensible World of Soccer",
       "category": "Sports",
       "repo": "sakya/OpenSWOS",
-      "asset": "^OpenSWOS_miyoo_.*\\.zip$",
+      "asset": "^OpenSWOS_(miyoo_)?[0-9][0-9.]*\\.zip$",
       "layout": "app-to-ports",
       "dir": "Roms/PORTS/Games/OpenSWOS",
       "backup": [
