@@ -4,6 +4,16 @@ All notable changes to Port Manager are documented here. Releases are published 
 
 ---
 
+## [v1.2.13] - 2026-11-28
+
+### Added
+- **Missing game files are reported at launch**: shortcuts Port Manager writes itself (games installed from a zip with only an `App` folder, such as Sensible World of Soccer) now check the game files the catalog requires. If any are missing, Onion shows a "GAME FILES MISSING" panel listing them instead of the game quitting straight back to the menu.
+
+### Fixed
+- **Sensible World of Soccer v0.4.0 could not be installed or updated** ("the release has no matching file"): OpenSWOS v0.4.0 renamed its download to `OpenSWOS_<version>.zip`. The catalog matches both names (catalog fix, live for every version since 2026-11-28).
+
+---
+
 ## [v1.2.12] - 2026-11-23
 
 ### Added

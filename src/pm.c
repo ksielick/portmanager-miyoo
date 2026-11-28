@@ -1261,8 +1261,74 @@ static void map_cb(const char *rel, void *ctx)
 	}
 }
 
+/* a shell test for one catalog data path, relative to the game folder: quoted, or with a
+ * pattern (SOUND*.WAV) expanded by the shell; "" when it can't be written safely */
+static void sh_test(const char *rel, char *out, size_t size)
+{
+	*out = 0;
+	if (strpbrk(rel, "\"`$\\\n"))
+		return;
+	if (strpbrk(rel, "*?[")) {
+		if (!strpbrk(rel, " \t'&;|<>()"))
+			snprintf(out, size, "{ set -- %s; [ -e \"$1\" ]; }", rel);
+	}
+	else
+		snprintf(out, size, "[ -e \"%s\" ]", rel);
+}
+
+/* before the launch: the catalog's required game data. Missing files would only make the
+ * game quit back to the menu (OpenSWOS without assets/), so tell the player in Onion's
+ * infoPanel (42 columns, no wrap, 255 characters) and don't start it */
+static int append_data_check(const Port *p, char *text, int n, int size)
+{
+	if (!p->nrequired && !p->nrequired_any)
+		return n;
+	int w = snprintf(text + n, size - n, "miss=\"\"\n");
+	if (w < 0 || w >= size - n)
+		return -1;
+	n += w;
+	char t[600];
+	for (int i = 0; i < p->nrequired; i++) {
+		sh_test(p->required[i], t, sizeof t);
+		if (!*t)
+			continue;
+		w = snprintf(text + n, size - n, "%s || miss=\"$miss\\n%.40s\"\n", t, p->required[i]);
+		if (w < 0 || w >= size - n)
+			return -1;
+		n += w;
+	}
+	if (p->nrequired_any) {
+		w = snprintf(text + n, size - n, "{ false");
+		if (w < 0 || w >= size - n)
+			return -1;
+		n += w;
+		for (int i = 0; i < p->nrequired_any; i++) {
+			sh_test(p->required_any[i], t, sizeof t);
+			/* one we can't test may be the one the player has: then don't block the game */
+			w = snprintf(text + n, size - n, " || %s", *t ? t : "true");
+			if (w < 0 || w >= size - n)
+				return -1;
+			n += w;
+		}
+		w = snprintf(text + n, size - n, "; } || miss=\"$miss\\none of: %.30s%s\"\n", p->required_any[0],
+			p->nrequired_any > 1 ? ", ..." : "");
+		if (w < 0 || w >= size - n)
+			return -1;
+		n += w;
+	}
+	w = snprintf(text + n, size - n,
+		"if [ -n \"$miss\" ]; then\n"
+		"\tip=/mnt/SDCARD/.tmp_update/bin/infoPanel\n"
+		"\t[ ! -x \"$ip\" ] || \"$ip\" --title \"GAME FILES MISSING\" --message \"Missing:$miss\\n \\nPort Manager: this game's page\\nsays how to get them.\"\n"
+		"\texit 0\n"
+		"fi\n");
+	if (w < 0 || w >= size - n)
+		return -1;
+	return n + w;
+}
+
 /* our shortcut from the release's: its settings (GameName, FullResolution, ...) without its
- * App/ paths, then our GameDir and launch */
+ * App/ paths, then our GameDir, the data check and launch */
 static int shortcut_from(const Port *p, const char *tpl, const char *out)
 {
 	/* no template (the zip has only App/<dir>/, like OpenSWOS): a shortcut of our own,
@@ -1311,8 +1377,15 @@ static int shortcut_from(const Port *p, const char *tpl, const char *out)
 			return -1;
 		n += w;
 	}
-	int w = snprintf(text + n, sizeof text - n, "GameDir=\"%s\"\nGameDataFile=\"%s\"\ncd \"%s\" || exit 1\nexec sh \"%s/%s\"\n",
-		base_name(p->dir), p->sc_gdf, g, g, p->sc_run);
+	int w = snprintf(text + n, sizeof text - n, "GameDir=\"%s\"\nGameDataFile=\"%s\"\ncd \"%s\" || exit 1\n",
+		base_name(p->dir), p->sc_gdf, g);
+	if (w < 0 || w >= (int)(sizeof text - n))
+		return -1;
+	n += w;
+	n = append_data_check(p, text, n, sizeof text);
+	if (n < 0)
+		return -1;
+	w = snprintf(text + n, sizeof text - n, "exec sh \"%s/%s\"\n", g, p->sc_run);
 	if (w < 0 || w >= (int)(sizeof text - n))
 		return -1;
 	n += w;

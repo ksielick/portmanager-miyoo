@@ -1007,6 +1007,31 @@
         ]
       },
       "get": "Prehistorik (GOG's Prehistorik 1+2, or the DOS original): copy FILESA.CUR, FILESB.CUR, FILESA.VGA, FILESB.VGA and HISTORIK.EXE (or PREH.SQZ) into Roms/PORTS/Games/Prehistorik/game/. If Roms/DOS/Prehistorik (1991).zip is on the card, the first launch takes them from it."
+    },
+    {
+      "id": "openswos",
+      "name": "Sensible World of Soccer",
+      "category": "Sports",
+      "repo": "sakya/OpenSWOS",
+      "asset": "^OpenSWOS_(miyoo_)?[0-9][0-9.]*\\.zip$",
+      "layout": "app-to-ports",
+      "dir": "Roms/PORTS/Games/OpenSWOS",
+      "backup": [
+        "conf/"
+      ],
+      "data": {
+        "required": [
+          "assets/ASSETS.ini"
+        ],
+        "optional": [
+          "assets/"
+        ]
+      },
+      "get": "Sensible World of Soccer 96/97, PC (GOG) or Amiga version. On a computer, run OpenSWOS Setup with your copy (openswos.net/install) and finish its Install step: it makes an assets folder (Documents\\SWOS\\assets on Windows, ~/.swos/assets on Linux, ~/Library/Application Support/SWOS/assets on macOS). Copy the whole assets folder into Roms/PORTS/Games/OpenSWOS/, so that ASSETS.ini ends up in Roms/PORTS/Games/OpenSWOS/assets/.",
+      "shortcut": {
+        "GameDataFile": "SWOS.miyoo",
+        "run": "launch.sh"
+      }
     }
   ]
 }

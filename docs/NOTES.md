@@ -7,12 +7,15 @@ Newest first within each section. Plan: `PLAN.md`; catalog format: `CATALOG.md`.
 The agent that ends a session rewrites this section (rules: the `handheld-ports` skill,
 "Working alongside the other agent").
 
-- Updated: 2026-11-23, claude (OpenSWOS added, v1.2.12 released)
-- Branch: `main` and the tag `v1.2.12` pushed together; `claude/epic-gates-vy1c8k` merged
-- In progress: nothing
+- Updated: 2026-11-28, claude (v1.2.13 released: shortcut data check)
+- Branch: `main` and the tag `v1.2.13` pushed together; the work branch
+  `shortcut-data-check` went in as one commit on main (its NOTES clashed with main's)
+- In progress: nothing; the card has the branch's build (same code, shows v1.2.12), so
+  Port Manager there offers v1.2.13 as an update
 - Uncommitted files left in the working tree: none
-- Review wanted: the owner tries Sensible World of Soccer on the console (install, shortcut
-  in Sports, picture, the game with assets/), then sets its `status`
+- Review wanted: the owner tries Sensible World of Soccer on the console with assets/ (the
+  card has only the 1994/95 Amiga WHDLoad install, which OpenSWOS rejects), then sets its
+  `status`
 - Next step: see the plan in the sections below
 
 ## OpenSWOS v0.4.0 renamed its zip (2026-11-28, catalog)
@@ -22,6 +25,34 @@ The agent that ends a session rewrites this section (rules: the `handheld-ports`
   `install_app_no_shortcut`). Same layout inside (only `App/OpenSWOS/`, same `launch.sh`).
   The pattern is now `^OpenSWOS_(miyoo_)?[0-9][0-9.]*\.zip$` (POSIX ERE, as `regcomp`):
   both names, not a future `OpenSWOS_<platform>_<ver>.zip`.
+
+## A missing-data check in our shortcuts (2026-11-28, for v1.2.13)
+
+- The owner started Sensible World of Soccer from Onion's Ports list: it flashed and went
+  back to the menu. `conf/.swos/SWOS.log` ended with `[assets] no game data ... run OpenSWOS
+  Setup` (no `assets/` on the card); Port Manager's page said "files missing", but the
+  player starts games from Onion, where nothing said so.
+- The shortcuts Port Manager writes (`shortcut_from()`, `app-to-ports` only: today just
+  OpenSWOS) now test the catalog's `data.required` / `required_any` after the `cd` and, when
+  any is missing, show Onion's `infoPanel` ("GAME FILES MISSING", the missing paths, "Port
+  Manager: this game's page says how to get them.") and exit instead of starting the game.
+  Patterns (`SOUND*.WAV`) go through `set --`; a path that can't be quoted safely is not
+  tested (a `required_any` one counts as present, so it never blocks the game). Paths are cut
+  at 40 characters (infoPanel: 42 columns, no wrap, 255 characters).
+- Light/clear/fast: no new program (infoPanel is Onion's), a few lines in the shortcut, no
+  extra card writes. `sdcard-root` ports keep the release's own shortcut, unchanged.
+- A card's existing shortcut changes only when the game is installed or updated again.
+- Tested on the PC: `pm.c` built on the host in WSL with a test `main`, the written shortcut
+  run with and without the files (it shows the panel and exits 0, or starts `launch.sh`).
+  Scenario `install_app_no_shortcut` asserts the test and `infoPanel` in the shortcut.
+- On the device (2026-11-28): the branch's build deployed, SWOS updated v0.3.0 -> v0.4.0 from
+  Port Manager (2 files replaced, the shortcut rewritten with the check). The shortcut run as
+  Onion runs it (`/tmp/cmd_to_run.sh`, MainUI killed) showed the panel (Onion's look, title,
+  "Missing: assets/ASSETS.ini", A OK / B CANCEL), SWOS.miyoo not started, exit 0, menu back.
+  `sendkeys` A/B did **not** close infoPanel (it has event0 open; PM's list takes the same
+  keys), so it was closed with `kill`; a real button press is still to be seen.
+- Screenshots: Port Manager redraws late, so a fb0 dump right after `sendkeys` can show the
+  screen before the key; wait ~2 s, or dump all three pages.
 
 ## Sensible World of Soccer (OpenSWOS): new entry and a Sports category (2026-11-23, for v1.2.12)
 
